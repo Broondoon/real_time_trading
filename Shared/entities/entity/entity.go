@@ -13,12 +13,13 @@ type EntityInterface interface {
 	SetDateModified(dateModified time.Time)
 }
 
-// Internal Functions should not be interacted with directly. if you need to change functionality, set a new function to the existing Internal function.
-// Instead, interact with the functions through the Entity Interface.
 type Entity struct {
-	id                      string
-	dateCreated             time.Time
-	dateModified            time.Time
+	// If you need to access a property, please use the Get and Set functions, not the property itself. It is only exposed in case you need to interact with it when altering internal functions.
+	Id           string
+	DateCreated  time.Time
+	DateModified time.Time
+	// Internal Functions should not be interacted with directly, but if you need to change functionality, set a new function to the existing function.
+	// Instead, interact with the functions through the Entity Interface.
 	SetIdInternal           func(id string)
 	GetIdInternal           func() string
 	SetDateCreatedInternal  func(dateCreated time.Time)
@@ -59,15 +60,15 @@ type NewEntityParams struct {
 
 func NewEntity(params NewEntityParams) *Entity {
 	e := &Entity{
-		id:           params.Id,
-		dateCreated:  params.DateCreated,
-		dateModified: params.DateModified,
+		Id:           params.Id,
+		DateCreated:  params.DateCreated,
+		DateModified: params.DateModified,
 	}
-	e.SetIdInternal = func(id string) { e.id = id }
-	e.GetIdInternal = func() string { return e.id }
-	e.SetDateCreatedInternal = func(dateCreated time.Time) { e.dateCreated = dateCreated }
-	e.GetDateCreatedInternal = func() time.Time { return e.dateCreated }
-	e.SetDateModifiedInternal = func(dateModified time.Time) { e.dateModified = dateModified }
-	e.GetDateModifiedInternal = func() time.Time { return e.dateModified }
+	e.SetIdInternal = func(id string) { e.Id = id }
+	e.GetIdInternal = func() string { return e.Id }
+	e.SetDateCreatedInternal = func(dateCreated time.Time) { e.DateCreated = dateCreated }
+	e.GetDateCreatedInternal = func() time.Time { return e.DateCreated }
+	e.SetDateModifiedInternal = func(dateModified time.Time) { e.DateModified = dateModified }
+	e.GetDateModifiedInternal = func() time.Time { return e.DateModified }
 	return e
 }
