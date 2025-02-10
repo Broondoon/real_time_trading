@@ -5,6 +5,7 @@ import (
 	"Shared/entities/user"
 	"fmt"
 	"time"
+	//"Shared/network"
 )
 
 func main() {
@@ -27,4 +28,5 @@ func main() {
 	fmt.Println(u.GetDateModified())
 	fmt.Println(u.GetUsername())
 	fmt.Println(u.GetPassword())
+
 }
