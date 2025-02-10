@@ -1,0 +1,14 @@
+services:
+  microservice-template:
+    build: 
+          context: .
+          dockerfile: ./microservice-template/Dockerfile
+    ports:
+      - "8000:8000"
+    networks:
+       - go-network
+
+
+networks:
+  go-network:
+    driver: bridge           # Use a bridge network to enable container communication
