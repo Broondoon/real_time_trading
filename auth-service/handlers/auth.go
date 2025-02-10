@@ -11,8 +11,6 @@ import (
 	"time"
 )
 
-var jwtsecret = []byte(os.Getenv("JWT_SECRET"))
-
 func HashPassword(password string) (string, error) {
 	bytes, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	return string(bytes), err
@@ -24,6 +22,7 @@ func CheckPasswordHash(password, hash string) bool {
 }
 
 func GenerateToken(userID uint) (string, error) {
+	var jwtsecret = []byte(os.Getenv("JWT_SECRET"))
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"sub": userID,
 		"exp": time.Now().Add(time.Hour * 1).Unix(),
@@ -65,4 +64,17 @@ func Login(c *gin.Context) {
 
 	token, _ := GenerateToken(user.ID)
 	c.JSON(http.StatusOK, gin.H{"token": token})
+}
+
+func Profile(c *gin.Context) {
+	userID, exists := c.Get("userID")
+	if !exists {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "User ID not found"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Welcome to your profile!",
+		"userID":  userID,
+	})
 }

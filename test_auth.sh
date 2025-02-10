@@ -33,6 +33,8 @@ fi
 echo "Token Acquired: $TOKEN"
 echo ""
 
+echo "Curl command: curl -X GET \"$BASE_URL/protected/profile\" -H \"Authorization: Bearer $TOKEN\" -H \"Content-Type: application/json\""
+
 echo "========================="
 echo "Accessing Protected Route with Token"
 echo "========================="
