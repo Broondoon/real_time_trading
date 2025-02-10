@@ -1,0 +1,5 @@
+services:
+  auth-service:
+    build: ./microservice-template
+    ports:
+      - "8000:8000"
