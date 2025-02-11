@@ -11,6 +11,15 @@ import (
 	"time"
 )
 
+type HttpClientInterface interface {
+	Get(endpoint string, queryParams map[string]string) ([]byte, error)
+	Post(endpoint string, payload interface{}) ([]byte, error)
+	Put(endpoint string, payload interface{}) ([]byte, error)
+	Delete(endpoint string) ([]byte, error)
+	AddHandleFunc(params HandlerParams)
+	Listen(params ListenerParams)
+}
+
 type HttpClient struct {
 	BaseURL   string
 	AuthToken string
