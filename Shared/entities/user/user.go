@@ -1,6 +1,9 @@
 package user
 
-import "Shared/entities/entity"
+import (
+	"Shared/entities/entity"
+	"encoding/json"
+)
 
 type UserInterface interface {
 	GetName() string
@@ -9,6 +12,8 @@ type UserInterface interface {
 	SetUsername(username string)
 	GetPassword() string
 	SetPassword(password string)
+	UserToParams() NewUserParams
+	UserToJSON() ([]byte, error)
 	entity.EntityInterface
 }
 
@@ -53,10 +58,10 @@ func (u *User) SetPassword(password string) {
 }
 
 type NewUserParams struct {
-	NewEntityParams entity.NewEntityParams
-	Name            string
-	Username        string
-	Password        string
+	entity.NewEntityParams
+	Name     string `json:"Name"`
+	Username string `json:"Username"`
+	Password string `json:"Password"`
 }
 
 func NewUser(params NewUserParams) *User {
@@ -67,6 +72,7 @@ func NewUser(params NewUserParams) *User {
 		username:        params.Username,
 		password:        params.Password,
 	}
+
 	u.GetNameInternal = func() string { return u.name }
 	u.SetNameInternal = func(name string) { u.name = name }
 	u.SetUsernameInternal = func(username string) { u.username = username }
@@ -74,4 +80,25 @@ func NewUser(params NewUserParams) *User {
 	u.SetPasswordInternal = func(password string) { u.password = password }
 	u.GetPasswordInternal = func() string { return u.password }
 	return u
+}
+
+func ParseUser(jsonBytes []byte) (*User, error) {
+	var u NewUserParams
+	if err := json.Unmarshal(jsonBytes, &u); err != nil {
+		return nil, err
+	}
+	return NewUser(u), nil
+}
+
+func (u *User) UserToParams() NewUserParams {
+	return NewUserParams{
+		NewEntityParams: u.EntityToParams(),
+		Name:            u.GetName(),
+		Username:        u.GetUsername(),
+		Password:        u.GetPassword(),
+	}
+}
+
+func (u *User) UserToJSON() ([]byte, error) {
+	return json.Marshal(u.UserToParams())
 }

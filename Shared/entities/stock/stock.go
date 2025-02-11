@@ -2,11 +2,14 @@ package stock
 
 import (
 	"Shared/entities/entity"
+	"encoding/json"
 )
 
 type StockInterface interface {
 	GetName() string
 	SetName(name string)
+	StockToParams() NewStockParams
+	StockToJSON() ([]byte, error)
 	entity.EntityInterface
 }
 
@@ -30,7 +33,7 @@ func (s *Stock) SetName(name string) {
 
 type NewStockParams struct {
 	entity.NewEntityParams
-	Name string
+	Name string `json:"Name"`
 }
 
 func NewStock(params NewStockParams) *Stock {
@@ -42,4 +45,23 @@ func NewStock(params NewStockParams) *Stock {
 	s.GetNameInternal = func() string { return s.Name }
 	s.SetNameInternal = func(name string) { s.Name = name }
 	return s
+}
+
+func ParseStock(jsonBytes []byte) (*Stock, error) {
+	var s NewStockParams
+	if err := json.Unmarshal(jsonBytes, &s); err != nil {
+		return nil, err
+	}
+	return NewStock(s), nil
+}
+
+func (s *Stock) StockToParams() NewStockParams {
+	return NewStockParams{
+		Name:            s.GetName(),
+		NewEntityParams: s.EntityToParams(),
+	}
+}
+
+func (s *Stock) StockToJSON() ([]byte, error) {
+	return json.Marshal(s.StockToParams())
 }

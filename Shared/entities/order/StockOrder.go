@@ -3,6 +3,7 @@ package order
 import (
 	"Shared/entities/entity"
 	"Shared/entities/stock"
+	"encoding/json"
 )
 
 const (
@@ -20,6 +21,8 @@ type StockOrderInterface interface {
 	SetQuantity(quantity int)
 	GetPrice() float64
 	SetPrice(price float64)
+	StockOrderToParams() NewStockOrderParams
+	StockOrderToJSON() ([]byte, error)
 	entity.EntityInterface
 }
 
@@ -82,12 +85,12 @@ func (so *StockOrder) SetStockID(stockID string) {
 
 type NewStockOrderParams struct {
 	entity.NewEntityParams
-	StockID   string               // use this or Stock
+	StockID   string               `json:"StockID"` // use this or Stock
 	Stock     stock.StockInterface // use this or StockID
-	IsBuy     bool
-	OrderType string // MARKET or LIMIT. This can't be changed later.
-	Quantity  int
-	Price     float64
+	IsBuy     bool                 `json:"IsBuy"`
+	OrderType string               `json:"OrderType"` // MARKET or LIMIT. This can't be changed later.
+	Quantity  int                  `json:"Quantity"`
+	Price     float64              `json:"Price"`
 }
 
 func NewStockOrder(params NewStockOrderParams) *StockOrder {
@@ -117,4 +120,27 @@ func NewStockOrder(params NewStockOrderParams) *StockOrder {
 	sob.GetPriceInternal = func() float64 { return sob.Price }
 	sob.SetPriceInternal = func(price float64) { sob.Price = price }
 	return sob
+}
+
+func ParseStockOrder(jsonBytes []byte) (*StockOrder, error) {
+	var so NewStockOrderParams
+	if err := json.Unmarshal(jsonBytes, &so); err != nil {
+		return nil, err
+	}
+	return NewStockOrder(so), nil
+}
+
+func (so *StockOrder) StockOrderToParams() NewStockOrderParams {
+	return NewStockOrderParams{
+		NewEntityParams: so.EntityToParams(),
+		StockID:         so.GetStockID(),
+		IsBuy:           so.GetIsBuy(),
+		OrderType:       so.GetOrderType(),
+		Quantity:        so.GetQuantity(),
+		Price:           so.GetPrice(),
+	}
+}
+
+func (so *StockOrder) StockOrderToJSON() ([]byte, error) {
+	return json.Marshal(so.StockOrderToParams())
 }

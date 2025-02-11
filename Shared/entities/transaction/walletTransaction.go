@@ -3,6 +3,7 @@ package transaction
 import (
 	"Shared/entities/entity"
 	"Shared/entities/wallet"
+	"encoding/json"
 )
 
 type WalletTransactionInterface interface {
@@ -14,6 +15,8 @@ type WalletTransactionInterface interface {
 	SetIsDebit(isDebit bool)
 	GetAmount() float64
 	SetAmount(amount float64)
+	WalletTransactionToParams() NewWalletTransactionParams
+	WalletTransactionToJSON() ([]byte, error)
 	entity.EntityInterface
 }
 
@@ -70,12 +73,12 @@ func (wt *WalletTransaction) SetAmount(amount float64) {
 
 type NewWalletTransactionParams struct {
 	entity.NewEntityParams
-	WalletID           string // use this or Wallet
+	WalletID           string `json:"WalletID"` // use this or Wallet
 	Wallet             wallet.WalletInterface
-	StockTransactionID string // use this or StockTransaction
+	StockTransactionID string `json:"StockTransactionID"` // use this or StockTransaction
 	StockTransaction   StockTransactionInterface
-	IsDebit            bool
-	Amount             float64
+	IsDebit            bool    `json:"IsDebit"`
+	Amount             float64 `json:"Amount"`
 }
 
 func NewWalletTransaction(params NewWalletTransactionParams) *WalletTransaction {
@@ -110,4 +113,26 @@ func NewWalletTransaction(params NewWalletTransactionParams) *WalletTransaction 
 	wt.SetAmountInternal = func(amount float64) { wt.Amount = amount }
 
 	return wt
+}
+
+func ParseWalletTransaction(jsonBytes []byte) (*WalletTransaction, error) {
+	var wt NewWalletTransactionParams
+	if err := json.Unmarshal(jsonBytes, &wt); err != nil {
+		return nil, err
+	}
+	return NewWalletTransaction(wt), nil
+}
+
+func (wt *WalletTransaction) WalletTransactionToParams() NewWalletTransactionParams {
+	return NewWalletTransactionParams{
+		NewEntityParams:    wt.EntityToParams(),
+		WalletID:           wt.GetWalletID(),
+		StockTransactionID: wt.GetStockTransactionID(),
+		IsDebit:            wt.GetIsDebit(),
+		Amount:             wt.GetAmount(),
+	}
+}
+
+func (wt *WalletTransaction) WalletTransactionToJSON() ([]byte, error) {
+	return json.Marshal(wt.WalletTransactionToParams())
 }

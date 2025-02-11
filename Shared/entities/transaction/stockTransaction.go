@@ -4,6 +4,7 @@ import (
 	"Shared/entities/entity"
 	"Shared/entities/order"
 	"Shared/entities/stock"
+	"encoding/json"
 )
 
 type StockTransactionInterface interface {
@@ -22,6 +23,8 @@ type StockTransactionInterface interface {
 	SetStockPrice(stockPrice float64)
 	GetQuantity() int
 	SetQuantity(quantity int)
+	StockTransactionToParams() NewStockTransactionParams
+	StockTransactionToJSON() ([]byte, error)
 	entity.EntityInterface
 }
 
@@ -117,22 +120,23 @@ func (st *StockTransaction) SetQuantity(quantity int) {
 
 type NewStockTransactionParams struct {
 	entity.NewEntityParams
-	OrderStatus         string
-	WalletTransactionID string                     // use this or WalletTransaction or ParentStockTransaction
+	OrderStatus         string                     `json:"OrderStatus"`
+	WalletTransactionID string                     `json:"WalletTransactionID"` // use this or WalletTransaction or ParentStockTransaction
 	WalletTransaction   WalletTransactionInterface // use this or WalletTransactionID or ParentStockTransaction
 	//use one of the following
-	ParentStockTransaction StockTransactionInterface
+	ParentStockTransaction   StockTransactionInterface
+	ParentStockTransactionID string `json:"ParentStockTransactionID"`
 	//or
-	StockTransactionID string
+	StockTransactionID string `json:"StockTransactionID"`
 	// And one of the following
 	StockOrder order.StockOrderInterface
 	//or
-	StockID    string               // use this or Stock
+	StockID    string               `json:"StockID"` // use this or Stock
 	Stock      stock.StockInterface // use this or StockID
-	IsBuy      bool
-	OrderType  string
-	StockPrice float64
-	Quantity   int
+	IsBuy      bool                 `json:"IsBuy"`
+	OrderType  string               `json:"OrderType"`
+	StockPrice float64              `json:"StockPrice"`
+	Quantity   int                  `json:"Quantity"`
 }
 
 func NewStockTransaction(params NewStockTransactionParams) *StockTransaction {
@@ -153,6 +157,7 @@ func NewStockTransaction(params NewStockTransactionParams) *StockTransaction {
 		stockPrice = params.ParentStockTransaction.GetStockPrice()
 		quantity = params.ParentStockTransaction.GetQuantity()
 	} else {
+		parentStockTransactionID = params.ParentStockTransactionID
 		if params.StockOrder != nil {
 			stockID = params.StockOrder.GetStockID()
 			isBuy = params.StockOrder.GetIsBuy()
@@ -205,4 +210,31 @@ func NewStockTransaction(params NewStockTransactionParams) *StockTransaction {
 	st.GetQuantityInternal = func() int { return st.Quantity }
 	st.SetQuantityInternal = func(quantity int) { st.Quantity = quantity }
 	return st
+}
+
+func ParseStockTransaction(jsonBytes []byte) (*StockTransaction, error) {
+	var st NewStockTransactionParams
+	if err := json.Unmarshal(jsonBytes, &st); err != nil {
+		return nil, err
+	}
+	return NewStockTransaction(st), nil
+}
+
+func (st *StockTransaction) StockTransactionToParams() NewStockTransactionParams {
+	return NewStockTransactionParams{
+		NewEntityParams:          st.EntityToParams(),
+		OrderStatus:              st.GetOrderStatus(),
+		WalletTransactionID:      st.GetWalletTransactionID(),
+		ParentStockTransactionID: st.GetParentStockTransactionID(),
+		StockOrder:               nil,
+		Stock:                    nil,
+		IsBuy:                    st.GetIsBuy(),
+		OrderType:                st.GetOrderType(),
+		StockPrice:               st.GetStockPrice(),
+		Quantity:                 st.GetQuantity(),
+	}
+}
+
+func (st *StockTransaction) StockTransactionToJSON() ([]byte, error) {
+	return json.Marshal(st.StockTransactionToParams())
 }

@@ -151,3 +151,22 @@ func (hc *HttpClient) Delete(endpoint string) ([]byte, error) {
 
 	return hc.handleResponse(resp)
 }
+
+type HandlerParams struct {
+	Pattern string
+	Handler func(http.ResponseWriter, *http.Request)
+}
+
+func AddHandleFunc(params HandlerParams) {
+	http.HandleFunc(params.Pattern, params.Handler)
+
+}
+
+type ListenerParams struct {
+	Port    string
+	Handler http.Handler
+}
+
+func Listen(params ListenerParams) {
+	http.ListenAndServe(":"+params.Port, params.Handler)
+}

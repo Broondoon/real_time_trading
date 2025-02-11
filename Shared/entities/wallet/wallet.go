@@ -3,6 +3,7 @@ package wallet
 import (
 	"Shared/entities/entity"
 	"Shared/entities/user"
+	"encoding/json"
 )
 
 type WalletInterface interface {
@@ -10,6 +11,8 @@ type WalletInterface interface {
 	SetUserID(userID string)
 	GetBalance() float64
 	SetBalance(balance float64)
+	WalletToParams() NewWalletParams
+	WalletToJSON() ([]byte, error)
 	entity.EntityInterface
 }
 
@@ -45,8 +48,8 @@ func (w *Wallet) SetUserID(userID string) {
 type NewWalletParams struct {
 	entity.NewEntityParams
 	User    user.UserInterface // use this or UserId
-	UserId  string             // use this or User
-	Balance float64
+	UserId  string             `json:"UserId"` // use this or User
+	Balance float64            `json:"Balance"`
 }
 
 func NewWallet(params NewWalletParams) *Wallet {
@@ -68,4 +71,25 @@ func NewWallet(params NewWalletParams) *Wallet {
 	wb.GetBalanceInternal = func() float64 { return wb.Balance }
 	wb.SetBalanceInternal = func(balance float64) { wb.Balance = balance }
 	return wb
+}
+
+func ParseWallet(jsonBytes []byte) (*Wallet, error) {
+	var w NewWalletParams
+	if err := json.Unmarshal(jsonBytes, &w); err != nil {
+		return nil, err
+	}
+	return NewWallet(w), nil
+}
+
+func (w *Wallet) WalletToParams() NewWalletParams {
+	return NewWalletParams{
+		NewEntityParams: w.EntityToParams(),
+		User:            nil,
+		UserId:          w.GetUserID(),
+		Balance:         w.GetBalance(),
+	}
+}
+
+func (w *Wallet) WalletToJSON() ([]byte, error) {
+	return json.Marshal(w.WalletToParams())
 }

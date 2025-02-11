@@ -30,6 +30,19 @@ func main() {
 	fmt.Println(u.GetDateModified())
 	fmt.Println(u.GetUsername())
 	fmt.Println(u.GetPassword())
+	fmt.Println(u.UserToParams())
+	fmt.Println(u.UserToJSON())
+	jsonData, err := u.UserToJSON()
+	if err != nil {
+		fmt.Println("Error converting user to JSON:", err)
+	} else {
+		parsedUser, _ := user.ParseUser(jsonData)
+		fmt.Println(parsedUser.GetId())
+		fmt.Println(parsedUser.GetDateCreated())
+		fmt.Println(parsedUser.GetDateModified())
+		fmt.Println(parsedUser.GetUsername())
+		fmt.Println(parsedUser.GetPassword())
+	}
 
 	// Create a new Stock
 	s := stock.NewStock(stock.NewStockParams{
@@ -66,6 +79,19 @@ func main() {
 	fmt.Println(w.GetDateModified())
 	fmt.Println(w.GetUserID())
 	fmt.Println(w.GetBalance())
+	fmt.Println(w.WalletToParams())
+	fmt.Println(w.WalletToJSON())
+	jsonData1, err := w.WalletToJSON()
+	if err != nil {
+		fmt.Println("Error converting user to JSON:", err)
+	} else {
+		parsedWallet, _ := wallet.ParseWallet(jsonData1)
+		fmt.Println(parsedWallet.GetId())
+		fmt.Println(parsedWallet.GetDateCreated())
+		fmt.Println(parsedWallet.GetDateModified())
+		fmt.Println(parsedWallet.GetUserID())
+		fmt.Println(parsedWallet.GetBalance())
+	}
 
 	//Create a new Stock Order
 	so := order.NewStockOrder(order.NewStockOrderParams{
