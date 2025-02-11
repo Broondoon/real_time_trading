@@ -1,6 +1,7 @@
 package entity
 
 import (
+	"encoding/json"
 	"time"
 )
 
@@ -11,6 +12,8 @@ type EntityInterface interface {
 	SetDateCreated(dateCreated time.Time)
 	GetDateModified() time.Time
 	SetDateModified(dateModified time.Time)
+	EntityToParams() NewEntityParams
+	EntityToJSON() ([]byte, error)
 }
 
 type Entity struct {
@@ -53,9 +56,9 @@ func (e *Entity) SetDateModified(dateModified time.Time) {
 }
 
 type NewEntityParams struct {
-	Id           string
-	DateCreated  time.Time
-	DateModified time.Time
+	Id           string    `json:"Id"`
+	DateCreated  time.Time `json:"DateCreated"`
+	DateModified time.Time `json:"DateModified"`
 }
 
 func NewEntity(params NewEntityParams) *Entity {
@@ -72,3 +75,38 @@ func NewEntity(params NewEntityParams) *Entity {
 	e.GetDateModifiedInternal = func() time.Time { return e.DateModified }
 	return e
 }
+
+func ParseEntity(jsonBytes []byte) (*Entity, error) {
+	var e NewEntityParams
+	if err := json.Unmarshal(jsonBytes, &e); err != nil {
+		return nil, err
+	}
+	return NewEntity(e), nil
+}
+
+func (e *Entity) EntityToParams() NewEntityParams {
+	return NewEntityParams{
+		Id:           e.GetId(),
+		DateCreated:  e.GetDateCreated(),
+		DateModified: e.GetDateModified(),
+	}
+}
+
+func (e *Entity) EntityToJSON() ([]byte, error) {
+	return json.Marshal(e.EntityToParams())
+}
+
+type FakeEntity struct {
+	Id           string    `json:"id"`
+	DateCreated  time.Time `json:"dateCreated"`
+	DateModified time.Time `json:"dateModified"`
+}
+
+func (fe *FakeEntity) GetId() string                          { return fe.Id }
+func (fe *FakeEntity) SetId(id string)                        { fe.Id = id }
+func (fe *FakeEntity) GetDateCreated() time.Time              { return fe.DateCreated }
+func (fe *FakeEntity) SetDateCreated(dateCreated time.Time)   { fe.DateCreated = dateCreated }
+func (fe *FakeEntity) GetDateModified() time.Time             { return fe.DateModified }
+func (fe *FakeEntity) SetDateModified(dateModified time.Time) { fe.DateModified = dateModified }
+func (fe *FakeEntity) EntityToParams() NewEntityParams        { return NewEntityParams{} }
+func (fe *FakeEntity) EntityToJSON() ([]byte, error)          { return []byte{}, nil }

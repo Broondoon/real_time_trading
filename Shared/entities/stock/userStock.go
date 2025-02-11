@@ -3,6 +3,7 @@ package stock
 import (
 	"Shared/entities/entity"
 	"Shared/entities/user"
+	"encoding/json"
 )
 
 //For tracking stocks owned per user.
@@ -16,6 +17,8 @@ type UserStockInterface interface {
 	SetStockName(stockName string)
 	GetQuantity() int
 	SetQuantity(quantity int)
+	UserStockToParams() NewUserStockParams
+	UserStockToJSON() ([]byte, error)
 	entity.EntityInterface
 }
 
@@ -72,12 +75,12 @@ func (us *UserStock) SetStockName(stockName string) {
 
 type NewUserStockParams struct {
 	entity.NewEntityParams
-	UserID    string             // use this or User
+	UserID    string             `json:"UserID"` // use this or User
 	User      user.UserInterface // use this or UserID
-	StockID   string             // use this or Stock
-	StockName string             // use this or Stock
+	StockID   string             `json:"StockID"`   // use this or Stock
+	StockName string             `json:"StockName"` // use this or Stock
 	Stock     StockInterface     // use this or StockID and StockName
-	Quantity  int
+	Quantity  int                `json:"Quantity"`
 }
 
 func NewUserStock(params NewUserStockParams) *UserStock {
@@ -116,3 +119,44 @@ func NewUserStock(params NewUserStockParams) *UserStock {
 	us.SetStockNameInternal = func(stockName string) { us.StockName = stockName }
 	return us
 }
+
+func ParseUserStock(jsonBytes []byte) (*UserStock, error) {
+	var us NewUserStockParams
+	if err := json.Unmarshal(jsonBytes, &us); err != nil {
+		return nil, err
+	}
+	return NewUserStock(us), nil
+}
+
+func (us *UserStock) UserStockToParams() NewUserStockParams {
+	return NewUserStockParams{
+		NewEntityParams: us.EntityToParams(),
+		UserID:          us.GetUserID(),
+		StockID:         us.GetStockID(),
+		StockName:       us.GetStockName(),
+		Quantity:        us.GetQuantity(),
+	}
+}
+
+func (us *UserStock) UserStockToJSON() ([]byte, error) {
+	return json.Marshal(us.UserStockToParams())
+}
+
+type FakeUserStock struct {
+	entity.FakeEntity
+	UserID    string `json:"userID"`
+	StockID   string `json:"stockID"`
+	StockName string `json:"stockName"`
+	Quantity  int    `json:"quantity"`
+}
+
+func (fus *FakeUserStock) GetUserID() string                     { return fus.UserID }
+func (fus *FakeUserStock) SetUserID(userID string)               { fus.UserID = userID }
+func (fus *FakeUserStock) GetStockID() string                    { return fus.StockID }
+func (fus *FakeUserStock) SetStockID(stockID string)             { fus.StockID = stockID }
+func (fus *FakeUserStock) GetStockName() string                  { return fus.StockName }
+func (fus *FakeUserStock) SetStockName(stockName string)         { fus.StockName = stockName }
+func (fus *FakeUserStock) GetQuantity() int                      { return fus.Quantity }
+func (fus *FakeUserStock) SetQuantity(quantity int)              { fus.Quantity = quantity }
+func (fus *FakeUserStock) UserStockToParams() NewUserStockParams { return NewUserStockParams{} }
+func (fus *FakeUserStock) UserStockToJSON() ([]byte, error)      { return []byte{}, nil }
