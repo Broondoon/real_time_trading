@@ -141,3 +141,22 @@ func (us *UserStock) UserStockToParams() NewUserStockParams {
 func (us *UserStock) UserStockToJSON() ([]byte, error) {
 	return json.Marshal(us.UserStockToParams())
 }
+
+type FakeUserStock struct {
+	entity.FakeEntity
+	UserID    string `json:"userID"`
+	StockID   string `json:"stockID"`
+	StockName string `json:"stockName"`
+	Quantity  int    `json:"quantity"`
+}
+
+func (fus *FakeUserStock) GetUserID() string                     { return fus.UserID }
+func (fus *FakeUserStock) SetUserID(userID string)               { fus.UserID = userID }
+func (fus *FakeUserStock) GetStockID() string                    { return fus.StockID }
+func (fus *FakeUserStock) SetStockID(stockID string)             { fus.StockID = stockID }
+func (fus *FakeUserStock) GetStockName() string                  { return fus.StockName }
+func (fus *FakeUserStock) SetStockName(stockName string)         { fus.StockName = stockName }
+func (fus *FakeUserStock) GetQuantity() int                      { return fus.Quantity }
+func (fus *FakeUserStock) SetQuantity(quantity int)              { fus.Quantity = quantity }
+func (fus *FakeUserStock) UserStockToParams() NewUserStockParams { return NewUserStockParams{} }
+func (fus *FakeUserStock) UserStockToJSON() ([]byte, error)      { return []byte{}, nil }

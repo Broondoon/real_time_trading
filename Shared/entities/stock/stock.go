@@ -65,3 +65,13 @@ func (s *Stock) StockToParams() NewStockParams {
 func (s *Stock) StockToJSON() ([]byte, error) {
 	return json.Marshal(s.StockToParams())
 }
+
+type FakeStock struct {
+	entity.FakeEntity
+	Name string `json:"name"`
+}
+
+func (fs *FakeStock) GetName() string               { return fs.Name }
+func (fs *FakeStock) SetName(name string)           { fs.Name = name }
+func (fs *FakeStock) StockToParams() NewStockParams { return NewStockParams{} }
+func (fs *FakeStock) StockToJSON() ([]byte, error)  { return []byte{}, nil }

@@ -95,3 +95,18 @@ func (e *Entity) EntityToParams() NewEntityParams {
 func (e *Entity) EntityToJSON() ([]byte, error) {
 	return json.Marshal(e.EntityToParams())
 }
+
+type FakeEntity struct {
+	Id           string    `json:"id"`
+	DateCreated  time.Time `json:"dateCreated"`
+	DateModified time.Time `json:"dateModified"`
+}
+
+func (fe *FakeEntity) GetId() string                          { return fe.Id }
+func (fe *FakeEntity) SetId(id string)                        { fe.Id = id }
+func (fe *FakeEntity) GetDateCreated() time.Time              { return fe.DateCreated }
+func (fe *FakeEntity) SetDateCreated(dateCreated time.Time)   { fe.DateCreated = dateCreated }
+func (fe *FakeEntity) GetDateModified() time.Time             { return fe.DateModified }
+func (fe *FakeEntity) SetDateModified(dateModified time.Time) { fe.DateModified = dateModified }
+func (fe *FakeEntity) EntityToParams() NewEntityParams        { return NewEntityParams{} }
+func (fe *FakeEntity) EntityToJSON() ([]byte, error)          { return []byte{}, nil }

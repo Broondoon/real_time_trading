@@ -190,3 +190,21 @@ type ListenerParams struct {
 func Listen(params ListenerParams) {
 	http.ListenAndServe(":"+params.Port, params.Handler)
 }
+
+type FakeHttpClient struct {
+	BaseURL   string
+	AuthToken string
+	Client    *http.Client
+	SecretKey []byte
+}
+
+func (fhc *FakeHttpClient) Get(endpoint string, queryParams map[string]string) ([]byte, error) {
+	return nil, nil
+}
+func (fhc *FakeHttpClient) Post(endpoint string, payload interface{}) ([]byte, error) {
+	return nil, nil
+}
+func (fhc *FakeHttpClient) Put(endpoint string, payload interface{}) ([]byte, error) { return nil, nil }
+func (fhc *FakeHttpClient) Delete(endpoint string) ([]byte, error)                   { return nil, nil }
+func (fhc *FakeHttpClient) AddHandleFunc(params HandlerParams)                       {}
+func (fhc *FakeHttpClient) Listen(params ListenerParams)                             {}

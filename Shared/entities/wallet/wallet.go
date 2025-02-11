@@ -93,3 +93,16 @@ func (w *Wallet) WalletToParams() NewWalletParams {
 func (w *Wallet) WalletToJSON() ([]byte, error) {
 	return json.Marshal(w.WalletToParams())
 }
+
+type FakeWallet struct {
+	entity.FakeEntity
+	UserID  string `json:"UserId"`
+	Balance float64
+}
+
+func (fw *FakeWallet) GetUserID() string               { return fw.UserID }
+func (fw *FakeWallet) SetUserID(userID string)         { fw.UserID = userID }
+func (fw *FakeWallet) GetBalance() float64             { return fw.Balance }
+func (fw *FakeWallet) SetBalance(balance float64)      { fw.Balance = balance }
+func (fw *FakeWallet) WalletToParams() NewWalletParams { return NewWalletParams{} }
+func (fw *FakeWallet) WalletToJSON() ([]byte, error)   { return []byte{}, nil }

@@ -102,3 +102,19 @@ func (u *User) UserToParams() NewUserParams {
 func (u *User) UserToJSON() ([]byte, error) {
 	return json.Marshal(u.UserToParams())
 }
+
+type FakeUser struct {
+	entity.FakeEntity
+	Name     string `json:"Name"`
+	Username string `json:"Username"`
+	Password string `json:"Password"`
+}
+
+func (fu *FakeUser) GetName() string             { return fu.Name }
+func (fu *FakeUser) SetName(name string)         { fu.Name = name }
+func (fu *FakeUser) GetUsername() string         { return fu.Username }
+func (fu *FakeUser) SetUsername(username string) { fu.Username = username }
+func (fu *FakeUser) GetPassword() string         { return fu.Password }
+func (fu *FakeUser) SetPassword(password string) { fu.Password = password }
+func (fu *FakeUser) UserToParams() NewUserParams { return NewUserParams{} }
+func (fu *FakeUser) UserToJSON() ([]byte, error) { return []byte{}, nil }

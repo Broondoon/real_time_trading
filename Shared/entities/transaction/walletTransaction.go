@@ -136,3 +136,26 @@ func (wt *WalletTransaction) WalletTransactionToParams() NewWalletTransactionPar
 func (wt *WalletTransaction) WalletTransactionToJSON() ([]byte, error) {
 	return json.Marshal(wt.WalletTransactionToParams())
 }
+
+type FakeWalletTransaction struct {
+	entity.FakeEntity
+	WalletID           string  `json:"walletID"`
+	StockTransactionID string  `json:"stockTransactionID"`
+	IsDebit            bool    `json:"isDebit"`
+	Amount             float64 `json:"amount"`
+}
+
+func (fwt *FakeWalletTransaction) GetWalletID() string           { return fwt.WalletID }
+func (fwt *FakeWalletTransaction) SetWalletID(walletID string)   { fwt.WalletID = walletID }
+func (fwt *FakeWalletTransaction) GetStockTransactionID() string { return fwt.StockTransactionID }
+func (fwt *FakeWalletTransaction) SetStockTransactionID(stockTransactionID string) {
+	fwt.StockTransactionID = stockTransactionID
+}
+func (fwt *FakeWalletTransaction) GetIsDebit() bool         { return fwt.IsDebit }
+func (fwt *FakeWalletTransaction) SetIsDebit(isDebit bool)  { fwt.IsDebit = isDebit }
+func (fwt *FakeWalletTransaction) GetAmount() float64       { return fwt.Amount }
+func (fwt *FakeWalletTransaction) SetAmount(amount float64) { fwt.Amount = amount }
+func (fwt *FakeWalletTransaction) WalletTransactionToParams() NewWalletTransactionParams {
+	return NewWalletTransactionParams{}
+}
+func (fwt *FakeWalletTransaction) WalletTransactionToJSON() ([]byte, error) { return []byte{}, nil }
