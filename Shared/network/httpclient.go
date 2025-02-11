@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 	"time"
@@ -49,7 +49,7 @@ func (hc *HttpClient) handleResponse(resp *http.Response) ([]byte, error) {
 	}
 
 	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
 	}
@@ -154,12 +154,23 @@ func (hc *HttpClient) Delete(endpoint string) ([]byte, error) {
 
 type HandlerParams struct {
 	Pattern string
-	Handler func(http.ResponseWriter, *http.Request)
+	Handler func(http.ResponseWriter, []byte)
 }
 
+// Still probably needs authentication shoved in.
 func AddHandleFunc(params HandlerParams) {
-	http.HandleFunc(params.Pattern, params.Handler)
-
+	http.HandleFunc(params.Pattern, func(w http.ResponseWriter, r *http.Request) {
+		body, err := io.ReadAll(r.Body)
+		if err != nil {
+			fmt.Println("Error, there was an issue with reading the message:", err)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		defer r.Body.Close()
+		w.WriteHeader(http.StatusOK)
+		params.Handler(w, body)
+		w.Write([]byte("Message received successfully!"))
+	})
 }
 
 type ListenerParams struct {
