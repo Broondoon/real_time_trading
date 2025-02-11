@@ -192,10 +192,8 @@ func Listen(params ListenerParams) {
 }
 
 type FakeHttpClient struct {
-	BaseURL   string
-	AuthToken string
-	Client    *http.Client
-	SecretKey []byte
+	listenCalled   bool
+	listenerParams ListenerParams
 }
 
 func (fhc *FakeHttpClient) Get(endpoint string, queryParams map[string]string) ([]byte, error) {
@@ -207,4 +205,7 @@ func (fhc *FakeHttpClient) Post(endpoint string, payload interface{}) ([]byte, e
 func (fhc *FakeHttpClient) Put(endpoint string, payload interface{}) ([]byte, error) { return nil, nil }
 func (fhc *FakeHttpClient) Delete(endpoint string) ([]byte, error)                   { return nil, nil }
 func (fhc *FakeHttpClient) AddHandleFunc(params HandlerParams)                       {}
-func (fhc *FakeHttpClient) Listen(params ListenerParams)                             {}
+func (fhc *FakeHttpClient) Listen(params ListenerParams) {
+	fhc.listenCalled = true
+	fhc.listenerParams = params
+}
