@@ -167,7 +167,7 @@ type HandlerParams struct {
 }
 
 // Still probably needs authentication shoved in.
-func AddHandleFunc(params HandlerParams) {
+func (hc *HttpClient) AddHandleFunc(params HandlerParams) {
 	http.HandleFunc(params.Pattern, func(w http.ResponseWriter, r *http.Request) {
 		body, err := io.ReadAll(r.Body)
 		if err != nil {
@@ -187,25 +187,30 @@ type ListenerParams struct {
 	Handler http.Handler
 }
 
-func Listen(params ListenerParams) {
+func (hc *HttpClient) Listen(params ListenerParams) {
 	http.ListenAndServe(":"+params.Port, params.Handler)
 }
 
-type FakeHttpClient struct {
-	listenCalled   bool
-	listenerParams ListenerParams
+// fakeNetworkManager implements network.HttpClientInterface for testing Listen.
+type FakeNetworkManager struct {
+	ListenCalled   bool
+	ListenerParams ListenerParams
 }
 
-func (fhc *FakeHttpClient) Get(endpoint string, queryParams map[string]string) ([]byte, error) {
+func (fnm *FakeNetworkManager) Get(endpoint string, queryParams map[string]string) ([]byte, error) {
 	return nil, nil
 }
-func (fhc *FakeHttpClient) Post(endpoint string, payload interface{}) ([]byte, error) {
+func (fnm *FakeNetworkManager) Post(endpoint string, payload interface{}) ([]byte, error) {
 	return nil, nil
 }
-func (fhc *FakeHttpClient) Put(endpoint string, payload interface{}) ([]byte, error) { return nil, nil }
-func (fhc *FakeHttpClient) Delete(endpoint string) ([]byte, error)                   { return nil, nil }
-func (fhc *FakeHttpClient) AddHandleFunc(params HandlerParams)                       {}
-func (fhc *FakeHttpClient) Listen(params ListenerParams) {
-	fhc.listenCalled = true
-	fhc.listenerParams = params
+func (fnm *FakeNetworkManager) Put(endpoint string, payload interface{}) ([]byte, error) {
+	return nil, nil
+}
+func (fnm *FakeNetworkManager) Delete(endpoint string) ([]byte, error) {
+	return nil, nil
+}
+func (fnm *FakeNetworkManager) AddHandleFunc(params HandlerParams) {}
+func (fnm *FakeNetworkManager) Listen(params ListenerParams) {
+	fnm.ListenCalled = true
+	fnm.ListenerParams = params
 }
