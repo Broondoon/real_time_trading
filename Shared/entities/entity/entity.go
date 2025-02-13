@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-type EntityInterface interface {
+type BaseEntityInterface interface {
 	GetId() string
 	SetId(id string)
 	GetDateCreated() time.Time
@@ -14,6 +14,11 @@ type EntityInterface interface {
 	SetDateModified(dateModified time.Time)
 	EntityToParams() NewEntityParams
 	EntityToJSON() ([]byte, error)
+}
+
+type EntityInterface interface {
+	ToJSON() ([]byte, error)
+	BaseEntityInterface
 }
 
 type Entity struct {
@@ -56,9 +61,9 @@ func (e *Entity) SetDateModified(dateModified time.Time) {
 }
 
 type NewEntityParams struct {
-	Id           string    `json:"Id"`
-	DateCreated  time.Time `json:"DateCreated"`
-	DateModified time.Time `json:"DateModified"`
+	Id           string    `json:"Id" gorm:"primaryKey"` // gorm:"primaryKey" is used to set the primary key in the database.
+	DateCreated  time.Time `json:"DateCreated" gorm:"autoCreateTime"`
+	DateModified time.Time `json:"DateModified" gorm:"autoUpdateTime"`
 }
 
 func NewEntity(params NewEntityParams) *Entity {

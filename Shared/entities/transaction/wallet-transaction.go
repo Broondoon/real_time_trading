@@ -15,8 +15,8 @@ type WalletTransactionInterface interface {
 	SetIsDebit(isDebit bool)
 	GetAmount() float64
 	SetAmount(amount float64)
-	WalletTransactionToParams() NewWalletTransactionParams
-	WalletTransactionToJSON() ([]byte, error)
+	ToParams() NewWalletTransactionParams
+	ToJSON() ([]byte, error)
 	entity.EntityInterface
 }
 
@@ -36,7 +36,7 @@ type WalletTransaction struct {
 	SetIsDebitInternal            func(isDebit bool)
 	GetAmountInternal             func() float64
 	SetAmountInternal             func(amount float64)
-	entity.EntityInterface
+	entity.BaseEntityInterface
 }
 
 func (wt *WalletTransaction) GetWalletID() string {
@@ -84,9 +84,9 @@ type NewWalletTransactionParams struct {
 func NewWalletTransaction(params NewWalletTransactionParams) *WalletTransaction {
 	e := entity.NewEntity(params.NewEntityParams)
 	wt := &WalletTransaction{
-		EntityInterface: e,
-		IsDebit:         params.IsDebit,
-		Amount:          params.Amount,
+		BaseEntityInterface: e,
+		IsDebit:             params.IsDebit,
+		Amount:              params.Amount,
 	}
 	var WalletID string
 	if params.Wallet != nil {
@@ -123,7 +123,7 @@ func ParseWalletTransaction(jsonBytes []byte) (*WalletTransaction, error) {
 	return NewWalletTransaction(wt), nil
 }
 
-func (wt *WalletTransaction) WalletTransactionToParams() NewWalletTransactionParams {
+func (wt *WalletTransaction) ToParams() NewWalletTransactionParams {
 	return NewWalletTransactionParams{
 		NewEntityParams:    wt.EntityToParams(),
 		WalletID:           wt.GetWalletID(),
@@ -133,8 +133,8 @@ func (wt *WalletTransaction) WalletTransactionToParams() NewWalletTransactionPar
 	}
 }
 
-func (wt *WalletTransaction) WalletTransactionToJSON() ([]byte, error) {
-	return json.Marshal(wt.WalletTransactionToParams())
+func (wt *WalletTransaction) ToJSON() ([]byte, error) {
+	return json.Marshal(wt.ToParams())
 }
 
 type FakeWalletTransaction struct {
@@ -155,7 +155,7 @@ func (fwt *FakeWalletTransaction) GetIsDebit() bool         { return fwt.IsDebit
 func (fwt *FakeWalletTransaction) SetIsDebit(isDebit bool)  { fwt.IsDebit = isDebit }
 func (fwt *FakeWalletTransaction) GetAmount() float64       { return fwt.Amount }
 func (fwt *FakeWalletTransaction) SetAmount(amount float64) { fwt.Amount = amount }
-func (fwt *FakeWalletTransaction) WalletTransactionToParams() NewWalletTransactionParams {
+func (fwt *FakeWalletTransaction) ToParams() NewWalletTransactionParams {
 	return NewWalletTransactionParams{}
 }
-func (fwt *FakeWalletTransaction) WalletTransactionToJSON() ([]byte, error) { return []byte{}, nil }
+func (fwt *FakeWalletTransaction) ToJSON() ([]byte, error) { return []byte{}, nil }

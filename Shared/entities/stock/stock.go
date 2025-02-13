@@ -8,8 +8,7 @@ import (
 type StockInterface interface {
 	GetName() string
 	SetName(name string)
-	StockToParams() NewStockParams
-	StockToJSON() ([]byte, error)
+	ToParams() NewStockParams
 	entity.EntityInterface
 }
 
@@ -20,7 +19,7 @@ type Stock struct {
 	// Instead, interact with the functions through the Stock Interface.
 	GetNameInternal func() string
 	SetNameInternal func(name string)
-	entity.EntityInterface
+	entity.BaseEntityInterface
 }
 
 func (s *Stock) GetName() string {
@@ -36,42 +35,43 @@ type NewStockParams struct {
 	Name string `json:"Name"`
 }
 
-func NewStock(params NewStockParams) *Stock {
+func New(params NewStockParams) *Stock {
 	e := entity.NewEntity(params.NewEntityParams)
 	s := &Stock{
-		Name:            params.Name,
-		EntityInterface: e,
+		Name:                params.Name,
+		BaseEntityInterface: e,
 	}
 	s.GetNameInternal = func() string { return s.Name }
 	s.SetNameInternal = func(name string) { s.Name = name }
 	return s
 }
 
-func ParseStock(jsonBytes []byte) (*Stock, error) {
+func Parse(jsonBytes []byte) (*Stock, error) {
 	var s NewStockParams
 	if err := json.Unmarshal(jsonBytes, &s); err != nil {
 		return nil, err
 	}
-	return NewStock(s), nil
+	return New(s), nil
 }
 
-func (s *Stock) StockToParams() NewStockParams {
+func (s *Stock) ToParams() NewStockParams {
 	return NewStockParams{
 		Name:            s.GetName(),
 		NewEntityParams: s.EntityToParams(),
 	}
 }
 
-func (s *Stock) StockToJSON() ([]byte, error) {
-	return json.Marshal(s.StockToParams())
+func (s *Stock) ToJSON() ([]byte, error) {
+	return json.Marshal(s.ToParams())
 }
 
+// FakeStock is a fake stock mock for testing purposes
 type FakeStock struct {
 	entity.FakeEntity
 	Name string `json:"name"`
 }
 
-func (fs *FakeStock) GetName() string               { return fs.Name }
-func (fs *FakeStock) SetName(name string)           { fs.Name = name }
-func (fs *FakeStock) StockToParams() NewStockParams { return NewStockParams{} }
-func (fs *FakeStock) StockToJSON() ([]byte, error)  { return []byte{}, nil }
+func (fs *FakeStock) GetName() string          { return fs.Name }
+func (fs *FakeStock) SetName(name string)      { fs.Name = name }
+func (fs *FakeStock) ToParams() NewStockParams { return NewStockParams{} }
+func (fs *FakeStock) ToJSON() ([]byte, error)  { return []byte{}, nil }

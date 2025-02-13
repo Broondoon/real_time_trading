@@ -23,8 +23,7 @@ type StockTransactionInterface interface {
 	SetStockPrice(stockPrice float64)
 	GetQuantity() int
 	SetQuantity(quantity int)
-	StockTransactionToParams() NewStockTransactionParams
-	StockTransactionToJSON() ([]byte, error)
+	ToParams() NewStockTransactionParams
 	entity.EntityInterface
 }
 
@@ -55,7 +54,7 @@ type StockTransaction struct {
 	SetStockPriceInternal               func(stockPrice float64)
 	GetQuantityInternal                 func() int
 	SetQuantityInternal                 func(quantity int)
-	entity.EntityInterface
+	entity.BaseEntityInterface
 }
 
 func (st *StockTransaction) GetStockID() string {
@@ -192,7 +191,7 @@ func NewStockTransaction(params NewStockTransactionParams) *StockTransaction {
 		OrderType:                orderType,
 		StockPrice:               stockPrice,
 		Quantity:                 quantity,
-		EntityInterface:          e,
+		BaseEntityInterface:      e,
 	}
 	st.GetStockIDInternal = func() string { return st.StockID }
 	st.SetStockIDInternal = func(stockID string) { st.StockID = stockID }
@@ -220,7 +219,7 @@ func ParseStockTransaction(jsonBytes []byte) (*StockTransaction, error) {
 	return NewStockTransaction(st), nil
 }
 
-func (st *StockTransaction) StockTransactionToParams() NewStockTransactionParams {
+func (st *StockTransaction) ToParams() NewStockTransactionParams {
 	return NewStockTransactionParams{
 		NewEntityParams:          st.EntityToParams(),
 		OrderStatus:              st.GetOrderStatus(),
@@ -235,8 +234,8 @@ func (st *StockTransaction) StockTransactionToParams() NewStockTransactionParams
 	}
 }
 
-func (st *StockTransaction) StockTransactionToJSON() ([]byte, error) {
-	return json.Marshal(st.StockTransactionToParams())
+func (st *StockTransaction) ToJSON() ([]byte, error) {
+	return json.Marshal(st.ToParams())
 }
 
 type FakeStockTransaction struct {
@@ -273,7 +272,7 @@ func (fst *FakeStockTransaction) GetStockPrice() float64            { return fst
 func (fst *FakeStockTransaction) SetStockPrice(stockPrice float64)  { fst.StockPrice = stockPrice }
 func (fst *FakeStockTransaction) GetQuantity() int                  { return fst.Quantity }
 func (fst *FakeStockTransaction) SetQuantity(quantity int)          { fst.Quantity = quantity }
-func (fst *FakeStockTransaction) StockTransactionToParams() NewStockTransactionParams {
+func (fst *FakeStockTransaction) ToParams() NewStockTransactionParams {
 	return NewStockTransactionParams{}
 }
-func (fst *FakeStockTransaction) StockTransactionToJSON() ([]byte, error) { return []byte{}, nil }
+func (fst *FakeStockTransaction) ToJSON() ([]byte, error) { return []byte{}, nil }

@@ -21,8 +21,7 @@ type StockOrderInterface interface {
 	SetQuantity(quantity int)
 	GetPrice() float64
 	SetPrice(price float64)
-	StockOrderToParams() NewStockOrderParams
-	StockOrderToJSON() ([]byte, error)
+	ToParams() NewStockOrderParams
 	entity.EntityInterface
 }
 
@@ -44,7 +43,7 @@ type StockOrder struct {
 	SetQuantityInternal  func(quantity int)
 	GetPriceInternal     func() float64
 	SetPriceInternal     func(price float64)
-	entity.EntityInterface
+	entity.BaseEntityInterface
 }
 
 func (so *StockOrder) GetIsBuy() bool {
@@ -85,15 +84,15 @@ func (so *StockOrder) SetStockID(stockID string) {
 
 type NewStockOrderParams struct {
 	entity.NewEntityParams
-	StockID   string               `json:"StockID"` // use this or Stock
+	StockID   string               `json:"StockID" gorm:"not null"` // use this or Stock
 	Stock     stock.StockInterface // use this or StockID
-	IsBuy     bool                 `json:"IsBuy"`
-	OrderType string               `json:"OrderType"` // MARKET or LIMIT. This can't be changed later.
-	Quantity  int                  `json:"Quantity"`
-	Price     float64              `json:"Price"`
+	IsBuy     bool                 `json:"IsBuy" gorm:"not null"`
+	OrderType string               `json:"OrderType" gorm:"not null"` // MARKET or LIMIT. This can't be changed later.
+	Quantity  int                  `json:"Quantity" gorm:"not null"`
+	Price     float64              `json:"Price" gorm:"not null"`
 }
 
-func NewStockOrder(params NewStockOrderParams) *StockOrder {
+func New(params NewStockOrderParams) *StockOrder {
 	e := entity.NewEntity(params.NewEntityParams)
 	var stockID string
 	if params.Stock != nil {
@@ -103,12 +102,12 @@ func NewStockOrder(params NewStockOrderParams) *StockOrder {
 	}
 
 	sob := &StockOrder{
-		StockID:         stockID,
-		IsBuy:           params.IsBuy,
-		OrderType:       params.OrderType,
-		Quantity:        params.Quantity,
-		Price:           params.Price,
-		EntityInterface: e,
+		StockID:             stockID,
+		IsBuy:               params.IsBuy,
+		OrderType:           params.OrderType,
+		Quantity:            params.Quantity,
+		Price:               params.Price,
+		BaseEntityInterface: e,
 	}
 	sob.GetStockIDInternal = func() string { return sob.StockID }
 	sob.SetStockIDInternal = func(stockID string) { sob.StockID = stockID }
@@ -122,15 +121,15 @@ func NewStockOrder(params NewStockOrderParams) *StockOrder {
 	return sob
 }
 
-func ParseStockOrder(jsonBytes []byte) (*StockOrder, error) {
+func Parse(jsonBytes []byte) (*StockOrder, error) {
 	var so NewStockOrderParams
 	if err := json.Unmarshal(jsonBytes, &so); err != nil {
 		return nil, err
 	}
-	return NewStockOrder(so), nil
+	return New(so), nil
 }
 
-func (so *StockOrder) StockOrderToParams() NewStockOrderParams {
+func (so *StockOrder) ToParams() NewStockOrderParams {
 	return NewStockOrderParams{
 		NewEntityParams: so.EntityToParams(),
 		StockID:         so.GetStockID(),
@@ -141,28 +140,28 @@ func (so *StockOrder) StockOrderToParams() NewStockOrderParams {
 	}
 }
 
-func (so *StockOrder) StockOrderToJSON() ([]byte, error) {
-	return json.Marshal(so.StockOrderToParams())
+func (so *StockOrder) ToJSON() ([]byte, error) {
+	return json.Marshal(so.ToParams())
 }
 
 type FakeStockOrder struct {
 	entity.FakeEntity
-	StockID   string `json:"stockID"`
-	IsBuy     bool   `json:"isBuy"`
-	OrderType string `json:"orderType"`
-	Quantity  int    `json:"quantity"`
-	Price     int    `json:"price"`
+	StockID   string  `json:"stockID"`
+	IsBuy     bool    `json:"isBuy"`
+	OrderType string  `json:"orderType"`
+	Quantity  int     `json:"quantity"`
+	Price     float64 `json:"price"`
 }
 
-func (fso *FakeStockOrder) GetStockID() string                      { return fso.StockID }
-func (fso *FakeStockOrder) GetIsBuy() bool                          { return fso.IsBuy }
-func (fso *FakeStockOrder) GetOrderType() string                    { return fso.OrderType }
-func (fso *FakeStockOrder) GetQuantity() int                        { return fso.Quantity }
-func (fso *FakeStockOrder) GetPrice() float64                       { return float64(fso.Price) }
-func (fso *FakeStockOrder) SetStockID(stockID string)               { fso.StockID = stockID }
-func (fso *FakeStockOrder) SetIsBuy(isBuy bool)                     { fso.IsBuy = isBuy }
-func (fso *FakeStockOrder) SetOrderType(orderType string)           { fso.OrderType = orderType }
-func (fso *FakeStockOrder) SetQuantity(quantity int)                { fso.Quantity = quantity }
-func (fso *FakeStockOrder) SetPrice(price float64)                  { fso.Price = int(price) }
-func (fso *FakeStockOrder) StockOrderToParams() NewStockOrderParams { return NewStockOrderParams{} }
-func (fso *FakeStockOrder) StockOrderToJSON() ([]byte, error)       { return []byte{}, nil }
+func (fso *FakeStockOrder) GetStockID() string            { return fso.StockID }
+func (fso *FakeStockOrder) GetIsBuy() bool                { return fso.IsBuy }
+func (fso *FakeStockOrder) GetOrderType() string          { return fso.OrderType }
+func (fso *FakeStockOrder) GetQuantity() int              { return fso.Quantity }
+func (fso *FakeStockOrder) GetPrice() float64             { return float64(fso.Price) }
+func (fso *FakeStockOrder) SetStockID(stockID string)     { fso.StockID = stockID }
+func (fso *FakeStockOrder) SetIsBuy(isBuy bool)           { fso.IsBuy = isBuy }
+func (fso *FakeStockOrder) SetOrderType(orderType string) { fso.OrderType = orderType }
+func (fso *FakeStockOrder) SetQuantity(quantity int)      { fso.Quantity = quantity }
+func (fso *FakeStockOrder) SetPrice(price float64)        { fso.Price = float64(price) }
+func (fso *FakeStockOrder) ToParams() NewStockOrderParams { return NewStockOrderParams{} }
+func (fso *FakeStockOrder) ToJSON() ([]byte, error)       { return []byte{}, nil }

@@ -12,8 +12,7 @@ type UserInterface interface {
 	SetUsername(username string)
 	GetPassword() string
 	SetPassword(password string)
-	UserToParams() NewUserParams
-	UserToJSON() ([]byte, error)
+	ToParams() NewUserParams
 	entity.EntityInterface
 }
 
@@ -30,7 +29,7 @@ type User struct {
 	SetUsernameInternal func(username string)
 	GetPasswordInternal func() string
 	SetPasswordInternal func(password string)
-	entity.EntityInterface
+	entity.BaseEntityInterface
 }
 
 func (u *User) GetName() string {
@@ -64,13 +63,13 @@ type NewUserParams struct {
 	Password string `json:"Password"`
 }
 
-func NewUser(params NewUserParams) *User {
+func New(params NewUserParams) *User {
 	e := entity.NewEntity(params.NewEntityParams)
 	u := &User{
-		EntityInterface: e,
-		name:            params.Name,
-		username:        params.Username,
-		password:        params.Password,
+		BaseEntityInterface: e,
+		name:                params.Name,
+		username:            params.Username,
+		password:            params.Password,
 	}
 
 	u.GetNameInternal = func() string { return u.name }
@@ -82,15 +81,15 @@ func NewUser(params NewUserParams) *User {
 	return u
 }
 
-func ParseUser(jsonBytes []byte) (*User, error) {
+func Parse(jsonBytes []byte) (*User, error) {
 	var u NewUserParams
 	if err := json.Unmarshal(jsonBytes, &u); err != nil {
 		return nil, err
 	}
-	return NewUser(u), nil
+	return New(u), nil
 }
 
-func (u *User) UserToParams() NewUserParams {
+func (u *User) ToParams() NewUserParams {
 	return NewUserParams{
 		NewEntityParams: u.EntityToParams(),
 		Name:            u.GetName(),
@@ -99,8 +98,8 @@ func (u *User) UserToParams() NewUserParams {
 	}
 }
 
-func (u *User) UserToJSON() ([]byte, error) {
-	return json.Marshal(u.UserToParams())
+func (u *User) ToJSON() ([]byte, error) {
+	return json.Marshal(u.ToParams())
 }
 
 type FakeUser struct {
@@ -116,5 +115,5 @@ func (fu *FakeUser) GetUsername() string         { return fu.Username }
 func (fu *FakeUser) SetUsername(username string) { fu.Username = username }
 func (fu *FakeUser) GetPassword() string         { return fu.Password }
 func (fu *FakeUser) SetPassword(password string) { fu.Password = password }
-func (fu *FakeUser) UserToParams() NewUserParams { return NewUserParams{} }
-func (fu *FakeUser) UserToJSON() ([]byte, error) { return []byte{}, nil }
+func (fu *FakeUser) ToParams() NewUserParams     { return NewUserParams{} }
+func (fu *FakeUser) ToJSON() ([]byte, error)     { return []byte{}, nil }

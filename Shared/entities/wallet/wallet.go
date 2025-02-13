@@ -11,8 +11,7 @@ type WalletInterface interface {
 	SetUserID(userID string)
 	GetBalance() float64
 	SetBalance(balance float64)
-	WalletToParams() NewWalletParams
-	WalletToJSON() ([]byte, error)
+	ToParams() NewWalletParams
 	entity.EntityInterface
 }
 
@@ -26,7 +25,7 @@ type Wallet struct {
 	SetUserIDInternal  func(userID string)
 	GetBalanceInternal func() float64
 	SetBalanceInternal func(balance float64)
-	entity.EntityInterface
+	entity.BaseEntityInterface
 }
 
 func (w *Wallet) GetBalance() float64 {
@@ -52,7 +51,7 @@ type NewWalletParams struct {
 	Balance float64            `json:"Balance"`
 }
 
-func NewWallet(params NewWalletParams) *Wallet {
+func New(params NewWalletParams) *Wallet {
 	e := entity.NewEntity(params.NewEntityParams)
 	var UserID string
 	if params.User != nil {
@@ -62,9 +61,9 @@ func NewWallet(params NewWalletParams) *Wallet {
 	}
 
 	wb := &Wallet{
-		UserID:          UserID,
-		Balance:         params.Balance,
-		EntityInterface: e,
+		UserID:              UserID,
+		Balance:             params.Balance,
+		BaseEntityInterface: e,
 	}
 	wb.GetUserIDInternal = func() string { return wb.UserID }
 	wb.SetUserIDInternal = func(userID string) { wb.UserID = userID }
@@ -73,15 +72,15 @@ func NewWallet(params NewWalletParams) *Wallet {
 	return wb
 }
 
-func ParseWallet(jsonBytes []byte) (*Wallet, error) {
+func Parse(jsonBytes []byte) (*Wallet, error) {
 	var w NewWalletParams
 	if err := json.Unmarshal(jsonBytes, &w); err != nil {
 		return nil, err
 	}
-	return NewWallet(w), nil
+	return New(w), nil
 }
 
-func (w *Wallet) WalletToParams() NewWalletParams {
+func (w *Wallet) ToParams() NewWalletParams {
 	return NewWalletParams{
 		NewEntityParams: w.EntityToParams(),
 		User:            nil,
@@ -90,8 +89,8 @@ func (w *Wallet) WalletToParams() NewWalletParams {
 	}
 }
 
-func (w *Wallet) WalletToJSON() ([]byte, error) {
-	return json.Marshal(w.WalletToParams())
+func (w *Wallet) ToJSON() ([]byte, error) {
+	return json.Marshal(w.ToParams())
 }
 
 type FakeWallet struct {
@@ -100,9 +99,9 @@ type FakeWallet struct {
 	Balance float64
 }
 
-func (fw *FakeWallet) GetUserID() string               { return fw.UserID }
-func (fw *FakeWallet) SetUserID(userID string)         { fw.UserID = userID }
-func (fw *FakeWallet) GetBalance() float64             { return fw.Balance }
-func (fw *FakeWallet) SetBalance(balance float64)      { fw.Balance = balance }
-func (fw *FakeWallet) WalletToParams() NewWalletParams { return NewWalletParams{} }
-func (fw *FakeWallet) WalletToJSON() ([]byte, error)   { return []byte{}, nil }
+func (fw *FakeWallet) GetUserID() string          { return fw.UserID }
+func (fw *FakeWallet) SetUserID(userID string)    { fw.UserID = userID }
+func (fw *FakeWallet) GetBalance() float64        { return fw.Balance }
+func (fw *FakeWallet) SetBalance(balance float64) { fw.Balance = balance }
+func (fw *FakeWallet) ToParams() NewWalletParams  { return NewWalletParams{} }
+func (fw *FakeWallet) ToJSON() ([]byte, error)    { return []byte{}, nil }
