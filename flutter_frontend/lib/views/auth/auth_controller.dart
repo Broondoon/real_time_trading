@@ -12,11 +12,13 @@ class AuthController extends ChangeNotifier {
   // Login status getter: may need more logic in the future?
   bool get isLoggedIn => _token != null;
 
-  final String _baseUrl = 'localhost:3001/';
+  // TODO: https
+  final String _baseUrl = 'http://localhost:3001/';
   
   // Dio object
   late Dio _dio;
 
+  // Lifetime should be 1 hour
   final int _tokenLifetime = 3600;
   DateTime? _tokenExpiration;
 
@@ -105,6 +107,9 @@ class AuthController extends ChangeNotifier {
           'password': pwd,
         },
       );
+
+      print("STATUS CODE RESPONSE:");
+      print(response.statusCode);
 
       if (response.statusCode == 200) {
         _token = response.data['token']; // TODO: double check what field the token is returned by

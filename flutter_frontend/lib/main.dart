@@ -1,9 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_frontend/router/app_router.dart';
+import 'package:flutter_frontend/views/auth/auth_controller.dart';
 import 'package:flutter_frontend/views/auth/login_page_view.dart';
+import 'package:flutter_frontend/views/home/home_page_view.dart';
 import 'package:provider/provider.dart';
 
 void main() {
-  runApp(const MyApp());
+  runApp(
+    ChangeNotifierProvider(
+      create: (context) => AuthController(),
+      child: MyApp(), 
+    ),
+  );
 }
 
 class MyApp extends StatelessWidget {
@@ -11,7 +19,8 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
+    return MaterialApp.router(
+      routerConfig: goRouter,
       title: 'R-Time Demo',
       theme: ThemeData(
         // This is the theme of your application.
@@ -33,7 +42,18 @@ class MyApp extends StatelessWidget {
         useMaterial3: true,
       ),
       // home: const MyHomePage(title: 'Flutter Demo Home Page'),
-      home: const LoginPage(),
+      // home: const LoginPage(),
+      // home: InitAuthGate(),
     );
+  }
+}
+
+class InitAuthGate extends StatelessWidget {
+  const InitAuthGate({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final authController = Provider.of<AuthController>(context);
+    return authController.isLoggedIn ? HomePage() : LoginPage();
   }
 }
