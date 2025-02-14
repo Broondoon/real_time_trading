@@ -66,15 +66,15 @@ func Login(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"token": token})
 }
 
-func Profile(c *gin.Context) {
+func Test(c *gin.Context) {
 	userID, exists := c.Get("userID")
 	if !exists {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "User ID not found"})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"message": "Welcome to your profile!",
-		"userID":  userID,
+	c.JSON(http.StatusOK, gin.H{"message": "You have successfull queried a " +
+		"protected endpoint with your JWT token. Excellent!",
+		"userID": userID,
 	})
 }

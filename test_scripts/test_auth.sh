@@ -10,7 +10,7 @@ PASSWORD="securepassword"
 echo "========================="
 echo "Registering User"
 echo "========================="
-REGISTER_RESPONSE=$(curl -s -X POST "$BASE_URL/register" -H "Content-Type: application/json" \
+REGISTER_RESPONSE=$(curl -s -X POST "$BASE_URL/authentication/register" -H "Content-Type: application/json" \
     -d "{\"username\": \"$USERNAME\", \"password\": \"$PASSWORD\"}")
 
 echo "Response: $REGISTER_RESPONSE"
@@ -19,7 +19,7 @@ echo ""
 echo "========================="
 echo "Logging In"
 echo "========================="
-LOGIN_RESPONSE=$(curl -s -X POST "$BASE_URL/login" -H "Content-Type: application/json" \
+LOGIN_RESPONSE=$(curl -s -X POST "$BASE_URL/authentication/login" -H "Content-Type: application/json" \
     -d "{\"username\": \"$USERNAME\", \"password\": \"$PASSWORD\"}")
 
 echo "Response: $LOGIN_RESPONSE"
@@ -33,12 +33,12 @@ fi
 echo "Token Acquired: $TOKEN"
 echo ""
 
-echo "Curl command: curl -X GET \"$BASE_URL/protected/profile\" -H \"Authorization: Bearer $TOKEN\" -H \"Content-Type: application/json\""
+echo "Curl command: curl -X GET \"$BASE_URL/protected/test\" -H \"Authorization: Bearer $TOKEN\" -H \"Content-Type: application/json\""
 
 echo "========================="
 echo "Accessing Protected Route with Token"
 echo "========================="
-PROTECTED_RESPONSE=$(curl -s -X GET "$BASE_URL/protected/profile" \
+PROTECTED_RESPONSE=$(curl -s -X GET "$BASE_URL/protected/test" \
     -H "Authorization: Bearer $TOKEN" \
     -H "Content-Type: application/json")
 
@@ -48,7 +48,7 @@ echo ""
 echo "========================="
 echo "Attempting Protected Route Without Token (Should Fail)"
 echo "========================="
-NO_AUTH_RESPONSE=$(curl -s -X GET "$BASE_URL/protected/profile")
+NO_AUTH_RESPONSE=$(curl -s -X GET "$BASE_URL/protected/test")
 
 echo "Response: $NO_AUTH_RESPONSE"
 echo ""
