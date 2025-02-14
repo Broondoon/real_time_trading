@@ -15,21 +15,16 @@ type WalletInterface interface {
 	entity.EntityInterface
 }
 
-type WalletProps struct {
-	entity.EntityProps
+type Wallet struct {
 	UserID  string  `json:"UserId" gorm:"not null"`
 	Balance float64 `json:"Balance" gorm:"not null"`
-}
-
-type Wallet struct {
-	WalletProps
 	// If you need to access a property, please use the Get and Set functions, not the property itself. It is only exposed in case you need to interact with it when altering internal functions.
 	// Internal Functions should not be interacted with directly. if you need to change functionality, set a new function to the existing internal function.
 	// Instead, interact with the functions through the wallet Interface.
-	GetUserIDInternal  func() string
-	SetUserIDInternal  func(userID string)
-	GetBalanceInternal func() float64
-	SetBalanceInternal func(balance float64)
+	GetUserIDInternal  func() string         `gorm:"-"`
+	SetUserIDInternal  func(userID string)   `gorm:"-"`
+	GetBalanceInternal func() float64        `gorm:"-"`
+	SetBalanceInternal func(balance float64) `gorm:"-"`
 	entity.BaseEntityInterface
 }
 
@@ -51,8 +46,9 @@ func (w *Wallet) SetUserID(userID string) {
 
 type NewWalletParams struct {
 	entity.NewEntityParams
-	WalletProps
-	User user.UserInterface // use this or UserId
+	UserID  string             `json:"UserId" gorm:"not null"`
+	Balance float64            `json:"Balance" gorm:"not null"`
+	User    user.UserInterface // use this or UserId
 }
 
 func New(params NewWalletParams) *Wallet {
@@ -65,10 +61,8 @@ func New(params NewWalletParams) *Wallet {
 	}
 
 	wb := &Wallet{
-		WalletProps: WalletProps{
-			UserID:  UserID,
-			Balance: params.Balance,
-		},
+		UserID:              UserID,
+		Balance:             params.Balance,
 		BaseEntityInterface: e,
 	}
 	wb.GetUserIDInternal = func() string { return wb.UserID }
@@ -90,10 +84,8 @@ func (w *Wallet) ToParams() NewWalletParams {
 	return NewWalletParams{
 		NewEntityParams: w.EntityToParams(),
 		User:            nil,
-		WalletProps: WalletProps{
-			UserID:  w.GetUserID(),
-			Balance: w.GetBalance(),
-		},
+		UserID:          w.GetUserID(),
+		Balance:         w.GetBalance(),
 	}
 }
 

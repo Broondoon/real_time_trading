@@ -21,23 +21,19 @@ type EntityInterface interface {
 	BaseEntityInterface
 }
 
-type EntityProps struct {
+type Entity struct {
 	Id           string    `json:"Id" gorm:"primaryKey"` // gorm:"primaryKey" is used to set the primary key in the database.
 	DateCreated  time.Time `json:"DateCreated" gorm:"autoCreateTime"`
 	DateModified time.Time `json:"DateModified" gorm:"autoUpdateTime"`
-}
-
-type Entity struct {
-	EntityProps
 	// If you need to access a property, please use the Get and Set functions, not the property itself. It is only exposed in case you need to interact with it when altering internal functions.
 	// Internal Functions should not be interacted with directly, but if you need to change functionality, set a new function to the existing function.
 	// Instead, interact with the functions through the Entity Interface.
-	SetIdInternal           func(id string)
-	GetIdInternal           func() string
-	SetDateCreatedInternal  func(dateCreated time.Time)
-	GetDateCreatedInternal  func() time.Time
-	SetDateModifiedInternal func(dateModified time.Time)
-	GetDateModifiedInternal func() time.Time
+	SetIdInternal           func(id string)              `gorm:"-"`
+	GetIdInternal           func() string                `gorm:"-"`
+	SetDateCreatedInternal  func(dateCreated time.Time)  `gorm:"-"`
+	GetDateCreatedInternal  func() time.Time             `gorm:"-"`
+	SetDateModifiedInternal func(dateModified time.Time) `gorm:"-"`
+	GetDateModifiedInternal func() time.Time             `gorm:"-"`
 }
 
 func (e *Entity) GetId() string {
@@ -72,11 +68,9 @@ type NewEntityParams struct {
 
 func NewEntity(params NewEntityParams) *Entity {
 	e := &Entity{
-		EntityProps: EntityProps{
-			Id:           params.Id,
-			DateCreated:  params.DateCreated,
-			DateModified: params.DateModified,
-		},
+		Id:           params.Id,
+		DateCreated:  params.DateCreated,
+		DateModified: params.DateModified,
 	}
 	e.SetIdInternal = func(id string) { e.Id = id }
 	e.GetIdInternal = func() string { return e.Id }

@@ -27,38 +27,32 @@ type StockTransactionInterface interface {
 	entity.EntityInterface
 }
 
-type StockTransactionProps struct {
-	entity.EntityProps
-	StockID                  string `json:"StockID" gorm:"not null"`
-	ParentStockTransactionID string `json:"ParentStockTransactionID"`
-	WalletTransactionID      string `json:"WalletTransactionID"`
-	OrderStatus              string `json:"OrderStatus" gorm:"not null"`
-	IsBuy                    bool   `json:"IsBuy" gorm:"not null"`
-	OrderType                string `json:"OrderType" gorm:"not null"`
-	StockPrice               float64
-	Quantity                 int `json:"Quantity" gorm:"not null"`
-}
-
 type StockTransaction struct {
-	StockTransactionProps
-	// If you need to access a property, please use the Get and Set functions, not the property itself. It is only exposed in case you need to interact with it when altering internal functions.
+	StockID                  string  `json:"StockID" gorm:"not null"`
+	ParentStockTransactionID string  `json:"ParentStockTransactionID"`
+	WalletTransactionID      string  `json:"WalletTransactionID"`
+	OrderStatus              string  `json:"OrderStatus" gorm:"not null"`
+	IsBuy                    bool    `json:"IsBuy" gorm:"not null"`
+	OrderType                string  `json:"OrderType" gorm:"not null"`
+	StockPrice               float64 `json:"StockPrice" gorm:"not null"`
+	Quantity                 int     `json:"Quantity" gorm:"not null"` // If you need to access a property, please use the Get and Set functions, not the property itself. It is only exposed in case you need to interact with it when altering internal functions.
 	// Internal Functions should not be interacted with directly. if you need to change functionality, set a new function to the existing internal function.
 	// Instead, interact with the functions through the StockTransaction Interface.
-	GetStockIDInternal                  func() string
-	SetStockIDInternal                  func(stockID string)
-	GetParentStockTransactionIDInternal func() string
-	SetParentStockTransactionIDInternal func(parentStockTransactionID string)
-	GetWalletTransactionIDInternal      func() string
-	SetWalletTransactionIDInternal      func(walletTransactionID string)
-	GetOrderStatusInternal              func() string
-	SetOrderStatusInternal              func(orderStatus string)
-	GetIsBuyInternal                    func() bool
-	SetIsBuyInternal                    func(isBuy bool)
-	GetOrderTypeInternal                func() string
-	GetStockPriceInternal               func() float64
-	SetStockPriceInternal               func(stockPrice float64)
-	GetQuantityInternal                 func() int
-	SetQuantityInternal                 func(quantity int)
+	GetStockIDInternal                  func() string                         `gorm:"-"`
+	SetStockIDInternal                  func(stockID string)                  `gorm:"-"`
+	GetParentStockTransactionIDInternal func() string                         `gorm:"-"`
+	SetParentStockTransactionIDInternal func(parentStockTransactionID string) `gorm:"-"`
+	GetWalletTransactionIDInternal      func() string                         `gorm:"-"`
+	SetWalletTransactionIDInternal      func(walletTransactionID string)      `gorm:"-"`
+	GetOrderStatusInternal              func() string                         `gorm:"-"`
+	SetOrderStatusInternal              func(orderStatus string)              `gorm:"-"`
+	GetIsBuyInternal                    func() bool                           `gorm:"-"`
+	SetIsBuyInternal                    func(isBuy bool)                      `gorm:"-"`
+	GetOrderTypeInternal                func() string                         `gorm:"-"`
+	GetStockPriceInternal               func() float64                        `gorm:"-"`
+	SetStockPriceInternal               func(stockPrice float64)              `gorm:"-"`
+	GetQuantityInternal                 func() int                            `gorm:"-"`
+	SetQuantityInternal                 func(quantity int)                    `gorm:"-"`
 	entity.BaseEntityInterface
 }
 
@@ -124,7 +118,15 @@ func (st *StockTransaction) SetQuantity(quantity int) {
 
 type NewStockTransactionParams struct {
 	entity.NewEntityParams
-	StockTransactionProps
+	StockID                  string  `json:"StockID"`
+	ParentStockTransactionID string  `json:"ParentStockTransactionID"`
+	WalletTransactionID      string  `json:"WalletTransactionID"`
+	OrderStatus              string  `json:"OrderStatus"`
+	IsBuy                    bool    `json:"IsBuy"`
+	OrderType                string  `json:"OrderType"`
+	StockPrice               float64 `json:"StockPrice"`
+	Quantity                 int     `json:"Quantity"`
+
 	WalletTransaction WalletTransactionInterface // use this or WalletTransactionID or ParentStockTransaction
 	//use one of the following
 	ParentStockTransaction StockTransactionInterface
@@ -180,17 +182,15 @@ func NewStockTransaction(params NewStockTransactionParams) *StockTransaction {
 	}
 
 	st := &StockTransaction{
-		StockTransactionProps: StockTransactionProps{
-			StockID:                  stockID,
-			ParentStockTransactionID: parentStockTransactionID,
-			WalletTransactionID:      walletTransactionID,
-			OrderStatus:              params.OrderStatus,
-			IsBuy:                    isBuy,
-			OrderType:                orderType,
-			StockPrice:               stockPrice,
-			Quantity:                 quantity,
-		},
-		BaseEntityInterface: e,
+		StockID:                  stockID,
+		ParentStockTransactionID: parentStockTransactionID,
+		WalletTransactionID:      walletTransactionID,
+		OrderStatus:              params.OrderStatus,
+		IsBuy:                    isBuy,
+		OrderType:                orderType,
+		StockPrice:               stockPrice,
+		Quantity:                 quantity,
+		BaseEntityInterface:      e,
 	}
 	st.GetStockIDInternal = func() string { return st.StockID }
 	st.SetStockIDInternal = func(stockID string) { st.StockID = stockID }
@@ -220,21 +220,19 @@ func ParseStockTransaction(jsonBytes []byte) (*StockTransaction, error) {
 
 func (st *StockTransaction) ToParams() NewStockTransactionParams {
 	return NewStockTransactionParams{
-		NewEntityParams: st.EntityToParams(),
-		StockTransactionProps: StockTransactionProps{
-			StockID:                  st.GetStockID(),
-			ParentStockTransactionID: st.GetParentStockTransactionID(),
-			WalletTransactionID:      st.GetWalletTransactionID(),
-			OrderStatus:              st.GetOrderStatus(),
-			IsBuy:                    st.GetIsBuy(),
-			OrderType:                st.GetOrderType(),
-			StockPrice:               st.GetStockPrice(),
-			Quantity:                 st.GetQuantity(),
-		},
-		WalletTransaction:      nil,
-		ParentStockTransaction: nil,
-		StockOrder:             nil,
-		Stock:                  nil,
+		NewEntityParams:          st.EntityToParams(),
+		StockID:                  st.GetStockID(),
+		ParentStockTransactionID: st.GetParentStockTransactionID(),
+		WalletTransactionID:      st.GetWalletTransactionID(),
+		OrderStatus:              st.GetOrderStatus(),
+		IsBuy:                    st.GetIsBuy(),
+		OrderType:                st.GetOrderType(),
+		StockPrice:               st.GetStockPrice(),
+		Quantity:                 st.GetQuantity(),
+		WalletTransaction:        nil,
+		ParentStockTransaction:   nil,
+		StockOrder:               nil,
+		Stock:                    nil,
 	}
 }
 
