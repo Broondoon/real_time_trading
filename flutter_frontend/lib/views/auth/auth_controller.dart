@@ -1,6 +1,7 @@
 // File initially generated via Gemini 2.0 Flash Experimental.
 // Manually typed out and edited for my own understanding.
 import 'package:flutter/material.dart';
+import 'package:flutter_frontend/api_service.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:dio/dio.dart';
 
@@ -15,8 +16,9 @@ class AuthController extends ChangeNotifier {
   // TODO: https
   final String _baseUrl = 'http://localhost:3001/';
   
-  // Dio object
+  // Class objects; these could be dependency injected, no? Something to think about in the future.
   late Dio _dio;
+  // late APIService _apiService;
 
   // Lifetime should be 1 hour
   final int _tokenLifetime = 3600;
@@ -28,6 +30,10 @@ class AuthController extends ChangeNotifier {
         baseUrl: _baseUrl,
       )
     );
+
+    // _apiService = APIService(
+    //   _dio,
+    // );
 
     // This is an INTERCEPTOR which adds JWT to Auth header
     _dio.interceptors.add(
@@ -107,6 +113,17 @@ class AuthController extends ChangeNotifier {
           'password': pwd,
         },
       );
+
+      // I now realize this is functionally USELESS until I create some unique
+      //    behaviour that I control into the api service. TODO: do that
+      // final response = await _apiService.post(
+      //   '/login',
+      //   data: {
+      //     'username': username,
+      //     'password': pwd,
+      //   },
+      // );
+      // if (response == null) return false;
 
       print("STATUS CODE RESPONSE:");
       print(response.statusCode);

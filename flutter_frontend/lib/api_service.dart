@@ -5,7 +5,13 @@ class APIService {
   APIService(this.dio);
   final Dio dio;
 
-  Future<Response?> post(context, String path, {dynamic data}) async {
+  // The context is needed to build a SnackBar popup! But it's a pain to pass around the context, and
+  //    implementing a dedicated service is a low priority rn.
+  // And until I do that, or provide some other unique behaviour to this class, using this is pointless.
+  // So... TODO: do that.
+  // Future<Response?> post(context, String path, {dynamic data}) async {
+  Future<Response?> post(String path, {dynamic data}) async {
+
     try {
       final response = await dio.post(
         path,
@@ -15,16 +21,18 @@ class APIService {
     }
     on DioException catch (e) {
 
-      if (!context.mounted) {
-        print(">>> ALERT! Could not display exception to use: $e");
-        return null;
-      }
+      print(">>> ALERT! $e");
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Request Failure: $e'),
-        ),
-      );
+      // if (!context.mounted) {
+      //   print(">>> ALERT! Could not display exception to use: $e");
+      //   return null;
+      // }
+
+      // ScaffoldMessenger.of(context).showSnackBar(
+      //   SnackBar(
+      //     content: Text('Request Failure: $e'),
+      //   ),
+      // );
 
       return null;
     }
@@ -34,22 +42,26 @@ class APIService {
     }
   }
 
-  Future<Response?> get(context, String path) async {
+  // Future<Response?> get(context, String path) async {
+  Future<Response?> get(String path) async {
     try {
       final response = await dio.get(path);
       return response;
     }
     on Exception catch (e) {
-      if (!context.mounted) {
-        print(">>> ALERT! Could not display exception to use: $e");
-        return null;
-      }
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Request Failure: $e'),
-        ),
-      );
+      print(">>> ALERT! $e");
+
+      // if (!context.mounted) {
+      //   print(">>> ALERT! Could not display exception to use: $e");
+      //   return null;
+      // }
+
+      // ScaffoldMessenger.of(context).showSnackBar(
+      //   SnackBar(
+      //     content: Text('Request Failure: $e'),
+      //   ),
+      // );
 
       return null;
     }
