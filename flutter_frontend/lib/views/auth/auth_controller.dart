@@ -48,13 +48,13 @@ class AuthController extends ChangeNotifier {
           else {
             //TODO: re-enable auto-logout
             print("Logout redirect!");
-            // logout();
-            // return handler.reject(
-            //   DioException(
-            //     requestOptions: options,
-            //     type: DioExceptionType.cancel,
-            //   )
-            // );
+            logout();
+            return handler.reject(
+              DioException(
+                requestOptions: options,
+                type: DioExceptionType.cancel,
+              )
+            );
           }
           return handler.next(options);
         },
@@ -108,8 +108,9 @@ class AuthController extends ChangeNotifier {
 
   Future<bool> login(String username, String pwd) async {
     try {
+      print("Making login request:");
       final response = await _dio.post(
-        '/login', // TODO: replace this with a /resources/app_strings reference instead
+        '/authentication/login', // TODO: replace this with a /resources/app_strings reference instead
         data: {
           'username': username,
           'password': pwd,
@@ -155,6 +156,37 @@ class AuthController extends ChangeNotifier {
     }
     on DioException catch (e) {
       print('>> Exception thrown during login: $e');
+      return false;
+    }
+  }
+
+    Future<bool> register(String username, String pwd) async {
+    try {
+      print("Making registration request:");
+      final response = await _dio.post(
+        '/authentication/register', // TODO: replace this with a /resources/app_strings reference instead
+        data: {
+          'username': username,
+          'password': pwd,
+          // 'name': 'Test User', //TODO: Auth isn't prepared to accept the name yet
+        },
+      );
+
+      print("STATUS CODE RESPONSE:");
+      print(response.statusCode);
+
+      if (response.statusCode == 200) {
+        print("Nice! Registered.");
+        return true;
+      }
+      else {
+        // TODO: Yeah, a logging framework would be nice to include!
+        print('>> Registration failed: ${response.statusCode}');
+        return false;
+      }
+    }
+    on DioException catch (e) {
+      print('>> Exception thrown during registration: $e');
       return false;
     }
   }

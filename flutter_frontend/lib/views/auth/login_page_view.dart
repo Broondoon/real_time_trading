@@ -44,15 +44,15 @@ class _LoginPageState extends State<LoginPage> {
             ),
             ElevatedButton(
               onPressed: _isLoading ? null : () async {
-                print("PRESSED BUTTON.");
-                // setState(() => _isLoading = true);
-                // final authController = Provider.of<AuthController>(context, listen: false);
-                // bool success = await authController.login(
-                //   _usernameController.text,
-                //   _passwordController.text,
-                // );
-                bool success = true;
-                // setState(() => _isLoading = false);
+                print("PRESSED BUTTON TO LOGIN.");
+                setState(() => _isLoading = true);
+                final authController = Provider.of<AuthController>(context, listen: false);
+                bool success = await authController.login(
+                  _usernameController.text,
+                  _passwordController.text,
+                );
+                // bool success = true;
+                setState(() => _isLoading = false);
         
                 // This is an interesting thing! "Mounted" is whether the current widget
                 //    still exists, i.e. is still valid in the build tree.
@@ -73,6 +73,34 @@ class _LoginPageState extends State<LoginPage> {
                 }
               },
               child: _isLoading ? const CircularProgressIndicator() : const Text('Login'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                print("PRESSED BUTTON TO REGISTER.");
+                final authController = Provider.of<AuthController>(context, listen: false);
+                bool success = await authController.register(
+                  _usernameController.text,
+                  _passwordController.text,
+                );
+        
+                // This is an interesting thing! "Mounted" is whether the current widget
+                //    still exists, i.e. is still valid in the build tree.
+                // In other words, while we were waiting for the asynch to finish (and isn't that a strange thing to say,
+                //    was our widget destroyed during that time?
+                if (!context.mounted) return;
+
+                if (success) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Username and/or password did not match.'),
+                    ),
+                  );
+                }
+                else {
+                  print("Failed to register - login page");
+                }
+              },
+              child: const Text('Register'),
             )
           ],
         ),
@@ -80,3 +108,4 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 }
+

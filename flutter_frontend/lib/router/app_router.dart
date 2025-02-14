@@ -20,8 +20,8 @@ final goRouter = GoRouter(
       context,
       listen: false
     );
-    final isLoggedIn = true;
-    // final isLoggedIn = authController.isLoggedIn;
+    // final isLoggedIn = true;
+    final isLoggedIn = authController.isLoggedIn;
     final isLoggingIn = state.uri.toString() == '/login';
 
     // If we're not logged in, and not already at the login page, go to the login page.
@@ -31,10 +31,10 @@ final goRouter = GoRouter(
     }
 
     // If we're logged in @ the login page, go to /home.
-    // if (isLoggedIn && isLoggingIn) {
-    //   print("Redirect to home.");
-    //   return '/home';
-    // }
+    if (isLoggedIn && isLoggingIn) {
+      print("Redirect to home.");
+      return '/home';
+    }
 
     return null;
   },
