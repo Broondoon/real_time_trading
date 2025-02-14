@@ -1,0 +1,56 @@
+services:
+  microservice-template:
+    build:
+      context: .
+      dockerfile: ./microservice-template/Dockerfile
+    ports:
+      - "8000:8000"
+    networks:
+      - go-network
+
+  auth-db:
+    image: postgres:latest
+    restart: always
+    env_file:
+      - .env
+    volumes:
+      - db-data:/var/lib/postgresql/data
+      - ./auth-service/database/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $POSTGRES_USER -d $POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 3
+    networks:
+      - go-network
+
+  auth-service:
+    build: ./auth-service
+    env_file:
+      - .env
+    depends_on:
+      auth-db:
+        condition: service_healthy
+    networks:
+      - go-network
+
+  nginx:
+    image: nginx:latest
+    container_name: nginx_lb
+    ports:
+      - "3001:80" # Maps host port 3001 to Nginx container port 80
+    volumes:
+      - ./reverse_proxy/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - auth-service
+      - auth-db
+    networks:
+      - go-network
+
+volumes:
+  db-data:
+
+networks:
+  go-network:
+    driver: bridge # Use a bridge network to enable container communication
+
