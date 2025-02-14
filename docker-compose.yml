@@ -8,6 +8,14 @@ services:
     networks:
        - go-network
 
+  order-executor-service:
+    build: 
+          context: .
+          dockerfile: ./order-executor-service
+    ports:
+      - "8080:8080"
+    networks:
+       - go-network
 
 networks:
   go-network:
