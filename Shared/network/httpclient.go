@@ -34,7 +34,7 @@ func NewHttpClient(baseURL string) *HttpClient {
 	}
 }
 
-func (hc *HttpClient) setAuthToken(token string) {
+func (hc *HttpClient) SetAuthToken(token string) {
 	hc.AuthToken = token
 }
 
@@ -143,12 +143,18 @@ func (hc *HttpClient) Put(endpoint string, payload interface{}) ([]byte, error) 
 	return hc.handleResponse(resp)
 }
 
-func (hc *HttpClient) Delete(endpoint string) ([]byte, error) {
-	req, err := http.NewRequest(http.MethodDelete, hc.BaseURL+endpoint, nil)
+func (hc *HttpClient) Delete(endpoint string, payload interface{}) ([]byte, error) {
+	jsonData, err := json.Marshal(payload)
 	if err != nil {
 		return nil, err
 	}
 
+	req, err := http.NewRequest(http.MethodDelete, hc.BaseURL+endpoint, bytes.NewBuffer(jsonData))
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Set("Content-Type", "application/json")
 	if err := hc.authenticate(req); err != nil {
 		return nil, err
 	}
