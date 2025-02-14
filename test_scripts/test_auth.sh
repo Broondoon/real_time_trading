@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # API Base URL
-BASE_URL="http://localhost:8000"
+BASE_URL="http://localhost:3001"
 
 # Sample User Credentials
 USERNAME="testuser"
