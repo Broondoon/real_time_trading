@@ -14,30 +14,33 @@ const String homeRouteName = 'home';
 const String marketRouteName = 'market';
 
 final goRouter = GoRouter(
-  initialLocation: '/',
+  initialLocation: '/home',
   redirect: (context, state) {
     final authController = Provider.of<AuthController>(
       context,
       listen: false
     );
-    final isLoggedIn = authController.isLoggedIn;
+    final isLoggedIn = true;
+    // final isLoggedIn = authController.isLoggedIn;
     final isLoggingIn = state.uri.toString() == '/login';
 
     // If we're not logged in, and not already at the login page, go to the login page.
     if (!isLoggedIn && !isLoggingIn) {
+      print("Redirect to login.");
       return '/login';
     }
 
     // If we're logged in @ the login page, go to /home.
-    if (isLoggedIn && isLoggingIn) {
-      return '/home';
-    }
+    // if (isLoggedIn && isLoggingIn) {
+    //   print("Redirect to home.");
+    //   return '/home';
+    // }
 
     return null;
   },
   routes: [
     GoRoute(
-      path: '/',
+      path: '/home',
       builder: (context, state) => const HomePage(),
       name: homeRouteName,
     ),

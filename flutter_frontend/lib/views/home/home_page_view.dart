@@ -1,13 +1,49 @@
+// ignore_for_file: prefer_const_constructors, prefer_const_literals_to_create_immutables
+
 import 'package:flutter/material.dart';
+import 'package:flutter_frontend/resources/app_style.dart';
+import 'package:flutter_frontend/router/app_router.dart';
+import 'package:flutter_frontend/views/home/account/account_card_view.dart';
+import 'package:flutter_frontend/views/home/history/history_card_view.dart';
+import 'package:flutter_frontend/views/home/portfolio/portfolio_card_view.dart';
+import 'package:flutter_frontend/views/home/wallet/wallet_card_view.dart';
+import 'package:go_router/go_router.dart';
 
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return const Text('Hello World.');
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Home'),
+      ),
+      body: Column(
+        children: [
+          Expanded(
+            child: Row(
+              // crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                AccountCard(),
+                WalletCard(),
+              ],
+            ),
+          ),
+          Expanded(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                PortfolioCard(),
+                HistoryCard(),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
+
 
 
 // class MyHomePage extends StatefulWidget {

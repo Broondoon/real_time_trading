@@ -44,14 +44,15 @@ class _LoginPageState extends State<LoginPage> {
             ),
             ElevatedButton(
               onPressed: _isLoading ? null : () async {
-                setState(() => _isLoading = true);
-                final authController = Provider.of<AuthController>(context, listen: false);
+                print("PRESSED BUTTON.");
+                // setState(() => _isLoading = true);
+                // final authController = Provider.of<AuthController>(context, listen: false);
                 // bool success = await authController.login(
                 //   _usernameController.text,
                 //   _passwordController.text,
                 // );
                 bool success = true;
-                setState(() => _isLoading = false);
+                // setState(() => _isLoading = false);
         
                 // This is an interesting thing! "Mounted" is whether the current widget
                 //    still exists, i.e. is still valid in the build tree.
@@ -61,6 +62,7 @@ class _LoginPageState extends State<LoginPage> {
 
                 if (success) {
                   context.goNamed(homeRouteName);
+                  print("Completed the go.");
                 }
                 else {
                   ScaffoldMessenger.of(context).showSnackBar(

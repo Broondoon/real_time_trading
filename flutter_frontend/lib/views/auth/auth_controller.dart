@@ -46,13 +46,15 @@ class AuthController extends ChangeNotifier {
             options.headers['Authorization'] = 'Bearer $_token';
           }
           else {
-            logout();
-            return handler.reject(
-              DioException(
-                requestOptions: options,
-                type: DioExceptionType.cancel,
-              )
-            );
+            //TODO: re-enable auto-logout
+            print("Logout redirect!");
+            // logout();
+            // return handler.reject(
+            //   DioException(
+            //     requestOptions: options,
+            //     type: DioExceptionType.cancel,
+            //   )
+            // );
           }
           return handler.next(options);
         },
