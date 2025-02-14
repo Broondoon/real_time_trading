@@ -18,4 +18,10 @@ class MyAppStyle {
     color: Colors.black, 
     fontWeight: FontWeight.normal
   );
+
+  static const TextStyle regularFontLightGrey = TextStyle(
+    fontSize: 18, 
+    color: Colors.grey, 
+    fontWeight: FontWeight.normal
+  );
 }
