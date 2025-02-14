@@ -1,4 +1,13 @@
 services:
+  microservice-template:
+    build:
+      context: .
+      dockerfile: ./microservice-template/Dockerfile
+    ports:
+      - "8000:8000"
+    networks:
+      - go-network
+
   auth-db:
     image: postgres:latest
     restart: always
