@@ -1,0 +1,10 @@
+CREATE TABLE stockOrder (
+    id SERIAL PRIMARY KEY,
+    dateCreated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    dateModified TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    stockId SERIAL NOT NULL,
+    isBuy BOOLEAN NOT NULL,
+    orderType TEXT NOT NULL,
+    price DECIMAL NOT NULL,
+    quantity INT NOT NULL,
+);

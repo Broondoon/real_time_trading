@@ -20,8 +20,10 @@ func main() {
 			DateCreated:  time.Now(),
 			DateModified: time.Now(),
 		},
-		Username: "test",
-		Password: "password",
+		UserProps: user.UserProps{
+			Username: "test",
+			Password: "password",
+		},
 	})
 
 	// Print the User
@@ -52,7 +54,9 @@ func main() {
 			DateCreated:  time.Now(),
 			DateModified: time.Now(),
 		},
-		Name: "test",
+		StockProps: stock.StockProps{
+			Name: "test",
+		},
 	})
 
 	// Print the Stock
@@ -70,8 +74,10 @@ func main() {
 			DateModified: time.Now(),
 		},
 		User: u,
-		// UserId:  "",
-		Balance: 0.0,
+		WalletProps: wallet.WalletProps{
+			// UserId:  "",
+			Balance: 0.0,
+		},
 	})
 	// Print the Wallet
 	fmt.Print("Wallet: ")
@@ -103,6 +109,7 @@ func main() {
 		},
 		Stock: s,
 		// StockId: "",
+
 		Quantity:  0,
 		Price:     0.0,
 		OrderType: "MARKET",

@@ -3,5 +3,7 @@ go 1.23.5
 use (
 	./Shared
 	./microservice-template
+	./matching-engine-service
+	./sample-database
 	./Test_base
 )

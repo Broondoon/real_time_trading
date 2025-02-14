@@ -16,11 +16,16 @@ type UserInterface interface {
 	entity.EntityInterface
 }
 
+type UserProps struct {
+	entity.EntityProps
+	Name     string `json:"Name" gorm:"not null"`
+	Username string `json:"Username" gorm:"unique not null"`
+	Password string `json:"Password" gorm:"not null"`
+}
+
 type User struct {
+	UserProps
 	// If you need to access a property, please use the Get and Set functions, not the property itself. It is only exposed in case you need to interact with it when altering internal functions.
-	name     string
-	username string
-	password string
 	// Internal Functions should not be interacted with directly. if you need to change functionality, set a new function to the existing internal function.
 	// Instead, interact with the functions through the User Interface.
 	GetNameInternal     func() string
@@ -58,26 +63,26 @@ func (u *User) SetPassword(password string) {
 
 type NewUserParams struct {
 	entity.NewEntityParams
-	Name     string `json:"Name"`
-	Username string `json:"Username"`
-	Password string `json:"Password"`
+	UserProps
 }
 
 func New(params NewUserParams) *User {
 	e := entity.NewEntity(params.NewEntityParams)
 	u := &User{
 		BaseEntityInterface: e,
-		name:                params.Name,
-		username:            params.Username,
-		password:            params.Password,
+		UserProps: UserProps{
+			Name:     params.Name,
+			Username: params.Username,
+			Password: params.Password,
+		},
 	}
 
-	u.GetNameInternal = func() string { return u.name }
-	u.SetNameInternal = func(name string) { u.name = name }
-	u.SetUsernameInternal = func(username string) { u.username = username }
-	u.GetUsernameInternal = func() string { return u.username }
-	u.SetPasswordInternal = func(password string) { u.password = password }
-	u.GetPasswordInternal = func() string { return u.password }
+	u.GetNameInternal = func() string { return u.Name }
+	u.SetNameInternal = func(name string) { u.Name = name }
+	u.SetUsernameInternal = func(username string) { u.Username = username }
+	u.GetUsernameInternal = func() string { return u.Username }
+	u.SetPasswordInternal = func(password string) { u.Password = password }
+	u.GetPasswordInternal = func() string { return u.Password }
 	return u
 }
 
@@ -92,9 +97,11 @@ func Parse(jsonBytes []byte) (*User, error) {
 func (u *User) ToParams() NewUserParams {
 	return NewUserParams{
 		NewEntityParams: u.EntityToParams(),
-		Name:            u.GetName(),
-		Username:        u.GetUsername(),
-		Password:        u.GetPassword(),
+		UserProps: UserProps{
+			Name:     u.GetName(),
+			Username: u.GetUsername(),
+			Password: u.GetPassword(),
+		},
 	}
 }
 

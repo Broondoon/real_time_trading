@@ -11,7 +11,7 @@ import (
 func main() {
 	fmt.Println("Hello, World!")
 
-	u := user.NewUser(user.NewUserParams{
+	u := user.New(user.NewUserParams{
 		NewEntityParams: entity.NewEntityParams{
 			Id:           "u1",
 			DateCreated:  time.Now(),

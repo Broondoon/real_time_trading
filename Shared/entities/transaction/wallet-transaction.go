@@ -20,12 +20,17 @@ type WalletTransactionInterface interface {
 	entity.EntityInterface
 }
 
-type WalletTransaction struct {
-	// If you need to access a property, please use the Get and Set functions, not the property itself. It is only exposed in case you need to interact with it when altering internal functions.
-	WalletID           string
-	StockTransactionID string
-	IsDebit            bool
+type WalletTransactionProps struct {
+	entity.EntityProps
+	WalletID           string `json:"WalletID" gorm:"not null"`
+	StockTransactionID string `json:"StockTransactionID" gorm:"not null"`
+	IsDebit            bool   `json:"IsDebit" gorm:"not null"`
 	Amount             float64
+}
+
+type WalletTransaction struct {
+	WalletTransactionProps
+	// If you need to access a property, please use the Get and Set functions, not the property itself. It is only exposed in case you need to interact with it when altering internal functions.
 	// Internal Functions should not be interacted with directly. if you need to change functionality, set a new function to the existing internal function.
 	// Instead, interact with the functions through the WalletTransaction Interface.
 	GetWalletIDInternal           func() string
@@ -73,20 +78,19 @@ func (wt *WalletTransaction) SetAmount(amount float64) {
 
 type NewWalletTransactionParams struct {
 	entity.NewEntityParams
-	WalletID           string `json:"WalletID"` // use this or Wallet
-	Wallet             wallet.WalletInterface
-	StockTransactionID string `json:"StockTransactionID"` // use this or StockTransaction
-	StockTransaction   StockTransactionInterface
-	IsDebit            bool    `json:"IsDebit"`
-	Amount             float64 `json:"Amount"`
+	WalletTransactionProps
+	Wallet           wallet.WalletInterface
+	StockTransaction StockTransactionInterface
 }
 
 func NewWalletTransaction(params NewWalletTransactionParams) *WalletTransaction {
 	e := entity.NewEntity(params.NewEntityParams)
 	wt := &WalletTransaction{
 		BaseEntityInterface: e,
-		IsDebit:             params.IsDebit,
-		Amount:              params.Amount,
+		WalletTransactionProps: WalletTransactionProps{
+			IsDebit: params.IsDebit,
+			Amount:  params.Amount,
+		},
 	}
 	var WalletID string
 	if params.Wallet != nil {
@@ -125,11 +129,13 @@ func ParseWalletTransaction(jsonBytes []byte) (*WalletTransaction, error) {
 
 func (wt *WalletTransaction) ToParams() NewWalletTransactionParams {
 	return NewWalletTransactionParams{
-		NewEntityParams:    wt.EntityToParams(),
-		WalletID:           wt.GetWalletID(),
-		StockTransactionID: wt.GetStockTransactionID(),
-		IsDebit:            wt.GetIsDebit(),
-		Amount:             wt.GetAmount(),
+		NewEntityParams: wt.EntityToParams(),
+		WalletTransactionProps: WalletTransactionProps{
+			WalletID:           wt.GetWalletID(),
+			StockTransactionID: wt.GetStockTransactionID(),
+			IsDebit:            wt.GetIsDebit(),
+			Amount:             wt.GetAmount(),
+		},
 	}
 }
 

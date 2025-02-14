@@ -12,9 +12,14 @@ type StockInterface interface {
 	entity.EntityInterface
 }
 
+type StockProps struct {
+	entity.EntityProps
+	Name string `json:"Name" gorm:"not null"`
+}
+
 type Stock struct {
+	StockProps
 	// If you need to access a property, please use the Get and Set functions, not the property itself. It is only exposed in case you need to interact with it when altering internal functions.
-	Name string
 	// Internal Functions should not be interacted with directly. if you need to change functionality, set a new function to the existing internal function.
 	// Instead, interact with the functions through the Stock Interface.
 	GetNameInternal func() string
@@ -32,13 +37,15 @@ func (s *Stock) SetName(name string) {
 
 type NewStockParams struct {
 	entity.NewEntityParams
-	Name string `json:"Name"`
+	StockProps
 }
 
 func New(params NewStockParams) *Stock {
 	e := entity.NewEntity(params.NewEntityParams)
 	s := &Stock{
-		Name:                params.Name,
+		StockProps: StockProps{
+			Name: params.Name,
+		},
 		BaseEntityInterface: e,
 	}
 	s.GetNameInternal = func() string { return s.Name }
@@ -56,8 +63,10 @@ func Parse(jsonBytes []byte) (*Stock, error) {
 
 func (s *Stock) ToParams() NewStockParams {
 	return NewStockParams{
-		Name:            s.GetName(),
 		NewEntityParams: s.EntityToParams(),
+		StockProps: StockProps{
+			Name: s.GetName(),
+		},
 	}
 }
 

@@ -8,6 +8,14 @@ services:
     networks:
        - go-network
 
+  matching-engine-microservice:
+    build: 
+          context: .
+          dockerfile: ./matching-engine-service/Dockerfile
+    ports:
+      - "8080:8080"
+    networks:
+       - go-network
 
 networks:
   go-network:

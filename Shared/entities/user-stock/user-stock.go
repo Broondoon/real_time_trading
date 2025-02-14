@@ -22,12 +22,17 @@ type UserStockInterface interface {
 	entity.EntityInterface
 }
 
+type UserStockProps struct {
+	entity.EntityProps
+	UserID    string `json:"UserID" gorm:"not null"`  // use this or User
+	StockID   string `json:"StockID" gorm:"not null"` // use this or Stock
+	StockName string `json:"StockName" gorm:"not null"`
+	Quantity  int    `json:"Quantity" gorm:"not null"`
+}
+
 type UserStock struct {
+	UserStockProps
 	// If you need to access a property, please use the Get and Set functions, not the property itself. It is only exposed in case you need to interact with it when altering internal functions.
-	UserID    string
-	StockID   string
-	StockName string
-	Quantity  int
 	// Internal Functions should not be interacted with directly. if you need to change functionality, set a new function to the existing internal function.
 	// Instead, interact with the functions through the UserStock Interface.
 	GetUserIDInternal    func() string
@@ -75,12 +80,9 @@ func (us *UserStock) SetStockName(stockName string) {
 
 type NewUserStockParams struct {
 	entity.NewEntityParams
-	UserID    string               `json:"UserID"` // use this or User
-	User      user.UserInterface   // use this or UserID
-	StockID   string               `json:"StockID"`   // use this or Stock
-	StockName string               `json:"StockName"` // use this or Stock
-	Stock     stock.StockInterface // use this or StockID and StockName
-	Quantity  int                  `json:"Quantity"`
+	UserStockProps
+	User  user.UserInterface   // use this or UserID
+	Stock stock.StockInterface // use this or StockID and StockName
 }
 
 func New(params NewUserStockParams) *UserStock {
@@ -103,10 +105,12 @@ func New(params NewUserStockParams) *UserStock {
 	}
 
 	us := &UserStock{
-		UserID:              userId,
-		StockID:             stockId,
-		StockName:           stockName,
-		Quantity:            params.Quantity,
+		UserStockProps: UserStockProps{
+			UserID:    userId,
+			StockID:   stockId,
+			StockName: stockName,
+			Quantity:  params.Quantity,
+		},
 		BaseEntityInterface: e,
 	}
 	us.GetQuantityInternal = func() int { return us.Quantity }
@@ -131,10 +135,12 @@ func Parse(jsonBytes []byte) (*UserStock, error) {
 func (us *UserStock) ToParams() NewUserStockParams {
 	return NewUserStockParams{
 		NewEntityParams: us.EntityToParams(),
-		UserID:          us.GetUserID(),
-		StockID:         us.GetStockID(),
-		StockName:       us.GetStockName(),
-		Quantity:        us.GetQuantity(),
+		UserStockProps: UserStockProps{
+			UserID:    us.GetUserID(),
+			StockID:   us.GetStockID(),
+			StockName: us.GetStockName(),
+			Quantity:  us.GetQuantity(),
+		},
 	}
 }
 
