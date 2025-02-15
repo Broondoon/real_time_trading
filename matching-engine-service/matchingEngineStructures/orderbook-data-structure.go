@@ -3,57 +3,39 @@ package matchingEngineStructures
 import (
 	"Shared/entities/order"
 	"container/list"
-	"errors"
 )
 
-type OrderBookDataStructureInterface interface {
-	Push(stockOrder order.StockOrderInterface)
-	PushFront(stockOrder order.StockOrderInterface)
-	PopNext() order.StockOrderInterface
-	Remove(params RemoveParams) order.StockOrderInterface
-	Length() int
-}
-
 // Base Structure
-type OrderBookDataStructure struct {
+type BaseOrderBookDataStructureInterface interface {
 }
-
-func (o *OrderBookDataStructure) Push(stockOrder order.StockOrderInterface) {
-	panic(errors.New("uninitialized method: Push"))
+type BaseOrderBookDataStructure struct {
 }
-
-func (o *OrderBookDataStructure) PushFront(stockOrder order.StockOrderInterface) {
-	panic(errors.New("uninitialized method: PushFront"))
-}
-
-func (o *OrderBookDataStructure) PopNext() order.StockOrderInterface {
-	panic(errors.New("uninitialized method: PopNext"))
-}
-
-type RemoveParams struct {
-	StockId  string
-	priceKey float64
-}
-
-func (o *OrderBookDataStructure) Remove(params RemoveParams) order.StockOrderInterface {
-	panic(errors.New("uninitialized method: Remove"))
-}
-
-func (o *OrderBookDataStructure) Length() int {
-	panic(errors.New("uninitialized method: Length"))
-}
-
 type NewOrderBookDataStructureParams struct {
 }
 
-func NewOrderBookDataStructure(params NewOrderBookDataStructureParams) *OrderBookDataStructure {
-	return &OrderBookDataStructure{}
+func NewBaseOrderBookDataStructure(params *NewOrderBookDataStructureParams) BaseOrderBookDataStructureInterface {
+	return &BaseOrderBookDataStructure{}
+}
+
+type OrderBookDataStructureInterface interface {
+	BaseOrderBookDataStructureInterface
+	Push(stockOrder order.StockOrderInterface)
+	PushFront(stockOrder order.StockOrderInterface)
+	PopNext() order.StockOrderInterface
+	Remove(params *RemoveParams) order.StockOrderInterface
+	Length() int
+}
+
+type RemoveParams struct {
+	OrderID  string
+	PriceKey float64
 }
 
 // Queue Structure, where adding is immediatly added to the back. Removing is done from the front.
+
 type Queue struct {
-	OrderBookDataStructureInterface
-	data list.List
+	BaseOrderBookDataStructureInterface
+	data *list.List
 }
 
 func (q *Queue) Push(stockOrder order.StockOrderInterface) {
@@ -68,13 +50,14 @@ func (q *Queue) PopNext() order.StockOrderInterface {
 	e := q.data.Front()
 	if e != nil {
 		q.data.Remove(e)
+		return e.Value.(order.StockOrderInterface)
 	}
-	return e.Value.(order.StockOrderInterface)
+	return nil
 }
 
-func (q *Queue) Remove(params RemoveParams) order.StockOrderInterface {
+func (q *Queue) Remove(params *RemoveParams) order.StockOrderInterface {
 	for e := q.data.Front(); e != nil; e = e.Next() {
-		if e.Value.(order.StockOrderInterface).GetId() == params.StockId {
+		if e.Value.(order.StockOrderInterface).GetId() == params.OrderID {
 			q.data.Remove(e)
 			return e.Value.(order.StockOrderInterface)
 		}
@@ -87,27 +70,29 @@ func (q *Queue) Length() int {
 }
 
 type NewQueueParams struct {
-	NewOrderBookDataStructureParams
+	*NewOrderBookDataStructureParams
 }
 
-func NewQueue(params NewQueueParams) *Queue {
+func NewQueue(params *NewQueueParams) OrderBookDataStructureInterface {
 	return &Queue{
-		OrderBookDataStructureInterface: NewOrderBookDataStructure(params.NewOrderBookDataStructureParams),
+		BaseOrderBookDataStructureInterface: NewBaseOrderBookDataStructure(params.NewOrderBookDataStructureParams),
 	}
 }
 
 // PriceNodeMap Structure, where adding is added according to a logic system, and removing is based on a key system.
 // In truth, this is more going to resemble a hash map, with the key being the price.
 type PriceNodeMap struct {
-	OrderBookDataStructureInterface
-	data             map[float64]PriceNode
+	BaseOrderBookDataStructureInterface
+	data             map[float64]*PriceNode
 	currentBestPrice float64
 }
 
 func (p *PriceNodeMap) ensureNodeExists(key float64) {
 	if _, ok := p.data[key]; !ok {
-		p.data[key] = PriceNode{
-			priceList:  NewQueue(NewQueueParams{NewOrderBookDataStructureParams{}}),
+		p.data[key] = &PriceNode{
+			priceList: NewQueue(&NewQueueParams{
+				NewOrderBookDataStructureParams: &NewOrderBookDataStructureParams{},
+			}),
 			priceValue: key,
 		}
 		if key > p.currentBestPrice {
@@ -116,9 +101,8 @@ func (p *PriceNodeMap) ensureNodeExists(key float64) {
 	}
 }
 
-func (p *PriceNodeMap) validateNode(node PriceNode) {
+func (p *PriceNodeMap) validateNode(node *PriceNode) {
 	if node.priceList.Length() == 0 {
-		delete(p.data, p.currentBestPrice)
 		p.currentBestPrice = 0
 		for key := range p.data {
 			if key > p.currentBestPrice {
@@ -148,8 +132,8 @@ func (p *PriceNodeMap) PopNext() order.StockOrderInterface {
 	return order
 }
 
-func (p *PriceNodeMap) Remove(params RemoveParams) order.StockOrderInterface {
-	price := params.priceKey
+func (p *PriceNodeMap) Remove(params *RemoveParams) order.StockOrderInterface {
+	price := params.PriceKey
 	if node, ok := p.data[price]; ok {
 		order := node.priceList.Remove(params)
 		p.validateNode(node)
@@ -163,13 +147,13 @@ func (p *PriceNodeMap) Length() int {
 }
 
 type NewPriceNodeMapParams struct {
-	NewOrderBookDataStructureParams
+	*NewOrderBookDataStructureParams
 }
 
-func NewPriceNodeMap(params NewPriceNodeMapParams) *PriceNodeMap {
+func NewPriceNodeMap(params *NewPriceNodeMapParams) OrderBookDataStructureInterface {
 	return &PriceNodeMap{
-		OrderBookDataStructureInterface: NewOrderBookDataStructure(params.NewOrderBookDataStructureParams),
-		data:                            make(map[float64]PriceNode),
+		BaseOrderBookDataStructureInterface: NewBaseOrderBookDataStructure(params.NewOrderBookDataStructureParams),
+		data:                                make(map[float64]*PriceNode),
 	}
 }
 

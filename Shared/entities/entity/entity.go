@@ -18,13 +18,14 @@ type BaseEntityInterface interface {
 
 type EntityInterface interface {
 	ToJSON() ([]byte, error)
+	SetDefaults()
 	BaseEntityInterface
 }
 
 type Entity struct {
-	Id           string    `json:"Id" gorm:"primaryKey"` // gorm:"primaryKey" is used to set the primary key in the database.
-	DateCreated  time.Time `json:"DateCreated" gorm:"autoCreateTime"`
-	DateModified time.Time `json:"DateModified" gorm:"autoUpdateTime"`
+	ID           string    `json:"ID" gorm:"primaryKey"`                     // gorm:"primaryKey" is used to set the primary key in the database.
+	DateCreated  time.Time `json:"DateCreated" gorm:"autoCreateTime:milli"`  // gorm:"autoCreateTime:milli" is used to set the time the entity was created in the database.
+	DateModified time.Time `json:"DateModified" gorm:"autoUpdateTime:milli"` // gorm:"autoUpdateTime:milli" is used to set the time the entity was last modified in the database.
 	// If you need to access a property, please use the Get and Set functions, not the property itself. It is only exposed in case you need to interact with it when altering internal functions.
 	// Internal Functions should not be interacted with directly, but if you need to change functionality, set a new function to the existing function.
 	// Instead, interact with the functions through the Entity Interface.
@@ -61,24 +62,28 @@ func (e *Entity) SetDateModified(dateModified time.Time) {
 }
 
 type NewEntityParams struct {
-	Id           string    `json:"Id"`
+	ID           string    `json:"ID"`
 	DateCreated  time.Time `json:"DateCreated"`
 	DateModified time.Time `json:"DateModified"`
 }
 
 func NewEntity(params NewEntityParams) *Entity {
 	e := &Entity{
-		Id:           params.Id,
+		ID:           params.ID,
 		DateCreated:  params.DateCreated,
 		DateModified: params.DateModified,
 	}
-	e.SetIdInternal = func(id string) { e.Id = id }
-	e.GetIdInternal = func() string { return e.Id }
+	e.setEntityDefaults()
+	return e
+}
+
+func (e *Entity) setEntityDefaults() {
+	e.SetIdInternal = func(id string) { e.ID = id }
+	e.GetIdInternal = func() string { return e.ID }
 	e.SetDateCreatedInternal = func(dateCreated time.Time) { e.DateCreated = dateCreated }
 	e.GetDateCreatedInternal = func() time.Time { return e.DateCreated }
 	e.SetDateModifiedInternal = func(dateModified time.Time) { e.DateModified = dateModified }
 	e.GetDateModifiedInternal = func() time.Time { return e.DateModified }
-	return e
 }
 
 func ParseEntity(jsonBytes []byte) (*Entity, error) {
@@ -91,7 +96,7 @@ func ParseEntity(jsonBytes []byte) (*Entity, error) {
 
 func (e *Entity) EntityToParams() NewEntityParams {
 	return NewEntityParams{
-		Id:           e.GetId(),
+		ID:           e.GetId(),
 		DateCreated:  e.GetDateCreated(),
 		DateModified: e.GetDateModified(),
 	}
@@ -102,7 +107,7 @@ func (e *Entity) EntityToJSON() ([]byte, error) {
 }
 
 type FakeEntity struct {
-	Id           string    `json:"id"`
+	Id           string    `json:"ID"`
 	DateCreated  time.Time `json:"dateCreated"`
 	DateModified time.Time `json:"dateModified"`
 }

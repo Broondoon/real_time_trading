@@ -11,6 +11,18 @@ const (
 	OrderTypeLimit  = "LIMIT"
 )
 
+// // Set here so we can make sure we keep the price as something usable as both math and a key.
+// // effectivly we should only be storing it as a string, but capable of processing it as a float64 or int64
+// type PriceTypes interface {
+// 	float64 | string | int64
+// }
+
+// type Price struct {
+// 	Price            string                  `json:"Price" gorm:"not null"`
+// 	GetPriceInternal func() string           `gorm:"-"`
+// 	SetPriceInternal func(price interface{}) `gorm:"-"`
+// }
+
 type StockOrderInterface interface {
 	GetStockID() string
 	SetStockID(stockID string)
@@ -21,29 +33,36 @@ type StockOrderInterface interface {
 	SetQuantity(quantity int)
 	GetPrice() float64
 	SetPrice(price float64)
+	GetParentStockOrderID() string
+	SetParentStockOrderID(parentStockOrderID string)
+	CreateChildOrder(parent StockOrderInterface, partner StockOrderInterface) StockOrderInterface
 	ToParams() NewStockOrderParams
 	entity.EntityInterface
 }
 
 type StockOrder struct {
-	StockID   string  `json:"StockID" gorm:"not null"` // use this or Stock
-	IsBuy     bool    `json:"IsBuy" gorm:"not null"`
-	OrderType string  `json:"OrderType" gorm:"not null"` // MARKET or LIMIT. This can't be changed later.
-	Quantity  int     `json:"Quantity" gorm:"not null"`
-	Price     float64 `json:"Price" gorm:"not null"`
+	StockID            string  `json:"StockID" gorm:"not null"` // use this or Stock
+	ParentStockOrderID string  `json:"ParentStockOrderID"`
+	IsBuy              bool    `json:"IsBuy" gorm:"not null"`
+	OrderType          string  `json:"OrderType" gorm:"not null"` // MARKET or LIMIT. This can't be changed later.
+	Quantity           int     `json:"Quantity" gorm:"not null"`
+	Price              float64 `json:"Price" gorm:"not null"`
+	// Price     `gorm:"embedded"`
 	// If you need to access a property, please use the Get and Set functions, not the property itself. It is only exposed in case you need to interact with it when altering internal functions.
 	// Internal Functions should not be interacted with directly. if you need to change functionality, set a new function to the existing internal function.
 	// Instead, interact with the functions through the Interface.
-	GetStockIDInternal   func() string        `gorm:"-"`
-	SetStockIDInternal   func(stockID string) `gorm:"-"`
-	GetIsBuyInternal     func() bool          `gorm:"-"`
-	SetIsBuyInternal     func(isBuy bool)     `gorm:"-"`
-	GetOrderTypeInternal func() string        `gorm:"-"`
-	GetQuantityInternal  func() int           `gorm:"-"`
-	SetQuantityInternal  func(quantity int)   `gorm:"-"`
-	GetPriceInternal     func() float64       `gorm:"-"`
-	SetPriceInternal     func(price float64)  `gorm:"-"`
-	entity.BaseEntityInterface
+	GetStockIDInternal            func() string        `gorm:"-"`
+	SetStockIDInternal            func(stockID string) `gorm:"-"`
+	GetIsBuyInternal              func() bool          `gorm:"-"`
+	SetIsBuyInternal              func(isBuy bool)     `gorm:"-"`
+	GetOrderTypeInternal          func() string        `gorm:"-"`
+	GetQuantityInternal           func() int           `gorm:"-"`
+	SetQuantityInternal           func(quantity int)   `gorm:"-"`
+	GetPriceInternal              func() float64       `gorm:"-"`
+	SetPriceInternal              func(price float64)  `gorm:"-"`
+	GetParentStockOrderIDInternal func() string        `gorm:"-"`
+	SetParentStockOrderIDInternal func(string)         `gorm:"-"`
+	entity.BaseEntityInterface    `gorm:"embedded"`
 }
 
 func (so *StockOrder) GetIsBuy() bool {
@@ -82,14 +101,37 @@ func (so *StockOrder) SetStockID(stockID string) {
 	so.SetStockIDInternal(stockID)
 }
 
+func (so *StockOrder) GetParentStockOrderID() string {
+	return so.GetParentStockOrderIDInternal()
+}
+
+func (so *StockOrder) SetParentStockOrderID(parentStockOrderID string) {
+	so.SetParentStockOrderIDInternal(parentStockOrderID)
+}
+
+func (so *StockOrder) CreateChildOrder(parent StockOrderInterface, partner StockOrderInterface) StockOrderInterface {
+	// Create a new Stock Order
+	return New(NewStockOrderParams{
+		NewEntityParams:    entity.NewEntityParams{},
+		StockID:            parent.GetStockID(),
+		Quantity:           partner.GetQuantity(),
+		Price:              parent.GetPrice(),
+		OrderType:          parent.GetOrderType(),
+		IsBuy:              parent.GetIsBuy(),
+		ParentStockOrderID: parent.GetId(),
+	})
+
+}
+
 type NewStockOrderParams struct {
 	entity.NewEntityParams
-	Stock     stock.StockInterface // use this or StockID
-	StockID   string               `json:"StockID"`
-	IsBuy     bool                 `json:"IsBuy"`
-	OrderType string               `json:"OrderType"` // MARKET or LIMIT. This can't be changed later.
-	Quantity  int                  `json:"Quantity"`
-	Price     float64              `json:"Price"`
+	Stock              stock.StockInterface // use this or StockID
+	StockID            string               `json:"StockID"`
+	IsBuy              bool                 `json:"IsBuy"`
+	OrderType          string               `json:"OrderType"` // MARKET or LIMIT. This can't be changed later.
+	Quantity           int                  `json:"Quantity"`
+	Price              float64              `json:"Price"`
+	ParentStockOrderID string               `json:"ParentStockOrderID"`
 }
 
 func New(params NewStockOrderParams) *StockOrder {
@@ -101,24 +143,31 @@ func New(params NewStockOrderParams) *StockOrder {
 		stockID = params.StockID
 	}
 
-	sob := &StockOrder{
+	so := &StockOrder{
 		BaseEntityInterface: e,
 		StockID:             stockID,
 		IsBuy:               params.IsBuy,
 		OrderType:           params.OrderType,
 		Quantity:            params.Quantity,
 		Price:               params.Price,
+		ParentStockOrderID:  params.ParentStockOrderID,
 	}
-	sob.GetStockIDInternal = func() string { return sob.StockID }
-	sob.SetStockIDInternal = func(stockID string) { sob.StockID = stockID }
-	sob.GetIsBuyInternal = func() bool { return sob.IsBuy }
-	sob.SetIsBuyInternal = func(isBuy bool) { sob.IsBuy = isBuy }
-	sob.GetOrderTypeInternal = func() string { return sob.OrderType }
-	sob.GetQuantityInternal = func() int { return sob.Quantity }
-	sob.SetQuantityInternal = func(quantity int) { sob.Quantity = quantity }
-	sob.GetPriceInternal = func() float64 { return sob.Price }
-	sob.SetPriceInternal = func(price float64) { sob.Price = price }
-	return sob
+	so.SetDefaults()
+	return so
+}
+
+func (so *StockOrder) SetDefaults() {
+	so.GetStockIDInternal = func() string { return so.StockID }
+	so.SetStockIDInternal = func(stockID string) { so.StockID = stockID }
+	so.GetIsBuyInternal = func() bool { return so.IsBuy }
+	so.SetIsBuyInternal = func(isBuy bool) { so.IsBuy = isBuy }
+	so.GetOrderTypeInternal = func() string { return so.OrderType }
+	so.GetQuantityInternal = func() int { return so.Quantity }
+	so.SetQuantityInternal = func(quantity int) { so.Quantity = quantity }
+	so.GetPriceInternal = func() float64 { return so.Price }
+	so.SetPriceInternal = func(price float64) { so.Price = price }
+	so.GetParentStockOrderIDInternal = func() string { return so.ParentStockOrderID }
+	so.SetParentStockOrderIDInternal = func(parentStockOrderID string) { so.ParentStockOrderID = parentStockOrderID }
 }
 
 func Parse(jsonBytes []byte) (*StockOrder, error) {

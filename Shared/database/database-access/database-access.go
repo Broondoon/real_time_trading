@@ -1,16 +1,19 @@
 package databaseAccess
 
 type BaseDatabaseAccessInterface interface {
-	Connect()
-	Disconnect()
 }
 
 type BaseDatabaseAccess struct {
 }
 
+type DatabaseAccessInterface interface {
+	Connect()
+	Disconnect()
+}
+
 type NewDatabaseAccessParams struct {
 }
 
-func NewBaseDatabaseAccess(params NewDatabaseAccessParams) *BaseDatabaseAccess {
+func NewBaseDatabaseAccess(params *NewDatabaseAccessParams) BaseDatabaseAccessInterface {
 	return &BaseDatabaseAccess{}
 }

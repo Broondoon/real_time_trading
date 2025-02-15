@@ -13,7 +13,7 @@ func main() {
 
 	u := user.New(user.NewUserParams{
 		NewEntityParams: entity.NewEntityParams{
-			Id:           "u1",
+			ID:           "u1",
 			DateCreated:  time.Now(),
 			DateModified: time.Now(),
 		},

@@ -53,7 +53,7 @@ type StockTransaction struct {
 	SetStockPriceInternal               func(stockPrice float64)              `gorm:"-"`
 	GetQuantityInternal                 func() int                            `gorm:"-"`
 	SetQuantityInternal                 func(quantity int)                    `gorm:"-"`
-	entity.BaseEntityInterface
+	entity.BaseEntityInterface          `gorm:"embedded"`
 }
 
 func (st *StockTransaction) GetStockID() string {
@@ -192,6 +192,11 @@ func NewStockTransaction(params NewStockTransactionParams) *StockTransaction {
 		Quantity:                 quantity,
 		BaseEntityInterface:      e,
 	}
+	st.SetDefaults()
+	return st
+}
+
+func (st *StockTransaction) SetDefaults() {
 	st.GetStockIDInternal = func() string { return st.StockID }
 	st.SetStockIDInternal = func(stockID string) { st.StockID = stockID }
 	st.GetParentStockTransactionIDInternal = func() string { return st.ParentStockTransactionID }
@@ -207,7 +212,6 @@ func NewStockTransaction(params NewStockTransactionParams) *StockTransaction {
 	st.SetStockPriceInternal = func(stockPrice float64) { st.StockPrice = stockPrice }
 	st.GetQuantityInternal = func() int { return st.Quantity }
 	st.SetQuantityInternal = func(quantity int) { st.Quantity = quantity }
-	return st
 }
 
 func ParseStockTransaction(jsonBytes []byte) (*StockTransaction, error) {

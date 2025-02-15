@@ -33,15 +33,15 @@ type UserStock struct {
 	// If you need to access a property, please use the Get and Set functions, not the property itself. It is only exposed in case you need to interact with it when altering internal functions.
 	// Internal Functions should not be interacted with directly. if you need to change functionality, set a new function to the existing internal function.
 	// Instead, interact with the functions through the UserStock Interface.
-	GetUserIDInternal    func() string          `gorm:"-"`
-	SetUserIDInternal    func(userID string)    `gorm:"-"`
-	GetStockIDInternal   func() string          `gorm:"-"`
-	SetStockIDInternal   func(stockID string)   `gorm:"-"`
-	GetStockNameInternal func() string          `gorm:"-"`
-	SetStockNameInternal func(stockName string) `gorm:"-"`
-	GetQuantityInternal  func() int             `gorm:"-"`
-	SetQuantityInternal  func(quantity int)     `gorm:"-"`
-	entity.BaseEntityInterface
+	GetUserIDInternal          func() string          `gorm:"-"`
+	SetUserIDInternal          func(userID string)    `gorm:"-"`
+	GetStockIDInternal         func() string          `gorm:"-"`
+	SetStockIDInternal         func(stockID string)   `gorm:"-"`
+	GetStockNameInternal       func() string          `gorm:"-"`
+	SetStockNameInternal       func(stockName string) `gorm:"-"`
+	GetQuantityInternal        func() int             `gorm:"-"`
+	SetQuantityInternal        func(quantity int)     `gorm:"-"`
+	entity.BaseEntityInterface `gorm:"embedded"`
 }
 
 func (us *UserStock) GetQuantity() int {
@@ -112,6 +112,11 @@ func New(params NewUserStockParams) *UserStock {
 		Quantity:            params.Quantity,
 		BaseEntityInterface: e,
 	}
+	us.SetDefaults()
+	return us
+}
+
+func (us *UserStock) SetDefaults() {
 	us.GetQuantityInternal = func() int { return us.Quantity }
 	us.SetQuantityInternal = func(quantity int) { us.Quantity = quantity }
 	us.GetUserIDInternal = func() string { return us.UserID }
@@ -120,7 +125,6 @@ func New(params NewUserStockParams) *UserStock {
 	us.SetStockIDInternal = func(stockID string) { us.StockID = stockID }
 	us.GetStockNameInternal = func() string { return us.StockName }
 	us.SetStockNameInternal = func(stockName string) { us.StockName = stockName }
-	return us
 }
 
 func Parse(jsonBytes []byte) (*UserStock, error) {

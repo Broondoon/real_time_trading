@@ -17,6 +17,22 @@ services:
     networks:
        - go-network
 
+  stock-order-db:
+    image: postgres:latest
+    restart: always
+    env_file:
+      - .env
+    volumes:
+      - db-data:/var/lib/postgresql/data
+      - ./stock-order/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $POSTGRES_USER -d $POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 3
+    networks:
+      - go-network
+
 networks:
   go-network:
     driver: bridge           # Use a bridge network to enable container communication

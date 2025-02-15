@@ -19,7 +19,7 @@ type NewBaseDatabaseParams struct {
 	Db_ENV_PATH string
 }
 
-func NewBaseDatabase(params NewBaseDatabaseParams) *BaseDatabase {
+func NewBaseDatabase(params *NewBaseDatabaseParams) BaseDatabaseInterface {
 	return &BaseDatabase{
 		Db_ENV_PATH: params.Db_ENV_PATH,
 	}
@@ -50,10 +50,10 @@ type PostGresDatabase struct {
 }
 
 type NewPostGresDatabaseParams struct {
-	NewBaseDatabaseParams
+	*NewBaseDatabaseParams
 }
 
-func NewPostGresDatabase(params NewPostGresDatabaseParams) *PostGresDatabase {
+func NewPostGresDatabase(params *NewPostGresDatabaseParams) PostGresDatabaseInterface {
 	return &PostGresDatabase{
 		BaseDatabaseInterface: NewBaseDatabase(params.NewBaseDatabaseParams),
 	}

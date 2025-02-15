@@ -36,7 +36,7 @@ type WalletTransaction struct {
 	SetIsDebitInternal            func(isDebit bool)              `gorm:"-"`
 	GetAmountInternal             func() float64                  `gorm:"-"`
 	SetAmountInternal             func(amount float64)            `gorm:"-"`
-	entity.BaseEntityInterface
+	entity.BaseEntityInterface    `gorm:"embedded"`
 }
 
 func (wt *WalletTransaction) GetWalletID() string {
@@ -88,31 +88,34 @@ func NewWalletTransaction(params NewWalletTransactionParams) *WalletTransaction 
 		IsDebit:             params.IsDebit,
 		Amount:              params.Amount,
 	}
-	var WalletID string
 	if params.Wallet != nil {
-		WalletID = params.Wallet.GetId()
+		wt.WalletID = params.Wallet.GetId()
 	} else {
-		WalletID = params.WalletID
+		wt.WalletID = params.WalletID
 	}
-	wt.GetWalletIDInternal = func() string { return WalletID }
-	wt.SetWalletIDInternal = func(walletID string) { WalletID = walletID }
 
-	var StockTransactionID string
 	if params.StockTransaction != nil {
-		StockTransactionID = params.StockTransaction.GetId()
+		wt.StockTransactionID = params.StockTransaction.GetId()
 	} else {
-		StockTransactionID = params.StockTransactionID
+		wt.StockTransactionID = params.StockTransactionID
 	}
-	wt.GetStockTransactionIDInternal = func() string { return StockTransactionID }
-	wt.SetStockTransactionIDInternal = func(stockTransactionID string) { StockTransactionID = stockTransactionID }
+
+	wt.SetDefaults()
+
+	return wt
+}
+
+func (wt *WalletTransaction) SetDefaults() {
+	wt.GetWalletIDInternal = func() string { return wt.WalletID }
+	wt.SetWalletIDInternal = func(walletID string) { wt.WalletID = walletID }
+	wt.GetStockTransactionIDInternal = func() string { return wt.StockTransactionID }
+	wt.SetStockTransactionIDInternal = func(stockTransactionID string) { wt.StockTransactionID = stockTransactionID }
 
 	wt.GetIsDebitInternal = func() bool { return wt.IsDebit }
 	wt.SetIsDebitInternal = func(isDebit bool) { wt.IsDebit = isDebit }
 
 	wt.GetAmountInternal = func() float64 { return wt.Amount }
 	wt.SetAmountInternal = func(amount float64) { wt.Amount = amount }
-
-	return wt
 }
 
 func ParseWalletTransaction(jsonBytes []byte) (*WalletTransaction, error) {

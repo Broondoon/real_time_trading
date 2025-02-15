@@ -2,51 +2,67 @@ package matchingEngine
 
 import (
 	"Shared/entities/order"
-	"Shared/entities/stock"
+	"Shared/entities/transaction"
 	"Shared/network"
+	"databaseAccessStockOrder"
+	"encoding/json"
 	"net/http"
 )
 
 var _matchingEngineMap map[string]MatchingEngineInterface
+var _databaseManager databaseAccessStockOrder.DatabaseAccessInterface
+var _networkManager network.HttpClientInterface
 
-func InitalizeHandlers(stockList []stock.StockInterface,
-	networkManager network.HttpClientInterface) {
+func InitalizeHandlers(stockIDs *[]string,
+	networkManager network.HttpClientInterface, databaseManager databaseAccessStockOrder.DatabaseAccessInterface) {
+	_databaseManager = databaseManager
+	_networkManager = networkManager
+	_matchingEngineMap = make(map[string]MatchingEngineInterface)
 	//Create all matching engines for stocks.
-	for _, stock := range stockList {
-		AddNewStock(stock)
-		RepopulateStocksFromDatabase(stock)
+	for _, stockID := range *stockIDs {
+		AddNewStock(stockID)
 	}
 
+	//Add handlers
 	networkManager.AddHandleFunc(network.HandlerParams{Pattern: "/createStock", Handler: AddNewStockHandler})
-
-	networkManager.Listen(network.ListenerParams{
-		Port:    "8080",
-		Handler: nil,
-	})
+	networkManager.AddHandleFunc(network.HandlerParams{Pattern: "/placeOrder", Handler: PlaceStockOrderHandler})
+	networkManager.AddHandleFunc(network.HandlerParams{Pattern: "/deleteOrder", Handler: DeleteStockOrderHandler})
 }
 
+// Expected input is a stock ID in the body of the request
+// we're expecting {"StockID":"{id value}"}
 func AddNewStockHandler(responseWriter http.ResponseWriter, data []byte) {
-	s, err := stock.Parse(data)
+	var jsonData map[string]interface{}
+	err := json.Unmarshal(data, &jsonData)
 	if err != nil {
 		responseWriter.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	AddNewStock(s)
+	stockID, ok := jsonData["StockID"].(string)
+	if !ok {
+		responseWriter.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	AddNewStock(stockID)
 }
 
-func AddNewStock(stock stock.StockInterface) {
-	_, ok := _matchingEngineMap[stock.GetId()]
+func AddNewStock(stockID string) {
+	_, ok := _matchingEngineMap[stockID]
 	//if we don't have a matching engine for this stock, create one
 	if !ok {
-		me := NewMatchingEngineForStock(NewMatchingEngineParams{Stock: stock})
-		_matchingEngineMap[stock.GetId()] = me
+		stockOrders := _databaseManager.GetInitialStockOrdersForStock(stockID)
+		ordersInterface := make([]order.StockOrderInterface, len(*stockOrders))
+		copy(ordersInterface, *stockOrders)
+		me := NewMatchingEngineForStock(&NewMatchingEngineParams{
+			StockID:                  stockID,
+			InitalOrders:             &ordersInterface,
+			SendToOrderExecutionFunc: SendToOrderExection,
+			DatabaseManager:          _databaseManager,
+		})
+		_matchingEngineMap[stockID] = me
 		go me.RunMatchingEngineOrders()
 		go me.RunMatchingEngineUpdates()
 	}
-}
-
-func RepopulateStocksFromDatabase(stock stock.StockInterface) {
-
 }
 
 func PlaceStockOrderHandler(responseWriter http.ResponseWriter, data []byte) {
@@ -68,6 +84,49 @@ func PlaceStockOrder(stockOrder order.StockOrderInterface) bool {
 	if !ok {
 		return false
 	}
-	me.AddOrder(stockOrder)
+
+	stockOrderCreated := _databaseManager.CreateStockOrder(stockOrder)
+	me.AddOrder(stockOrderCreated)
 	return true
+}
+
+func DeleteStockOrderHandler(responseWriter http.ResponseWriter, data []byte) {
+	var jsonData map[string]interface{}
+	err := json.Unmarshal(data, &jsonData)
+	if err != nil {
+		responseWriter.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	orderID, ok := jsonData["OrderID"].(string)
+	if !ok {
+		responseWriter.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	DeleteStockOrder(orderID)
+}
+
+func DeleteStockOrder(orderID string) {
+	stockOrder := (_databaseManager.DeleteStockOrder(orderID))
+	if stockOrder == nil {
+		return
+	}
+	me, ok := _matchingEngineMap[orderID]
+	if !ok {
+		return
+	}
+	me.RemoveOrder(stockOrder.GetId(), stockOrder.GetPrice())
+}
+
+func SendToOrderExection(buyOrder order.StockOrderInterface, sellOrder order.StockOrderInterface, childOrder order.StockOrderInterface) transaction.StockTransactionInterface {
+	data, err := _networkManager.Post("???", nil)
+	if err != nil {
+		return nil
+	}
+	transaction, errParse := transaction.ParseStockTransaction(data)
+	if errParse != nil {
+		return nil
+	}
+
+	//send to order execution
+	return transaction
 }

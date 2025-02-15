@@ -16,7 +16,7 @@ func main() {
 	// Create a new User
 	u := user.New(user.NewUserParams{
 		NewEntityParams: entity.NewEntityParams{
-			Id:           "u1",
+			ID:           "u1",
 			DateCreated:  time.Now(),
 			DateModified: time.Now(),
 		},
@@ -48,7 +48,7 @@ func main() {
 	// Create a new Stock
 	s := stock.New(stock.NewStockParams{
 		NewEntityParams: entity.NewEntityParams{
-			Id:           "s1",
+			ID:           "s1",
 			DateCreated:  time.Now(),
 			DateModified: time.Now(),
 		},
@@ -65,7 +65,7 @@ func main() {
 	// Create a new Wallet
 	w := wallet.New(wallet.NewWalletParams{
 		NewEntityParams: entity.NewEntityParams{
-			Id:           "w1",
+			ID:           "w1",
 			DateCreated:  time.Now(),
 			DateModified: time.Now(),
 		},
@@ -97,7 +97,7 @@ func main() {
 	//Create a new Stock Order
 	so := order.New(order.NewStockOrderParams{
 		NewEntityParams: entity.NewEntityParams{
-			Id:           "so1",
+			ID:           "so1",
 			DateCreated:  time.Now(),
 			DateModified: time.Now(),
 		},
@@ -123,7 +123,7 @@ func main() {
 	// Create a new User Stock
 	us := userStock.New(userStock.NewUserStockParams{
 		NewEntityParams: entity.NewEntityParams{
-			Id:           "us1",
+			ID:           "us1",
 			DateCreated:  time.Now(),
 			DateModified: time.Now(),
 		},
@@ -145,7 +145,7 @@ func main() {
 	// Create a new Stock Transaction
 	st1 := transaction.NewStockTransaction(transaction.NewStockTransactionParams{
 		NewEntityParams: entity.NewEntityParams{
-			Id:           "st1",
+			ID:           "st1",
 			DateCreated:  time.Now(),
 			DateModified: time.Now(),
 		},
@@ -170,7 +170,7 @@ func main() {
 	//Create a new wallet transaction
 	wt := transaction.NewWalletTransaction(transaction.NewWalletTransactionParams{
 		NewEntityParams: entity.NewEntityParams{
-			Id:           "wt1",
+			ID:           "wt1",
 			DateCreated:  time.Now(),
 			DateModified: time.Now(),
 		},
@@ -194,7 +194,7 @@ func main() {
 	// Create a new Stock Transaction
 	st2 := transaction.NewStockTransaction(transaction.NewStockTransactionParams{
 		NewEntityParams: entity.NewEntityParams{
-			Id:           "st2",
+			ID:           "st2",
 			DateCreated:  time.Now(),
 			DateModified: time.Now(),
 		},

@@ -21,11 +21,11 @@ type Wallet struct {
 	// If you need to access a property, please use the Get and Set functions, not the property itself. It is only exposed in case you need to interact with it when altering internal functions.
 	// Internal Functions should not be interacted with directly. if you need to change functionality, set a new function to the existing internal function.
 	// Instead, interact with the functions through the wallet Interface.
-	GetUserIDInternal  func() string         `gorm:"-"`
-	SetUserIDInternal  func(userID string)   `gorm:"-"`
-	GetBalanceInternal func() float64        `gorm:"-"`
-	SetBalanceInternal func(balance float64) `gorm:"-"`
-	entity.BaseEntityInterface
+	GetUserIDInternal          func() string         `gorm:"-"`
+	SetUserIDInternal          func(userID string)   `gorm:"-"`
+	GetBalanceInternal         func() float64        `gorm:"-"`
+	SetBalanceInternal         func(balance float64) `gorm:"-"`
+	entity.BaseEntityInterface `gorm:"embedded"`
 }
 
 func (w *Wallet) GetBalance() float64 {
@@ -65,11 +65,15 @@ func New(params NewWalletParams) *Wallet {
 		Balance:             params.Balance,
 		BaseEntityInterface: e,
 	}
-	wb.GetUserIDInternal = func() string { return wb.UserID }
-	wb.SetUserIDInternal = func(userID string) { wb.UserID = userID }
-	wb.GetBalanceInternal = func() float64 { return wb.Balance }
-	wb.SetBalanceInternal = func(balance float64) { wb.Balance = balance }
+	wb.SetDefaults()
 	return wb
+}
+
+func (w *Wallet) SetDefaults() {
+	w.GetUserIDInternal = func() string { return w.UserID }
+	w.SetUserIDInternal = func(userID string) { w.UserID = userID }
+	w.GetBalanceInternal = func() float64 { return w.Balance }
+	w.SetBalanceInternal = func(balance float64) { w.Balance = balance }
 }
 
 func Parse(jsonBytes []byte) (*Wallet, error) {

@@ -8,6 +8,7 @@ import (
 
 type OrderBookInterface interface {
 	GetBestOrder() order.StockOrderInterface
+	GetNextOrder() order.StockOrderInterface
 	CompleteBestOrderExtraction()
 	AddOrder(stockOrder order.StockOrderInterface)
 	GetMutex() *sync.Mutex
@@ -16,7 +17,7 @@ type OrderBookInterface interface {
 
 type OrderBook struct {
 	data  OrderBookDataStructureInterface
-	mutex sync.Mutex
+	mutex *sync.Mutex
 }
 
 func (o *OrderBook) GetData() OrderBookDataStructureInterface {
@@ -24,7 +25,7 @@ func (o *OrderBook) GetData() OrderBookDataStructureInterface {
 }
 
 func (o *OrderBook) GetMutex() *sync.Mutex {
-	return &o.mutex
+	return o.mutex
 }
 
 // potential race condition here. if we need to actually put the order back due to complications, while it was extracted, other orders could have been extracted.
@@ -33,6 +34,10 @@ func (o *OrderBook) GetBestOrder() order.StockOrderInterface {
 	o.mutex.Lock()
 	return o.data.PopNext()
 }
+func (o *OrderBook) GetNextOrder() order.StockOrderInterface {
+	return o.data.PopNext()
+}
+
 func (o *OrderBook) CompleteBestOrderExtraction() {
 	o.mutex.Unlock()
 }
@@ -44,13 +49,18 @@ func (o *OrderBook) AddOrder(stockOrder order.StockOrderInterface) {
 }
 
 type NewOrderBookParams struct {
-	dataStructure OrderBookDataStructureInterface // Leave empty for default
+	dataStructure OrderBookDataStructureInterface
+	InitalOrders  *[]order.StockOrderInterface
 }
 
-func NewOrderBook(params NewOrderBookParams) *OrderBook {
-	return &OrderBook{
+func NewOrderBook(params *NewOrderBookParams) OrderBookInterface {
+	ob := &OrderBook{
 		data: params.dataStructure,
 	}
+	for _, order := range *params.InitalOrders {
+		ob.AddOrder(order)
+	}
+	return ob
 }
 
 type BuyOrderBookInterface interface {
@@ -62,47 +72,60 @@ type BuyOrderBook struct {
 }
 
 type NewBuyOrderBookParams struct {
-	NewOrderBookParams // Leave empty for default
+	*NewOrderBookParams
 }
 
-func NewBuyOrderBook(params NewBuyOrderBookParams) *BuyOrderBook {
-
+func NewBuyOrderBook(params *NewBuyOrderBookParams) BuyOrderBookInterface {
 	return &BuyOrderBook{
 		OrderBookInterface: NewOrderBook(params.NewOrderBookParams),
 	}
 }
 
-func DefaultBuyOrderBook() *BuyOrderBook {
-	return NewBuyOrderBook(NewBuyOrderBookParams{NewOrderBookParams{dataStructure: NewQueue(NewQueueParams{NewOrderBookDataStructureParams{}})}})
+func DefaultBuyOrderBook(initalOrders *[]order.StockOrderInterface) BuyOrderBookInterface {
+	return NewBuyOrderBook(&NewBuyOrderBookParams{
+		&NewOrderBookParams{
+			dataStructure: NewQueue(&NewQueueParams{
+				&NewOrderBookDataStructureParams{},
+			}),
+			InitalOrders: initalOrders,
+		},
+	})
 }
 
 type SellOrderBookInterface interface {
 	OrderBookInterface
-	RemoveOrder(params RemoveParams) order.StockOrderInterface
+	RemoveOrder(params *RemoveParams) order.StockOrderInterface
 }
 
 type SellOrderBook struct {
 	OrderBookInterface
 }
 
-func (s *SellOrderBook) RemoveOrder(params RemoveParams) order.StockOrderInterface {
+func (s *SellOrderBook) RemoveOrder(params *RemoveParams) order.StockOrderInterface {
 	s.GetMutex().Lock()
 	defer s.GetMutex().Unlock()
 	return s.GetData().Remove(params)
 }
 
 type NewSellOrderBookParams struct {
-	NewOrderBookParams // Leave empty for default
+	*NewOrderBookParams // Leave empty for default
 }
 
-func NewSellOrderBook(params NewSellOrderBookParams) *SellOrderBook {
+func NewSellOrderBook(params *NewSellOrderBookParams) SellOrderBookInterface {
 	return &SellOrderBook{
 		OrderBookInterface: NewOrderBook(params.NewOrderBookParams),
 	}
 }
 
-func DefaultSellOrderBook() *SellOrderBook {
-	return NewSellOrderBook(NewSellOrderBookParams{NewOrderBookParams{dataStructure: NewPriceNodeMap(NewPriceNodeMapParams{NewOrderBookDataStructureParams{}})}})
+func DefaultSellOrderBook(initalOrders *[]order.StockOrderInterface) SellOrderBookInterface {
+	return NewSellOrderBook(&NewSellOrderBookParams{
+		&NewOrderBookParams{
+			dataStructure: NewPriceNodeMap(&NewPriceNodeMapParams{
+				&NewOrderBookDataStructureParams{},
+			}),
+			InitalOrders: initalOrders,
+		},
+	})
 }
 
 type FakeOrderBook struct {
