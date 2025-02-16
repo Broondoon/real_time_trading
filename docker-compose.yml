@@ -34,6 +34,15 @@ services:
     networks:
       - go-network
 
+  frontend:
+    # image: ubuntu:latest # large, could use a more lightweight image
+    image: flutter-trading-app
+    build:
+      dockerfile: ./Dockerfile
+      context: ./flutter_frontend/
+    ports:
+      - "8080:8080"
+
   nginx:
     image: nginx:latest
     container_name: nginx_lb
