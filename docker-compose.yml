@@ -32,7 +32,9 @@ services:
       retries: 3
     networks:
       - go-network
-
+volumes:
+  db-data:
+  
 networks:
   go-network:
     driver: bridge           # Use a bridge network to enable container communication
