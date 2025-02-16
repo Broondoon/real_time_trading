@@ -8,7 +8,10 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"os"
 	"time"
+
+	"github.com/golang-jwt/jwt/v5"
 )
 
 type HttpClientInterface interface {
@@ -189,6 +192,49 @@ type ListenerParams struct {
 
 func Listen(params ListenerParams) {
 	http.ListenAndServe(":"+params.Port, params.Handler)
+}
+
+// ExtractUserIDFromToken extracts the user ID from a JWT token
+func ExtractUserIDFromToken(tokenString string) (uint, error) {
+	if tokenString == "" {
+		return 0, errors.New("missing token")
+	}
+
+	// Remove "Bearer " prefix if present
+	if len(tokenString) > 7 && tokenString[:7] == "Bearer " {
+		tokenString = tokenString[7:]
+	}
+
+	// Get secret key from environment
+	jwtSecret := os.Getenv("JWT_SECRET")
+	if jwtSecret == "" {
+		return 0, errors.New("JWT secret is missing")
+	}
+
+	// Parse the token
+	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, errors.New("unexpected signing method")
+		}
+		return []byte(jwtSecret), nil
+	})
+	if err != nil || !token.Valid {
+		return 0, errors.New("invalid token")
+	}
+
+	// Extract claims
+	claims, ok := token.Claims.(jwt.MapClaims)
+	if !ok {
+		return 0, errors.New("invalid claims")
+	}
+
+	// Extract userID
+	userID, ok := claims["sub"].(float64)
+	if !ok {
+		return 0, errors.New("invalid user ID format")
+	}
+
+	return uint(userID), nil
 }
 
 type FakeHttpClient struct {
