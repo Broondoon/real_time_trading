@@ -6,13 +6,17 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"net/url"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
 )
+
+var jwtSecret = []byte(os.Getenv("JWT_SECRET"))
 
 type HttpClientInterface interface {
 	Get(endpoint string, queryParams map[string]string) ([]byte, error)
@@ -197,41 +201,45 @@ func Listen(params ListenerParams) {
 // ExtractUserIDFromToken extracts the user ID from a JWT token
 func ExtractUserIDFromToken(tokenString string) (uint, error) {
 	if tokenString == "" {
-		return 0, errors.New("missing token")
+		log.Println("[ExtractUserIDFromToken] Missing token in request")
+		return 0, errors.New("missing token in request")
 	}
 
 	// Remove "Bearer " prefix if present
-	if len(tokenString) > 7 && tokenString[:7] == "Bearer " {
-		tokenString = tokenString[7:]
-	}
+	tokenString = strings.TrimPrefix(tokenString, "Bearer ")
 
-	// Get secret key from environment
-	jwtSecret := os.Getenv("JWT_SECRET")
-	if jwtSecret == "" {
-		return 0, errors.New("JWT secret is missing")
+	// Ensure JWT_SECRET is loaded
+	if len(jwtSecret) == 0 {
+		log.Println("[ExtractUserIDFromToken] JWT secret is missing")
+		return 0, errors.New("server misconfiguration: JWT secret is missing")
 	}
 
 	// Parse the token
 	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+		// Ensure the signing method is what we expect
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, errors.New("unexpected signing method")
+			log.Printf("[ExtractUserIDFromToken] Unexpected signing method: %v", token.Header["alg"])
+			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 		}
-		return []byte(jwtSecret), nil
+		return jwtSecret, nil
 	})
-	if err != nil || !token.Valid {
-		return 0, errors.New("invalid token")
+	if err != nil {
+		log.Printf("[ExtractUserIDFromToken] Token parsing error: %v", err)
+		return 0, fmt.Errorf("invalid token: %v", err)
 	}
 
 	// Extract claims
 	claims, ok := token.Claims.(jwt.MapClaims)
 	if !ok {
-		return 0, errors.New("invalid claims")
+		log.Println("[ExtractUserIDFromToken] Failed to parse token claims")
+		return 0, errors.New("invalid claims structure in token")
 	}
 
-	// Extract userID
+	// Extract userID from claims
 	userID, ok := claims["sub"].(float64)
 	if !ok {
-		return 0, errors.New("invalid user ID format")
+		log.Println("[ExtractUserIDFromToken] Missing or malformed user ID in token")
+		return 0, errors.New("missing or malformed user ID in token")
 	}
 
 	return uint(userID), nil
