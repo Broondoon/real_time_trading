@@ -6,10 +6,17 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"net/url"
+	"os"
+	"strings"
 	"time"
+
+	"github.com/golang-jwt/jwt/v5"
 )
+
+var jwtSecret = []byte(os.Getenv("JWT_SECRET"))
 
 type HttpClientInterface interface {
 	Get(endpoint string, queryParams map[string]string) ([]byte, error)
@@ -189,6 +196,53 @@ type ListenerParams struct {
 
 func Listen(params ListenerParams) {
 	http.ListenAndServe(":"+params.Port, params.Handler)
+}
+
+// ExtractUserIDFromToken extracts the user ID from a JWT token
+func ExtractUserIDFromToken(tokenString string) (uint, error) {
+	if tokenString == "" {
+		log.Println("[ExtractUserIDFromToken] Missing token in request")
+		return 0, errors.New("missing token in request")
+	}
+
+	// Remove "Bearer " prefix if present
+	tokenString = strings.TrimPrefix(tokenString, "Bearer ")
+
+	// Ensure JWT_SECRET is loaded
+	if len(jwtSecret) == 0 {
+		log.Println("[ExtractUserIDFromToken] JWT secret is missing")
+		return 0, errors.New("server misconfiguration: JWT secret is missing")
+	}
+
+	// Parse the token
+	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+		// Ensure the signing method is what we expect
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			log.Printf("[ExtractUserIDFromToken] Unexpected signing method: %v", token.Header["alg"])
+			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+		}
+		return jwtSecret, nil
+	})
+	if err != nil {
+		log.Printf("[ExtractUserIDFromToken] Token parsing error: %v", err)
+		return 0, fmt.Errorf("invalid token: %v", err)
+	}
+
+	// Extract claims
+	claims, ok := token.Claims.(jwt.MapClaims)
+	if !ok {
+		log.Println("[ExtractUserIDFromToken] Failed to parse token claims")
+		return 0, errors.New("invalid claims structure in token")
+	}
+
+	// Extract userID from claims
+	userID, ok := claims["sub"].(float64)
+	if !ok {
+		log.Println("[ExtractUserIDFromToken] Missing or malformed user ID in token")
+		return 0, errors.New("missing or malformed user ID in token")
+	}
+
+	return uint(userID), nil
 }
 
 type FakeHttpClient struct {
