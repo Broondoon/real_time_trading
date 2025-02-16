@@ -118,7 +118,25 @@ func DeleteStockOrder(orderID string) {
 }
 
 func SendToOrderExection(buyOrder order.StockOrderInterface, sellOrder order.StockOrderInterface, childOrder order.StockOrderInterface) transaction.StockTransactionInterface {
-	data, err := _networkManager.Post("???", nil)
+	var childQuantityBuying float64
+	var childQuantitySelling float64
+	if buyOrder.GetQuantity() >= sellOrder.GetQuantity() {
+		childQuantityBuying = sellOrder.GetQuantity()
+	}
+	if buyOrder.GetQuantity() <= sellOrder.GetQuantity() {
+		childQuantitySelling = buyOrder.GetQuantity()
+	}
+
+	data, err := _networkManager.Post("???", network.MatchingEngineToExectuionJSON{
+		StockID:         buyOrder.GetStockID(),
+		BuyOrderID:      buyOrder.GetId(),
+		SellOrderID:     sellOrder.GetId(),
+		StockPrice:      sellOrder.GetPrice(),
+		FullQuantityBuying:  buyOrder.GetQuantity(),
+		ThisQuantityBuying:  ,
+		FullQuantitySelling: sellOrder.GetQuantity(),
+		ThisQuantitySelling: childOrder.GetQuantity(),
+	})
 	if err != nil {
 		return nil
 	}

@@ -24,9 +24,9 @@ services:
       - .env
     volumes:
       - db-data:/var/lib/postgresql/data
-      - ./stock-order/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./stock-order-database/init.sql:/docker-entrypoint-initdb.d/init.sql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U $POSTGRES_USER -d $POSTGRES_DB"]
+      test: ["CMD-SHELL", "pg_isready -U $POSTGRES_USER_STOCK_ORDER -d $POSTGRES_DB_STOCK_ORDER"]
       interval: 5s
       timeout: 5s
       retries: 3

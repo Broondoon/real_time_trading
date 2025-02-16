@@ -40,7 +40,7 @@ func (d *DatabaseAccess) Connect() {
 	dbParams := databaseServiceStockOrder.NewDatabaseServiceParams{
 		NewPostGresDatabaseParams: &databaseService.NewPostGresDatabaseParams{
 			NewBaseDatabaseParams: &databaseService.NewBaseDatabaseParams{
-				Db_ENV_PATH: "DATABASE_URL",
+				Db_ENV_PATH: "DATABASE_URL_STOCK_ORDER", //THIS NEEDS TO MATCH THE ENVIRONMENT VARIABLE SET IN THE DOCKER COMPOSE FILE
 			},
 		},
 	}
