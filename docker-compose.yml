@@ -3,8 +3,6 @@ services:
     build:
       context: .
       dockerfile: ./microservice-template/Dockerfile
-    ports:
-      - "8000:8000"
     networks:
       - go-network
 
@@ -39,6 +37,15 @@ services:
     networks:
       - go-network
 
+  frontend:
+    # image: ubuntu:latest # large, could use a more lightweight image
+    image: flutter-trading-app
+    build:
+      dockerfile: ./Dockerfile
+      context: ./flutter_frontend/
+    networks:
+      - go-network
+
   nginx:
     image: nginx:latest
     container_name: nginx_lb
@@ -49,6 +56,7 @@ services:
     depends_on:
       - auth-service
       - auth-db
+      - frontend
     networks:
       - go-network
 
