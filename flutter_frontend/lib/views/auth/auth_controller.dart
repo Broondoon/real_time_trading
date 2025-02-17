@@ -16,7 +16,7 @@ class AuthController extends ChangeNotifier {
   bool get isLoggedIn => _token != null;
 
   // TODO: https
-  final String _baseUrl = 'http://127.0.0.1:3001/';
+  final String _baseUrl = 'http://localhost:3001/';
   
   // Class objects; these could be dependency injected, no? Something to think about in the future.
   late Dio _dio;
