@@ -38,10 +38,10 @@ services:
     # image: ubuntu:latest # large, could use a more lightweight image
     image: flutter-trading-app
     build:
-      dockerfile: ./Dockerfile
       context: ./flutter_frontend/
+      dockerfile: ./Dockerfile
     ports:
-      - "8080:8080"
+      - "8080:80"
 
   nginx:
     image: nginx:latest
