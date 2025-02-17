@@ -39,7 +39,7 @@ func Register(c *gin.Context) {
 	}
 
 	hashedPassword, _ := HashPassword(input.Password)
-	user := models.User{Username: input.Username, Password: hashedPassword}
+	user := models.User{Username: input.Username, Password: hashedPassword, Name: input.Name}
 
 	database.DB.Create(&user)
 	c.JSON(http.StatusOK, gin.H{"message": "User registered"})

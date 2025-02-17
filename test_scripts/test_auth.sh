@@ -6,12 +6,13 @@ BASE_URL="http://localhost:3001"
 # Sample User Credentials
 USERNAME="testuser"
 PASSWORD="securepassword"
+NAME="testbob"
 
 echo "========================="
 echo "Registering User"
 echo "========================="
 REGISTER_RESPONSE=$(curl -s -X POST "$BASE_URL/authentication/register" -H "Content-Type: application/json" \
-    -d "{\"username\": \"$USERNAME\", \"password\": \"$PASSWORD\"}")
+    -d "{\"username\": \"$USERNAME\", \"password\": \"$PASSWORD\", \"name\": \"$NAME\"}")
 
 echo "Response: $REGISTER_RESPONSE"
 echo ""
