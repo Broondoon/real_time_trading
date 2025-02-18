@@ -5,6 +5,7 @@ services:
           dockerfile: ./microservice-template/Dockerfile
     ports:
       - "8000:8000"
+    
     networks:
        - go-network
 
@@ -13,11 +14,12 @@ services:
           context: .
           dockerfile: ./matching-engine-service/Dockerfile
     ports:
-      - "8080:8080"
+      - "${MATCHING_ENGINE_PORT}:${MATCHING_ENGINE_PORT}"
     env_file:
       - .env
     environment:
       DATABASE_URL: ${STOCK_ORDER_DATABASE_URL}
+      DATABASE_URL_TRANSACTION: ${STOCK_TRANSACTION_DATABASE_URL}
     depends_on:
       stock-order-db:
         condition: service_healthy
@@ -38,6 +40,26 @@ services:
       - ./stock-order-database/init.sql:/docker-entrypoint-initdb.d/init.sql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $STOCK_ORDER_POSTGRES_USER -d $STOCK_ORDER_POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 3
+    networks:
+      - go-network
+
+  stock-transaction-db:
+    image: postgres:latest
+    restart: always
+    env_file:
+      - .env
+    environment:
+      POSTGRES_USER: ${STOCK_TRANSACTION_POSTGRES_USER}
+      POSTGRES_PASSWORD: ${STOCK_TRANSACTION_POSTGRES_PASSWORD}
+      POSTGRES_DB: ${STOCK_TRANSACTION_POSTGRES_DB}
+    volumes:
+      - db-data:/var/lib/postgresql/data
+      - ./stock-transaction-database/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $STOCK_TRANSACTION_POSTGRES_USER -d $STOCK_TRANSACTION_POSTGRES_DB"]
       interval: 5s
       timeout: 5s
       retries: 3

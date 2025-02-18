@@ -94,7 +94,7 @@ func (d *DatabaseService) CreateStockOrder(stockOrder order.StockOrderInterface)
 
 		// Check if it already exists in the database
 		result := d.GetDatabaseConnection().
-			Where("id = ?", candidateID).
+			Where("ID = ?", candidateID).
 			First(&existing)
 
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {

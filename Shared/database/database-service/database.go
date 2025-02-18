@@ -12,16 +12,24 @@ type BaseDatabaseInterface interface {
 	GetDBUrl() string
 }
 type BaseDatabase struct {
+	DatabaseURLEnv string
 }
 
 type NewBaseDatabaseParams struct {
+	DATABASE_URL_ENV_OVERRIDE string // leave "" for default.
 }
 
 func NewBaseDatabase(params *NewBaseDatabaseParams) BaseDatabaseInterface {
-	return &BaseDatabase{}
+	envString := "DATABASE_URL"
+	if params.DATABASE_URL_ENV_OVERRIDE != "" {
+		envString = params.DATABASE_URL_ENV_OVERRIDE
+	}
+	return &BaseDatabase{
+		DatabaseURLEnv: envString,
+	}
 }
 func (d *BaseDatabase) GetDBUrl() string {
-	dsn := os.Getenv("DATABASE_URL") // "DATABASE_URL" is an ENV variable that
+	dsn := os.Getenv(d.DatabaseURLEnv) // "DATABASE_URL" is an ENV variable that
 	// is set in docker-compose.yml
 	if dsn == "" {
 		log.Fatal("DATABASE_URL environment variable is not set.")
