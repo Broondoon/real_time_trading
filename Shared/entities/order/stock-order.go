@@ -112,7 +112,9 @@ func (so *StockOrder) SetParentStockOrderID(parentStockOrderID string) {
 func (so *StockOrder) CreateChildOrder(parent StockOrderInterface, partner StockOrderInterface) StockOrderInterface {
 	// Create a new Stock Order
 	return New(NewStockOrderParams{
-		NewEntityParams:    entity.NewEntityParams{},
+		NewEntityParams: entity.NewEntityParams{
+			ID: parent.GetId(),
+		},
 		StockID:            parent.GetStockID(),
 		Quantity:           partner.GetQuantity(),
 		Price:              parent.GetPrice(),

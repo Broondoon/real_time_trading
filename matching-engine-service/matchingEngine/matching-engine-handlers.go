@@ -117,26 +117,24 @@ func DeleteStockOrder(orderID string) {
 	me.RemoveOrder(stockOrder.GetId(), stockOrder.GetPrice())
 }
 
-func SendToOrderExection(buyOrder order.StockOrderInterface, sellOrder order.StockOrderInterface, childOrder order.StockOrderInterface) transaction.StockTransactionInterface {
-	var childQuantityBuying float64
-	var childQuantitySelling float64
-	if buyOrder.GetQuantity() >= sellOrder.GetQuantity() {
-		childQuantityBuying = sellOrder.GetQuantity()
+func SendToOrderExection(buyOrder order.StockOrderInterface, sellOrder order.StockOrderInterface) transaction.StockTransactionInterface {
+	buyQty := buyOrder.GetQuantity()
+	sellQty := sellOrder.GetQuantity()
+	quantity := buyQty
+	if sellQty < buyQty {
+		quantity = sellQty
 	}
-	if buyOrder.GetQuantity() <= sellOrder.GetQuantity() {
-		childQuantitySelling = buyOrder.GetQuantity()
+	transferEntity := network.MatchingEngineToExectuionJSON{
+		StockID:       buyOrder.GetStockID(),
+		BuyOrderID:    buyOrder.GetId(),
+		SellOrderID:   sellOrder.GetId(),
+		IsBuyPartial:  buyQty > sellQty,
+		IsSellPartial: buyQty < sellQty,
+		StockPrice:    sellOrder.GetPrice(),
+		Quantity:      quantity,
 	}
 
-	data, err := _networkManager.Post("???", network.MatchingEngineToExectuionJSON{
-		StockID:         buyOrder.GetStockID(),
-		BuyOrderID:      buyOrder.GetId(),
-		SellOrderID:     sellOrder.GetId(),
-		StockPrice:      sellOrder.GetPrice(),
-		FullQuantityBuying:  buyOrder.GetQuantity(),
-		ThisQuantityBuying:  ,
-		FullQuantitySelling: sellOrder.GetQuantity(),
-		ThisQuantitySelling: childOrder.GetQuantity(),
-	})
+	data, err := _networkManager.Post("???", transferEntity)
 	if err != nil {
 		return nil
 	}

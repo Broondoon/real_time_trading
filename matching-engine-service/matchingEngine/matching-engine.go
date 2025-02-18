@@ -22,7 +22,7 @@ type MatchingEngine struct {
 	SellOrderBook       matchingEngineStructures.SellOrderBookInterface
 	orderChannel        chan order.StockOrderInterface
 	updateChannel       chan *UpdateParams
-	SendToOrderExection func(buyOrder order.StockOrderInterface, sellOrder order.StockOrderInterface, childOrder order.StockOrderInterface) transaction.StockTransactionInterface
+	SendToOrderExection func(buyOrder order.StockOrderInterface, sellOrder order.StockOrderInterface) transaction.StockTransactionInterface
 	//dirty fix
 	DatabaseManager databaseAccessStockOrder.DatabaseAccessInterface
 }
@@ -30,7 +30,7 @@ type MatchingEngine struct {
 type NewMatchingEngineParams struct {
 	StockID                  string
 	InitalOrders             *[]order.StockOrderInterface
-	SendToOrderExecutionFunc func(buyOrder order.StockOrderInterface, sellOrder order.StockOrderInterface, childOrder order.StockOrderInterface) transaction.StockTransactionInterface
+	SendToOrderExecutionFunc func(buyOrder order.StockOrderInterface, sellOrder order.StockOrderInterface) transaction.StockTransactionInterface
 	DatabaseManager          databaseAccessStockOrder.DatabaseAccessInterface
 }
 
@@ -79,7 +79,7 @@ func (me *MatchingEngine) RunMatchingEngineOrders() {
 				for buyOrderQuantity > 0 {
 					if buyOrderQuantity == sellOrder.GetQuantity() {
 						//create a transaction
-						result := me.SendToOrderExection(buyOrder, sellOrder, nil)
+						result := me.SendToOrderExection(buyOrder, sellOrder)
 						if result == nil {
 							me.SellOrderBook.AddOrder(sellOrder)
 							buyOrderQuantity = 0
@@ -93,7 +93,7 @@ func (me *MatchingEngine) RunMatchingEngineOrders() {
 						}
 					} else if buyOrderQuantity < sellOrder.GetQuantity() {
 						childOrder := sellOrder.CreateChildOrder(sellOrder, buyOrder)
-						result := me.SendToOrderExection(buyOrder, sellOrder, childOrder)
+						result := me.SendToOrderExection(buyOrder, childOrder)
 						if result == nil {
 							me.SellOrderBook.AddOrder(sellOrder)
 							buyOrderQuantity = 0
@@ -109,7 +109,7 @@ func (me *MatchingEngine) RunMatchingEngineOrders() {
 						}
 					} else {
 						childOrder := buyOrder.CreateChildOrder(buyOrder, sellOrder)
-						result := me.SendToOrderExection(buyOrder, sellOrder, childOrder)
+						result := me.SendToOrderExection(childOrder, sellOrder)
 						if result == nil {
 							me.SellOrderBook.AddOrder(sellOrder)
 							buyOrderQuantity = 0
