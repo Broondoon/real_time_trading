@@ -14,6 +14,13 @@ services:
           dockerfile: ./matching-engine-service/Dockerfile
     ports:
       - "8080:8080"
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: ${STOCK_ORDER_DATABASE_URL}
+    depends_on:
+      stock-order-db:
+        condition: service_healthy
     networks:
        - go-network
 
@@ -22,19 +29,24 @@ services:
     restart: always
     env_file:
       - .env
+    environment:
+      POSTGRES_USER: ${STOCK_ORDER_POSTGRES_USER}
+      POSTGRES_PASSWORD: ${STOCK_ORDER_POSTGRES_PASSWORD}
+      POSTGRES_DB: ${STOCK_ORDER_POSTGRES_DB}
     volumes:
       - db-data:/var/lib/postgresql/data
       - ./stock-order-database/init.sql:/docker-entrypoint-initdb.d/init.sql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U $POSTGRES_USER_STOCK_ORDER -d $POSTGRES_DB_STOCK_ORDER"]
+      test: ["CMD-SHELL", "pg_isready -U $STOCK_ORDER_POSTGRES_USER -d $STOCK_ORDER_POSTGRES_DB"]
       interval: 5s
       timeout: 5s
       retries: 3
     networks:
       - go-network
+
 volumes:
   db-data:
-  
+
 networks:
   go-network:
     driver: bridge           # Use a bridge network to enable container communication

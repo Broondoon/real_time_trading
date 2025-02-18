@@ -39,9 +39,7 @@ func (d *DatabaseAccess) Connect() {
 	//This would actually go in the proper main of the database. Since however we're currently just testing the database, we'll put it here.
 	dbParams := databaseServiceStockOrder.NewDatabaseServiceParams{
 		NewPostGresDatabaseParams: &databaseService.NewPostGresDatabaseParams{
-			NewBaseDatabaseParams: &databaseService.NewBaseDatabaseParams{
-				Db_ENV_PATH: "DATABASE_URL_STOCK_ORDER", //THIS NEEDS TO MATCH THE ENVIRONMENT VARIABLE SET IN THE DOCKER COMPOSE FILE
-			},
+			NewBaseDatabaseParams: &databaseService.NewBaseDatabaseParams{},
 		},
 	}
 	d.databaseTEMP = databaseServiceStockOrder.NewDatabaseService(dbParams)
