@@ -19,40 +19,39 @@ type UserInterface interface {
 type User struct {
 	Name     string `json:"Name" gorm:"not null"`
 	Username string `json:"Username" gorm:"unique not null"`
-	Password string `json:"Password" gorm:"not null"` // If you need to access a property, please use the Get and Set functions, not the property itself. It is only exposed in case you need to interact with it when altering internal functions.
-	// Internal Functions should not be interacted with directly. if you need to change functionality, set a new function to the existing internal function.
-	// Instead, interact with the functions through the User Interface.
-	GetNameInternal            func() string         `gorm:"-"`
-	SetNameInternal            func(name string)     `gorm:"-"`
-	GetUsernameInternal        func() string         `gorm:"-"`
-	SetUsernameInternal        func(username string) `gorm:"-"`
-	GetPasswordInternal        func() string         `gorm:"-"`
-	SetPasswordInternal        func(password string) `gorm:"-"`
-	entity.BaseEntityInterface `gorm:"embedded"`
+	Password string `json:"Password" gorm:"not null"`
+	// Internal functions removed in favor of direct field access.
+	// GetNameInternal     func() string         `gorm:"-"`
+	// SetNameInternal     func(name string)     `gorm:"-"`
+	// GetUsernameInternal func() string         `gorm:"-"`
+	// SetUsernameInternal func(username string) `gorm:"-"`
+	// GetPasswordInternal func() string         `gorm:"-"`
+	// SetPasswordInternal func(password string) `gorm:"-"`
+	entity.Entity `gorm:"embedded"`
 }
 
 func (u *User) GetName() string {
-	return u.GetNameInternal()
+	return u.Name
 }
 
 func (u *User) SetName(name string) {
-	u.SetNameInternal(name)
+	u.Name = name
 }
 
 func (u *User) GetUsername() string {
-	return u.GetUsernameInternal()
+	return u.Username
 }
 
 func (u *User) SetUsername(username string) {
-	u.SetUsernameInternal(username)
+	u.Username = username
 }
 
 func (u *User) GetPassword() string {
-	return u.GetPasswordInternal()
+	return u.Password
 }
 
 func (u *User) SetPassword(password string) {
-	u.SetPasswordInternal(password)
+	u.Password = password
 }
 
 type NewUserParams struct {
@@ -65,23 +64,17 @@ type NewUserParams struct {
 func New(params NewUserParams) *User {
 	e := entity.NewEntity(params.NewEntityParams)
 	u := &User{
-		BaseEntityInterface: e,
-		Name:                params.Name,
-		Username:            params.Username,
-		Password:            params.Password,
+		Entity:   *e,
+		Name:     params.Name,
+		Username: params.Username,
+		Password: params.Password,
 	}
-	u.SetDefaults()
+	// Internal function assignment removed.
+	// u.SetDefaults()
 	return u
 }
 
-func (u *User) SetDefaults() {
-	u.GetNameInternal = func() string { return u.Name }
-	u.SetNameInternal = func(name string) { u.Name = name }
-	u.SetUsernameInternal = func(username string) { u.Username = username }
-	u.GetUsernameInternal = func() string { return u.Username }
-	u.SetPasswordInternal = func(password string) { u.Password = password }
-	u.GetPasswordInternal = func() string { return u.Password }
-}
+// Removed SetDefaults function since internal functions are no longer used.
 
 func Parse(jsonBytes []byte) (*User, error) {
 	var u NewUserParams

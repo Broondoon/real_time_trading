@@ -25,50 +25,48 @@ type WalletTransaction struct {
 	StockTransactionID string  `json:"StockTransactionID" gorm:"not null"`
 	IsDebit            bool    `json:"IsDebit" gorm:"not null"`
 	Amount             float64 `json:"Amount" gorm:"not null"`
-	// If you need to access a property, please use the Get and Set functions, not the property itself. It is only exposed in case you need to interact with it when altering internal functions.
-	// Internal Functions should not be interacted with directly. if you need to change functionality, set a new function to the existing internal function.
-	// Instead, interact with the functions through the WalletTransaction Interface.
-	GetWalletIDInternal           func() string                   `gorm:"-"`
-	SetWalletIDInternal           func(walletID string)           `gorm:"-"`
-	GetStockTransactionIDInternal func() string                   `gorm:"-"`
-	SetStockTransactionIDInternal func(stockTransactionID string) `gorm:"-"`
-	GetIsDebitInternal            func() bool                     `gorm:"-"`
-	SetIsDebitInternal            func(isDebit bool)              `gorm:"-"`
-	GetAmountInternal             func() float64                  `gorm:"-"`
-	SetAmountInternal             func(amount float64)            `gorm:"-"`
-	entity.BaseEntityInterface    `gorm:"embedded"`
+	// Internal functions have been commented out.
+	// GetWalletIDInternal           func() string                   `gorm:"-"`
+	// SetWalletIDInternal           func(walletID string)           `gorm:"-"`
+	// GetStockTransactionIDInternal func() string                   `gorm:"-"`
+	// SetStockTransactionIDInternal func(stockTransactionID string) `gorm:"-"`
+	// GetIsDebitInternal            func() bool                     `gorm:"-"`
+	// SetIsDebitInternal            func(isDebit bool)              `gorm:"-"`
+	// GetAmountInternal             func() float64                  `gorm:"-"`
+	// SetAmountInternal             func(amount float64)            `gorm:"-"`
+	entity.Entity `gorm:"embedded"`
 }
 
 func (wt *WalletTransaction) GetWalletID() string {
-	return wt.GetWalletIDInternal()
+	return wt.WalletID
 }
 
 func (wt *WalletTransaction) SetWalletID(walletID string) {
-	wt.SetWalletIDInternal(walletID)
+	wt.WalletID = walletID
 }
 
 func (wt *WalletTransaction) GetStockTransactionID() string {
-	return wt.GetStockTransactionIDInternal()
+	return wt.StockTransactionID
 }
 
 func (wt *WalletTransaction) SetStockTransactionID(stockTransactionID string) {
-	wt.SetStockTransactionIDInternal(stockTransactionID)
+	wt.StockTransactionID = stockTransactionID
 }
 
 func (wt *WalletTransaction) GetIsDebit() bool {
-	return wt.GetIsDebitInternal()
+	return wt.IsDebit
 }
 
 func (wt *WalletTransaction) SetIsDebit(isDebit bool) {
-	wt.SetIsDebitInternal(isDebit)
+	wt.IsDebit = isDebit
 }
 
 func (wt *WalletTransaction) GetAmount() float64 {
-	return wt.GetAmountInternal()
+	return wt.Amount
 }
 
 func (wt *WalletTransaction) SetAmount(amount float64) {
-	wt.SetAmountInternal(amount)
+	wt.Amount = amount
 }
 
 type NewWalletTransactionParams struct {
@@ -84,9 +82,9 @@ type NewWalletTransactionParams struct {
 func NewWalletTransaction(params NewWalletTransactionParams) *WalletTransaction {
 	e := entity.NewEntity(params.NewEntityParams)
 	wt := &WalletTransaction{
-		BaseEntityInterface: e,
-		IsDebit:             params.IsDebit,
-		Amount:              params.Amount,
+		Entity:  *e,
+		IsDebit: params.IsDebit,
+		Amount:  params.Amount,
 	}
 	if params.Wallet != nil {
 		wt.WalletID = params.Wallet.GetId()
@@ -106,16 +104,9 @@ func NewWalletTransaction(params NewWalletTransactionParams) *WalletTransaction 
 }
 
 func (wt *WalletTransaction) SetDefaults() {
-	wt.GetWalletIDInternal = func() string { return wt.WalletID }
-	wt.SetWalletIDInternal = func(walletID string) { wt.WalletID = walletID }
-	wt.GetStockTransactionIDInternal = func() string { return wt.StockTransactionID }
-	wt.SetStockTransactionIDInternal = func(stockTransactionID string) { wt.StockTransactionID = stockTransactionID }
-
-	wt.GetIsDebitInternal = func() bool { return wt.IsDebit }
-	wt.SetIsDebitInternal = func(isDebit bool) { wt.IsDebit = isDebit }
-
-	wt.GetAmountInternal = func() float64 { return wt.Amount }
-	wt.SetAmountInternal = func(amount float64) { wt.Amount = amount }
+	// Internal function setters and getters were removed,
+	// so this function is kept for compatibility or future use.
+	// It is now empty.
 }
 
 func ParseWalletTransaction(jsonBytes []byte) (*WalletTransaction, error) {
@@ -134,10 +125,6 @@ func (wt *WalletTransaction) ToParams() NewWalletTransactionParams {
 		IsDebit:            wt.GetIsDebit(),
 		Amount:             wt.GetAmount(),
 	}
-}
-
-func (wt *WalletTransaction) ToJSON() ([]byte, error) {
-	return json.Marshal(wt.ToParams())
 }
 
 type FakeWalletTransaction struct {

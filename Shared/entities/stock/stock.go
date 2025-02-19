@@ -17,17 +17,19 @@ type Stock struct {
 	// If you need to access a property, please use the Get and Set functions, not the property itself. It is only exposed in case you need to interact with it when altering internal functions.
 	// Internal Functions should not be interacted with directly. if you need to change functionality, set a new function to the existing internal function.
 	// Instead, interact with the functions through the Stock Interface.
-	GetNameInternal            func() string     `gorm:"-"`
-	SetNameInternal            func(name string) `gorm:"-"`
-	entity.BaseEntityInterface `gorm:"embedded"`
+	// GetNameInternal func() string     `gorm:"-"`
+	// SetNameInternal func(name string) `gorm:"-"`
+	entity.Entity `gorm:"embedded"`
 }
 
 func (s *Stock) GetName() string {
-	return s.GetNameInternal()
+	// return s.GetNameInternal()
+	return s.Name
 }
 
 func (s *Stock) SetName(name string) {
-	s.SetNameInternal(name)
+	// s.SetNameInternal(name)
+	s.Name = name
 }
 
 type NewStockParams struct {
@@ -38,16 +40,16 @@ type NewStockParams struct {
 func New(params NewStockParams) *Stock {
 	e := entity.NewEntity(params.NewEntityParams)
 	s := &Stock{
-		Name:                params.Name,
-		BaseEntityInterface: e,
+		Name:   params.Name,
+		Entity: *e,
 	}
 	s.SetDefaults()
 	return s
 }
 
 func (s *Stock) SetDefaults() {
-	s.GetNameInternal = func() string { return s.Name }
-	s.SetNameInternal = func(name string) { s.Name = name }
+	// s.GetNameInternal = func() string { return s.Name }
+	// s.SetNameInternal = func(name string) { s.Name = name }
 }
 
 func Parse(jsonBytes []byte) (*Stock, error) {

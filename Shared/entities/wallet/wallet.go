@@ -18,30 +18,31 @@ type WalletInterface interface {
 type Wallet struct {
 	UserID  string  `json:"UserId" gorm:"not null"`
 	Balance float64 `json:"Balance" gorm:"not null"`
-	// If you need to access a property, please use the Get and Set functions, not the property itself. It is only exposed in case you need to interact with it when altering internal functions.
-	// Internal Functions should not be interacted with directly. if you need to change functionality, set a new function to the existing internal function.
-	// Instead, interact with the functions through the wallet Interface.
-	GetUserIDInternal          func() string         `gorm:"-"`
-	SetUserIDInternal          func(userID string)   `gorm:"-"`
-	GetBalanceInternal         func() float64        `gorm:"-"`
-	SetBalanceInternal         func(balance float64) `gorm:"-"`
-	entity.BaseEntityInterface `gorm:"embedded"`
+	// The internal function fields have been commented out,
+	// and the getters/setters below operate directly on the properties.
+	/*
+		GetUserIDInternal  func() string         `gorm:"-"`
+		SetUserIDInternal  func(userID string)   `gorm:"-"`
+		GetBalanceInternal func() float64        `gorm:"-"`
+		SetBalanceInternal func(balance float64) `gorm:"-"`
+	*/
+	entity.Entity `gorm:"embedded"`
 }
 
 func (w *Wallet) GetBalance() float64 {
-	return w.GetBalanceInternal()
+	return w.Balance
 }
 
 func (w *Wallet) SetBalance(balance float64) {
-	w.SetBalanceInternal(balance)
+	w.Balance = balance
 }
 
 func (w *Wallet) GetUserID() string {
-	return w.GetUserIDInternal()
+	return w.UserID
 }
 
 func (w *Wallet) SetUserID(userID string) {
-	w.SetUserIDInternal(userID)
+	w.UserID = userID
 }
 
 type NewWalletParams struct {
@@ -61,19 +62,12 @@ func New(params NewWalletParams) *Wallet {
 	}
 
 	wb := &Wallet{
-		UserID:              UserID,
-		Balance:             params.Balance,
-		BaseEntityInterface: e,
+		UserID:  UserID,
+		Balance: params.Balance,
+		Entity:  *e,
 	}
-	wb.SetDefaults()
+	// Using direct field access; no need to set internal function defaults.
 	return wb
-}
-
-func (w *Wallet) SetDefaults() {
-	w.GetUserIDInternal = func() string { return w.UserID }
-	w.SetUserIDInternal = func(userID string) { w.UserID = userID }
-	w.GetBalanceInternal = func() float64 { return w.Balance }
-	w.SetBalanceInternal = func(balance float64) { w.Balance = balance }
 }
 
 func Parse(jsonBytes []byte) (*Wallet, error) {

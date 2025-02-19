@@ -29,36 +29,36 @@ type Entity struct {
 	// If you need to access a property, please use the Get and Set functions, not the property itself. It is only exposed in case you need to interact with it when altering internal functions.
 	// Internal Functions should not be interacted with directly, but if you need to change functionality, set a new function to the existing function.
 	// Instead, interact with the functions through the Entity Interface.
-	SetIdInternal           func(id string)              `gorm:"-"`
-	GetIdInternal           func() string                `gorm:"-"`
-	SetDateCreatedInternal  func(dateCreated time.Time)  `gorm:"-"`
-	GetDateCreatedInternal  func() time.Time             `gorm:"-"`
-	SetDateModifiedInternal func(dateModified time.Time) `gorm:"-"`
-	GetDateModifiedInternal func() time.Time             `gorm:"-"`
+	// SetIdInternal           func(id string)              `gorm:"-"`
+	// GetIdInternal           func() string                `gorm:"-"`
+	// SetDateCreatedInternal  func(dateCreated time.Time)  `gorm:"-"`
+	// GetDateCreatedInternal  func() time.Time             `gorm:"-"`
+	// SetDateModifiedInternal func(dateModified time.Time) `gorm:"-"`
+	// GetDateModifiedInternal func() time.Time             `gorm:"-"`
 }
 
 func (e *Entity) GetId() string {
-	return e.GetIdInternal()
+	return e.ID //e.GetIdInternal()
 }
 
 func (e *Entity) SetId(id string) {
-	e.SetIdInternal(id)
+	e.ID = id //e.SetIdInternal(id)
 }
 
 func (e *Entity) GetDateCreated() time.Time {
-	return e.GetDateCreatedInternal()
+	return e.DateCreated //e.GetDateCreatedInternal()
 }
 
 func (e *Entity) SetDateCreated(dateCreated time.Time) {
-	e.SetDateCreatedInternal(dateCreated)
+	e.DateCreated = dateCreated //e.SetDateCreatedInternal(dateCreated)
 }
 
 func (e *Entity) GetDateModified() time.Time {
-	return e.GetDateModifiedInternal()
+	return e.DateModified //e.GetDateModifiedInternal()
 }
 
 func (e *Entity) SetDateModified(dateModified time.Time) {
-	e.SetDateModifiedInternal(dateModified)
+	e.DateModified = dateModified //e.SetDateModifiedInternal(dateModified)
 }
 
 type NewEntityParams struct {
@@ -78,15 +78,15 @@ func NewEntity(params NewEntityParams) *Entity {
 }
 
 func (e *Entity) setEntityDefaults() {
-	e.SetIdInternal = func(id string) { e.ID = id }
-	e.GetIdInternal = func() string { return e.ID }
-	e.SetDateCreatedInternal = func(dateCreated time.Time) { e.DateCreated = dateCreated }
-	e.GetDateCreatedInternal = func() time.Time { return e.DateCreated }
-	e.SetDateModifiedInternal = func(dateModified time.Time) { e.DateModified = dateModified }
-	e.GetDateModifiedInternal = func() time.Time { return e.DateModified }
+	// e.SetIdInternal = func(id string) { e.ID = id }
+	// e.GetIdInternal = func() string { return e.ID }
+	// e.SetDateCreatedInternal = func(dateCreated time.Time) { e.DateCreated = dateCreated }
+	// e.GetDateCreatedInternal = func() time.Time { return e.DateCreated }
+	// e.SetDateModifiedInternal = func(dateModified time.Time) { e.DateModified = dateModified }
+	// e.GetDateModifiedInternal = func() time.Time { return e.DateModified }
 }
 
-func ParseEntity(jsonBytes []byte) (*Entity, error) {
+func ParseEntity(jsonBytes []byte) (BaseEntityInterface, error) {
 	var e NewEntityParams
 	if err := json.Unmarshal(jsonBytes, &e); err != nil {
 		return nil, err
