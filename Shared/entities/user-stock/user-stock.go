@@ -39,7 +39,7 @@ type UserStock struct {
 		GetQuantityInternal  func() int             `gorm:"-"`
 		SetQuantityInternal  func(quantity int)     `gorm:"-"`
 	*/
-	entity.Entity `gorm:"embedded"`
+	entity.Entity `json:"Entity" gorm:"embedded"`
 }
 
 func (us *UserStock) GetQuantity() int {

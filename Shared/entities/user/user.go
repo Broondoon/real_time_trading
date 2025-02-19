@@ -27,7 +27,7 @@ type User struct {
 	// SetUsernameInternal func(username string) `gorm:"-"`
 	// GetPasswordInternal func() string         `gorm:"-"`
 	// SetPasswordInternal func(password string) `gorm:"-"`
-	entity.Entity `gorm:"embedded"`
+	entity.Entity `json:"Entity" gorm:"embedded"`
 }
 
 func (u *User) GetName() string {

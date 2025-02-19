@@ -62,7 +62,7 @@ type StockOrder struct {
 	// SetPriceInternal              func(price float64)  `gorm:"-"`
 	// GetParentStockOrderIDInternal func() string        `gorm:"-"`
 	// SetParentStockOrderIDInternal func(string)         `gorm:"-"`
-	entity.Entity `gorm:"embedded"`
+	entity.Entity `json:"Entity" gorm:"embedded"`
 }
 
 func (so *StockOrder) GetIsBuy() bool {

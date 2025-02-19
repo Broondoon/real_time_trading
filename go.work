@@ -7,8 +7,8 @@ use (
 	./stock-order-database/database-service
 	./stock-order-database/database-access
 	./Test_base
-	./stock-transactions-database/database-access
-	./stock-transactions-database/database-service
+	./transaction-database/database-access
+	./transaction-database/database-service
 	./stock-database/database-access
 	./stock-database/database-service
 )

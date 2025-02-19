@@ -3,9 +3,11 @@ package stockDatabaseHandlers
 import (
 	"Shared/entities/stock"
 	"Shared/network"
-	"databaseServiceStock/database-connection"
+	databaseServiceStock "databaseServiceStock/database-connection"
 	"encoding/json"
 	"net/http"
+	"net/url"
+	"os"
 )
 
 var _databaseManager databaseServiceStock.DatabaseServiceInterface
@@ -17,12 +19,12 @@ func InitalizeHandlers(
 	_networkManager = networkManager
 
 	//Add handlers
-	networkManager.AddHandleFunc(network.HandlerParams{Pattern: "/createStock", Handler: AddNewStockHandler})
-	networkManager.AddHandleFunc(network.HandlerParams{Pattern: "/getStockIDs", Handler: GetStockIDsHandler})
-
+	_networkManager.AddHandleFunc(network.HandlerParams{Pattern: "/createStock", Handler: AddNewStockHandler})
+	_networkManager.AddHandleFunc(network.HandlerParams{Pattern: "/getStockIDs", Handler: GetStockIDsHandler})
+	network.CreateNetworkEntityHandlers[*stock.Stock](_networkManager, os.Getenv("STOCK_DATABASE_SERVICE_ROUTE"), _databaseManager, stock.Parse)
 }
 
-func GetStockIDsHandler(responseWriter http.ResponseWriter, data []byte) {
+func GetStockIDsHandler(responseWriter http.ResponseWriter, data []byte, queryParams url.Values, requestType string) {
 	stocks, err := _databaseManager.GetAll()
 	if err != nil {
 		responseWriter.WriteHeader(http.StatusInternalServerError)
@@ -41,8 +43,7 @@ func GetStockIDsHandler(responseWriter http.ResponseWriter, data []byte) {
 }
 
 // Expected input is a stock ID in the body of the request
-// we're expecting {"StockID":"{id value}"}
-func AddNewStockHandler(responseWriter http.ResponseWriter, data []byte) {
+func AddNewStockHandler(responseWriter http.ResponseWriter, data []byte, queryParams url.Values, requestType string) {
 	newStock, err := stock.Parse(data)
 	if err != nil {
 		responseWriter.WriteHeader(http.StatusBadRequest)

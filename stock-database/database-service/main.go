@@ -1,17 +1,16 @@
 package main
 
 import (
-	"Shared/database/database-service"
 	"Shared/network"
-	"databaseServiceStock/database-connection"
-	"databaseServiceStock/handlers"
+	databaseServiceStock "databaseServiceStock/database-connection"
+	stockDatabaseHandlers "databaseServiceStock/handlers"
 )
 
 //"Shared/network"
 
 func main() {
 	networkManager := network.NewNetwork()
-	_databaseManager := databaseServiceStock.NewDatabaseService(&databaseServiceStock.NewDatabaseServiceParams{NewPostGresDatabaseParams: &database.NewPostGresDatabaseParams{NewBaseDatabaseParams: &database.NewBaseDatabaseParams{}}})
+	_databaseManager := databaseServiceStock.NewDatabaseService(&databaseServiceStock.NewDatabaseServiceParams{})
 
 	go stockDatabaseHandlers.InitalizeHandlers(networkManager, _databaseManager)
 	println("Matching Engine Service Started")

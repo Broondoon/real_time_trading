@@ -10,5 +10,18 @@ CREATE TABLE stockTransactions (
     OrderType TEXT NOT NULL,
     StockPrice DECIMAL NOT NULL,
     Quantity INT NOT NULL,
+    Timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (ParentStockTransactionID) REFERENCES stockTransactions(ID)
+);
+
+CREATE TABLE walletTransactions (
+    ID SERIAL PRIMARY KEY,
+    StockTransactionID SERIAL,
+    WalletID SERIAL,
+    DateCreated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    DateModified TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    IsDebit BOOLEAN NOT NULL,
+    Amount DECIMAL NOT NULL,
+    Timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (StockTransactionID) REFERENCES stockTransactions(ID)
 );

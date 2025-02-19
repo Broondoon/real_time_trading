@@ -37,7 +37,6 @@ func main() {
 	println("Matching Engine Service Started")
 
 	networkManager.Listen(network.ListenerParams{
-		Port:    "8080",
 		Handler: nil,
 	})
 }

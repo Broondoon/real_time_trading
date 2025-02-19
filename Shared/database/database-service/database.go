@@ -24,16 +24,16 @@ type BaseDatabase struct {
 }
 
 type NewBaseDatabaseParams struct {
-	DATABASE_URL_ENV_OVERRIDE string // leave "" for default.
+	DATABASE_URL_ENV string // leave "" for default.
 }
 
 func NewBaseDatabase(params *NewBaseDatabaseParams) BaseDatabaseInterface {
-	envString := "DATABASE_URL"
-	if params.DATABASE_URL_ENV_OVERRIDE != "" {
-		envString = params.DATABASE_URL_ENV_OVERRIDE
+	if params.DATABASE_URL_ENV == "" {
+		params.DATABASE_URL_ENV = "DATABASE_URL"
 	}
+
 	return &BaseDatabase{
-		DatabaseURLEnv: envString,
+		DatabaseURLEnv: params.DATABASE_URL_ENV,
 		Connected:      false,
 	}
 }
@@ -72,10 +72,13 @@ type PostGresDatabase struct {
 }
 
 type NewPostGresDatabaseParams struct {
-	*NewBaseDatabaseParams
+	*NewBaseDatabaseParams // leave nil for default
 }
 
 func NewPostGresDatabase(params *NewPostGresDatabaseParams) PostGresDatabaseInterface {
+	if params.NewBaseDatabaseParams == nil {
+		params.NewBaseDatabaseParams = &NewBaseDatabaseParams{}
+	}
 	return &PostGresDatabase{
 		BaseDatabaseInterface: NewBaseDatabase(params.NewBaseDatabaseParams),
 	}
@@ -138,10 +141,21 @@ type EntityData[T entity.EntityInterface] struct {
 	// *gorm.DB //note, this allows us to treat this as a gorm.DB WITHIN the EntityData struct. This is not exposed as part of the interface, and thus cannot be used like this with the interface.
 }
 
-func NewEntityData[T entity.EntityInterface](params *NewPostGresDatabaseParams) EntityDataInterface[T] {
-	base := NewPostGresDatabase(params)
+type NewEntityDataParams struct {
+	*NewPostGresDatabaseParams                           // leave nil for default, Not used if existing is provided
+	Existing                   PostGresDatabaseInterface // leave nil for new database connection
+}
+
+func NewEntityData[T entity.EntityInterface](params *NewEntityDataParams) EntityDataInterface[T] {
+	if params.NewPostGresDatabaseParams == nil {
+		params.NewPostGresDatabaseParams = &NewPostGresDatabaseParams{}
+	}
+
+	if params.Existing == nil {
+		params.Existing = NewPostGresDatabase(params.NewPostGresDatabaseParams)
+	}
 	return &EntityData[T]{
-		PostGresDatabaseInterface: base,
+		PostGresDatabaseInterface: params.Existing,
 	}
 }
 

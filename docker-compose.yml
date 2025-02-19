@@ -13,8 +13,11 @@ services:
     networks:
        - go-network
     depends_on:
-      stock-order-db:
+      # stock-order-db:
+      #   condition: service_healthy
+      transaction-database-service:
         condition: service_healthy
+      
 
   matching-engine-service:
     build: 
@@ -26,7 +29,6 @@ services:
       - .env
     environment:
       DATABASE_URL: ${STOCK_ORDER_DATABASE_URL}
-      DATABASE_URL_TRANSACTION: ${STOCK_TRANSACTION_DATABASE_URL}
       PORT: ${MATCHING_ENGINE_PORT}
     depends_on:
       stock-order-db:
@@ -86,6 +88,28 @@ services:
       stock-db:
         condition: service_healthy
 
+  transaction-database-service:
+    build: 
+          context: .
+          dockerfile: ./transaction-database/database-service/Dockerfile
+    ports:
+      - "${TRANSACTION_DATABASE_SERVICE_PORT}:${TRANSACTION_DATABASE_SERVICE_PORT}"
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: ${TRANSACTION_DATABASE_URL}
+      PORT: ${TRANSACTION_DATABASE_SERVICE_PORT}
+    networks:
+       - go-network
+    depends_on:
+      transaction-db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://transaction-database-service:${TRANSACTION_DATABASE_SERVICE_PORT}/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
   auth-db:
     image: postgres:latest
     restart: always
@@ -127,20 +151,20 @@ services:
     networks:
       - go-network
 
-  stock-transaction-db:
+  transaction-db:
     image: postgres:latest
     restart: always
     env_file:
       - .env
     environment:
-      POSTGRES_USER: ${STOCK_TRANSACTION_POSTGRES_USER}
-      POSTGRES_PASSWORD: ${STOCK_TRANSACTION_POSTGRES_PASSWORD}
-      POSTGRES_DB: ${STOCK_TRANSACTION_POSTGRES_DB}
+      POSTGRES_USER: ${TRANSACTION_POSTGRES_USER}
+      POSTGRES_PASSWORD: ${TRANSACTION_POSTGRES_PASSWORD}
+      POSTGRES_DB: ${TRANSACTION_POSTGRES_DB}
     volumes:
       - db-data:/var/lib/postgresql/data
-      - ./stock-transaction-database/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./transaction-database/init.sql:/docker-entrypoint-initdb.d/init.sql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U $STOCK_TRANSACTION_POSTGRES_USER -d $STOCK_TRANSACTION_POSTGRES_DB"]
+      test: ["CMD-SHELL", "pg_isready -U $TRANSACTION_POSTGRES_USER -d $TRANSACTION_POSTGRES_DB"]
       interval: 5s
       timeout: 5s
       retries: 3

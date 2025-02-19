@@ -28,6 +28,7 @@ type NetworkInterface interface {
 	OrderInitator() HttpClientInterface
 	OrderExecutor() HttpClientInterface
 	Stocks() HttpClientInterface
+	Transactions() HttpClientInterface
 }
 
 type Network struct {
@@ -38,6 +39,7 @@ type Network struct {
 	OrderInitatorService        HttpClientInterface
 	OrderExecutorService        HttpClientInterface
 	StocksService               HttpClientInterface
+	TransactionsService         HttpClientInterface
 }
 
 func (n *Network) MatchingEngine() HttpClientInterface {
@@ -68,6 +70,10 @@ func (n *Network) Stocks() HttpClientInterface {
 	return n.StocksService
 }
 
+func (n *Network) Transactions() HttpClientInterface {
+	return n.TransactionsService
+}
+
 func NewNetwork() NetworkInterface {
 	baseURL := os.Getenv("BASE_URL_PREFIX")
 	baseURLPostfix := "/"
@@ -79,26 +85,39 @@ func NewNetwork() NetworkInterface {
 		OrderInitatorService:        newHttpClient(baseURL + os.Getenv("ORDER_INITIATOR_HOST") + ":" + os.Getenv("ORDER_INITIATOR_PORT") + baseURLPostfix),
 		OrderExecutorService:        newHttpClient(baseURL + os.Getenv("ORDER_EXECUTOR_HOST") + ":" + os.Getenv("ORDER_EXECUTOR_PORT") + baseURLPostfix),
 		StocksService:               newHttpClient(baseURL + os.Getenv("STOCKS_HOST") + ":" + os.Getenv("STOCKS_PORT") + baseURLPostfix),
+		TransactionsService:         newHttpClient(baseURL + os.Getenv("TRANSACTIONS_HOST") + ":" + os.Getenv("TRANSACTIONS_PORT") + baseURLPostfix),
 	}
 }
 
 type HandlerParams struct {
 	Pattern string
-	Handler func(http.ResponseWriter, []byte)
+	Handler func(http.ResponseWriter, []byte, url.Values, string)
 }
 
 // Still probably needs authentication shoved in.
 func (n *Network) AddHandleFunc(params HandlerParams) {
-	http.HandleFunc(params.Pattern, func(w http.ResponseWriter, r *http.Request) {
-		body, err := io.ReadAll(r.Body)
-		if err != nil {
-			fmt.Println("Error, there was an issue with reading the message:", err)
-			w.WriteHeader(http.StatusInternalServerError)
-			return
+	http.HandleFunc("/"+params.Pattern, func(w http.ResponseWriter, r *http.Request) {
+		var body []byte
+		var err error
+		var queryParams url.Values
+		if r.Method == http.MethodGet || r.Method == http.MethodDelete {
+			//decode params
+			queryParams = r.URL.Query()
+			id := strings.TrimPrefix(r.URL.Path, params.Pattern)
+			if id != "" {
+				queryParams.Add("id", id)
+			}
+		} else {
+			body, err = io.ReadAll(r.Body)
+			if err != nil {
+				fmt.Println("Error, there was an issue with reading the message:", err)
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+			defer r.Body.Close()
 		}
-		defer r.Body.Close()
+		params.Handler(w, body, queryParams, r.Method)
 		w.WriteHeader(http.StatusOK)
-		params.Handler(w, body)
 		w.Write([]byte("Message received successfully!"))
 	})
 }

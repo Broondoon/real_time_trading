@@ -19,7 +19,7 @@ type Stock struct {
 	// Instead, interact with the functions through the Stock Interface.
 	// GetNameInternal func() string     `gorm:"-"`
 	// SetNameInternal func(name string) `gorm:"-"`
-	entity.Entity `gorm:"embedded"`
+	entity.Entity `json:"Entity" gorm:"embedded"`
 }
 
 func (s *Stock) GetName() string {

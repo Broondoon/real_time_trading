@@ -4,6 +4,7 @@ import (
 	"Shared/entities/entity"
 	"Shared/entities/wallet"
 	"encoding/json"
+	"time"
 )
 
 type WalletTransactionInterface interface {
@@ -15,16 +16,19 @@ type WalletTransactionInterface interface {
 	SetIsDebit(isDebit bool)
 	GetAmount() float64
 	SetAmount(amount float64)
+	GetTimestamp() time.Time
+	SetTimestamp(timestamp time.Time)
 	ToParams() NewWalletTransactionParams
-	ToJSON() ([]byte, error)
 	entity.EntityInterface
 }
 
 type WalletTransaction struct {
-	WalletID           string  `json:"WalletID" gorm:"not null"`
-	StockTransactionID string  `json:"StockTransactionID" gorm:"not null"`
-	IsDebit            bool    `json:"IsDebit" gorm:"not null"`
-	Amount             float64 `json:"Amount" gorm:"not null"`
+	WalletID           string    `json:"WalletID" gorm:"not null"`
+	StockTransactionID string    `json:"StockTransactionID" gorm:"not null"`
+	IsDebit            bool      `json:"IsDebit" gorm:"not null"`
+	Amount             float64   `json:"Amount" gorm:"not null"`
+	Timestamp          time.Time `json:"time_stamp"`
+
 	// Internal functions have been commented out.
 	// GetWalletIDInternal           func() string                   `gorm:"-"`
 	// SetWalletIDInternal           func(walletID string)           `gorm:"-"`
@@ -34,7 +38,7 @@ type WalletTransaction struct {
 	// SetIsDebitInternal            func(isDebit bool)              `gorm:"-"`
 	// GetAmountInternal             func() float64                  `gorm:"-"`
 	// SetAmountInternal             func(amount float64)            `gorm:"-"`
-	entity.Entity `gorm:"embedded"`
+	entity.Entity `json:"Entity" gorm:"embedded"`
 }
 
 func (wt *WalletTransaction) GetWalletID() string {
@@ -69,12 +73,21 @@ func (wt *WalletTransaction) SetAmount(amount float64) {
 	wt.Amount = amount
 }
 
+func (wt *WalletTransaction) GetTimestamp() time.Time {
+	return wt.Timestamp
+}
+
+func (wt *WalletTransaction) SetTimestamp(timestamp time.Time) {
+	wt.Timestamp = timestamp
+}
+
 type NewWalletTransactionParams struct {
 	entity.NewEntityParams
-	WalletID           string  `json:"WalletID" gorm:"not null"`
-	StockTransactionID string  `json:"StockTransactionID" gorm:"not null"`
-	IsDebit            bool    `json:"IsDebit" gorm:"not null"`
-	Amount             float64 `json:"Amount" gorm:"not null"`
+	WalletID           string    `json:"WalletID" gorm:"not null"`
+	StockTransactionID string    `json:"StockTransactionID" gorm:"not null"`
+	IsDebit            bool      `json:"IsDebit" gorm:"not null"`
+	Amount             float64   `json:"Amount" gorm:"not null"`
+	Timestamp          time.Time `json:"time_stamp"`
 	Wallet             wallet.WalletInterface
 	StockTransaction   StockTransactionInterface
 }
@@ -82,9 +95,10 @@ type NewWalletTransactionParams struct {
 func NewWalletTransaction(params NewWalletTransactionParams) *WalletTransaction {
 	e := entity.NewEntity(params.NewEntityParams)
 	wt := &WalletTransaction{
-		Entity:  *e,
-		IsDebit: params.IsDebit,
-		Amount:  params.Amount,
+		Entity:    *e,
+		IsDebit:   params.IsDebit,
+		Amount:    params.Amount,
+		Timestamp: params.Timestamp,
 	}
 	if params.Wallet != nil {
 		wt.WalletID = params.Wallet.GetId()
@@ -124,7 +138,12 @@ func (wt *WalletTransaction) ToParams() NewWalletTransactionParams {
 		StockTransactionID: wt.GetStockTransactionID(),
 		IsDebit:            wt.GetIsDebit(),
 		Amount:             wt.GetAmount(),
+		Timestamp:          wt.GetTimestamp(),
 	}
+}
+
+func (wt *WalletTransaction) ToJSON() ([]byte, error) {
+	return json.Marshal(wt.ToParams())
 }
 
 type FakeWalletTransaction struct {

@@ -2,9 +2,8 @@ package databaseAccessStockOrder
 
 import (
 	databaseAccess "Shared/database/database-access"
-	"Shared/database/database-service"
 	"Shared/entities/order"
-	"databaseServiceStockOrder"
+	databaseServiceStockOrder "databaseServiceStockOrder/database-connection"
 )
 
 type EntityDataAccessInterface = databaseAccess.EntityDataAccessInterface[*order.StockOrder, order.StockOrderInterface]
@@ -21,23 +20,28 @@ type DatabaseAccess struct {
 }
 
 type NewDatabaseAccessParams struct {
-	*databaseAccess.NewDatabaseAccessParams
 	*databaseAccess.NewEntityDataAccessParams[*order.StockOrder]
 }
 
 func NewDatabaseAccess(params *NewDatabaseAccessParams) DatabaseAccessInterface {
+	if params.NewEntityDataAccessParams == nil {
+		params.NewEntityDataAccessParams = &databaseAccess.NewEntityDataAccessParams[*order.StockOrder]{
+			NewDatabaseAccessParams: &databaseAccess.NewDatabaseAccessParams{},
+		}
+	}
+
 	//This is our dirty temporary implementation of this. Ideallily, this access has no idea what sort of database setup there is. It just knows "SEND HERE TO GET DATA"
-	dataServiceTemp := databaseServiceStockOrder.NewDatabaseService(databaseServiceStockOrder.NewDatabaseServiceParams{
-		NewPostGresDatabaseParams: &database.NewPostGresDatabaseParams{
-			NewBaseDatabaseParams: &database.NewBaseDatabaseParams{},
-		},
-	})
+	var tempDatabaseService databaseServiceStockOrder.DatabaseServiceInterface
+	if params.NewEntityDataAccessParams.EntityDataServiceTemp == nil {
+		tempDatabaseService = databaseServiceStockOrder.NewDatabaseService(databaseServiceStockOrder.NewDatabaseServiceParams{})
+		params.NewEntityDataAccessParams.EntityDataServiceTemp = tempDatabaseService
+	} else {
+		tempDatabaseService = params.NewEntityDataAccessParams.EntityDataServiceTemp.(databaseServiceStockOrder.DatabaseServiceInterface)
+	}
 
 	dba := &DatabaseAccess{
-		EntityDataAccessInterface: databaseAccess.NewEntityDataAccess[*order.StockOrder, order.StockOrderInterface](&databaseAccess.NewEntityDataAccessParams[*order.StockOrder]{
-			NewDatabaseAccessParams: params.NewDatabaseAccessParams,
-			EntityDataServiceTemp:   dataServiceTemp, //This is our dirty temporary implementation of this. Ideallily, this access has no idea what sort of database setup there is. It just knows "SEND HERE TO GET DATA"
-		}),
+		EntityDataAccessInterface: databaseAccess.NewEntityDataAccess[*order.StockOrder, order.StockOrderInterface](params.NewEntityDataAccessParams),
+		TEMPCONNECTION:            tempDatabaseService,
 	}
 	dba.Connect()
 	return dba

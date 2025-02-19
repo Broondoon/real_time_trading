@@ -26,7 +26,7 @@ type Wallet struct {
 		GetBalanceInternal func() float64        `gorm:"-"`
 		SetBalanceInternal func(balance float64) `gorm:"-"`
 	*/
-	entity.Entity `gorm:"embedded"`
+	entity.Entity `json:"Entity" gorm:"embedded"`
 }
 
 func (w *Wallet) GetBalance() float64 {
