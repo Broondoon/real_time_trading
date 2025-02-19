@@ -85,8 +85,8 @@ func PlaceStockOrder(stockOrder order.StockOrderInterface) bool {
 		return false
 	}
 
-	stockOrderCreated := _databaseManager.CreateStockOrder(stockOrder)
-	me.AddOrder(stockOrderCreated)
+	_databaseManager.Create(stockOrder)
+	me.AddOrder(stockOrder)
 	return true
 }
 
@@ -106,15 +106,13 @@ func DeleteStockOrderHandler(responseWriter http.ResponseWriter, data []byte) {
 }
 
 func DeleteStockOrder(orderID string) {
-	stockOrder := (_databaseManager.DeleteStockOrder(orderID))
-	if stockOrder == nil {
-		return
-	}
+	order := _databaseManager.GetByID(orderID)
+	_databaseManager.Delete(orderID)
 	me, ok := _matchingEngineMap[orderID]
 	if !ok {
 		return
 	}
-	me.RemoveOrder(stockOrder.GetId(), stockOrder.GetPrice())
+	me.RemoveOrder(orderID, order.GetPrice())
 }
 
 func SendToOrderExection(buyOrder order.StockOrderInterface, sellOrder order.StockOrderInterface) transaction.StockTransactionInterface {
@@ -124,7 +122,7 @@ func SendToOrderExection(buyOrder order.StockOrderInterface, sellOrder order.Sto
 	if sellQty < buyQty {
 		quantity = sellQty
 	}
-	transferEntity := network.MatchingEngineToExectuionJSON{
+	transferEntity := network.MatchingEngineToExecutionJSON{
 		StockID:       buyOrder.GetStockID(),
 		BuyOrderID:    buyOrder.GetId(),
 		SellOrderID:   sellOrder.GetId(),
