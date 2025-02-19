@@ -9,3 +9,7 @@ type MatchingEngineToExecutionJSON struct {
 	StockPrice    float64 `json:"stock_price"`
 	Quantity      int     `json:"quantity"`
 }
+
+type StockPrices struct {
+	StockPrices map[string]float64 `json:"stock_prices"`
+}
