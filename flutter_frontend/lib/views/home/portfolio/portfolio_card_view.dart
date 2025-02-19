@@ -3,6 +3,8 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_frontend/resources/app_style.dart';
+import 'package:flutter_frontend/router/app_router.dart';
+import 'package:go_router/go_router.dart';
 
 class PortfolioCard extends StatelessWidget {
   const PortfolioCard({
@@ -37,7 +39,7 @@ class PortfolioCard extends StatelessWidget {
               )
             ),
             ElevatedButton(
-              onPressed: () => {},
+              onPressed: () => context.goNamed(marketRouteName),
               child: Text(
                 'Search the Market',
                 style: MyAppStyle.regularFont,
