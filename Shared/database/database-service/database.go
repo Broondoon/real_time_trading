@@ -186,7 +186,7 @@ func (d *EntityData[T]) GetByIDs(ids []string) (*[]T, error) {
 
 func (d *EntityData[T]) GetAll() (*[]T, error) {
 	var entities []T
-	d.GetDatabaseSession().Find(entities)
+	d.GetDatabaseSession().Find(&entities)
 	for _, o := range entities {
 		o.SetDefaults()
 	}
