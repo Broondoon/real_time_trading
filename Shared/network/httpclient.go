@@ -27,6 +27,7 @@ type NetworkInterface interface {
 	Authentication() HttpClientInterface
 	OrderInitator() HttpClientInterface
 	OrderExecutor() HttpClientInterface
+	Stocks() HttpClientInterface
 }
 
 type Network struct {
@@ -36,6 +37,7 @@ type Network struct {
 	AuthenticationService       HttpClientInterface
 	OrderInitatorService        HttpClientInterface
 	OrderExecutorService        HttpClientInterface
+	StocksService               HttpClientInterface
 }
 
 func (n *Network) MatchingEngine() HttpClientInterface {
@@ -62,6 +64,10 @@ func (n *Network) OrderExecutor() HttpClientInterface {
 	return n.OrderExecutorService
 }
 
+func (n *Network) Stocks() HttpClientInterface {
+	return n.StocksService
+}
+
 func NewNetwork() NetworkInterface {
 	baseURL := os.Getenv("BASE_URL_PREFIX")
 	baseURLPostfix := "/"
@@ -72,6 +78,7 @@ func NewNetwork() NetworkInterface {
 		AuthenticationService:       newHttpClient(baseURL + os.Getenv("AUTH_HOST") + ":" + os.Getenv("AUTH_PORT") + baseURLPostfix),
 		OrderInitatorService:        newHttpClient(baseURL + os.Getenv("ORDER_INITIATOR_HOST") + ":" + os.Getenv("ORDER_INITIATOR_PORT") + baseURLPostfix),
 		OrderExecutorService:        newHttpClient(baseURL + os.Getenv("ORDER_EXECUTOR_HOST") + ":" + os.Getenv("ORDER_EXECUTOR_PORT") + baseURLPostfix),
+		StocksService:               newHttpClient(baseURL + os.Getenv("STOCKS_HOST") + ":" + os.Getenv("STOCKS_PORT") + baseURLPostfix),
 	}
 }
 

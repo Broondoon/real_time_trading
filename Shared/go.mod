@@ -2,7 +2,10 @@ module Shared
 
 go 1.23.5
 
-require gorm.io/driver/postgres v1.5.11
+require (
+	github.com/google/uuid v1.6.0
+	gorm.io/driver/postgres v1.5.11
+)
 
 require (
 	github.com/golang-jwt/jwt/v5 v5.2.1
@@ -15,5 +18,5 @@ require (
 	golang.org/x/crypto v0.17.0 // indirect
 	golang.org/x/sync v0.1.0 // indirect
 	golang.org/x/text v0.14.0 // indirect
-	gorm.io/gorm v1.25.10 // indirect
+	gorm.io/gorm v1.25.10
 )

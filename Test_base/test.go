@@ -9,10 +9,24 @@ import (
 	userStock "Shared/entities/user-stock"
 	"Shared/entities/wallet"
 	"fmt"
+	"reflect"
 	"time"
 )
 
+type Test[T any] interface {
+	test(t T)
+}
+
+type TestStruct[T any] struct {
+}
+
+func (t *TestStruct[T]) test(td T) {
+
+	fmt.Println("Test: %s", reflect.TypeOf(td))
+}
+
 func main() {
+
 	// Create a new User
 	u := user.New(user.NewUserParams{
 		NewEntityParams: entity.NewEntityParams{
@@ -23,6 +37,9 @@ func main() {
 		Username: "test",
 		Password: "password",
 	})
+
+	test := TestStruct[entity.EntityInterface]{}
+	test.test(u)
 
 	// Print the User
 	fmt.Print("User: ")

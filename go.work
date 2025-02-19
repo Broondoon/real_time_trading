@@ -9,4 +9,6 @@ use (
 	./Test_base
 	./stock-transactions-database/database-access
 	./stock-transactions-database/database-service
+	./stock-database/database-access
+	./stock-database/database-service
 )

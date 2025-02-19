@@ -33,6 +33,24 @@ services:
     networks:
        - go-network
 
+  stock-database-service:
+    build: 
+          context: .
+          dockerfile: ./stock-database/database-service/Dockerfile
+    ports:
+      - "${STOCK_DATABASE_SERVICE_PORT}:${STOCK_DATABASE_SERVICE_PORT}"
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: ${STOCK_DATABASE_URL}
+      PORT: ${STOCK_DATABASE_SERVICE_PORT}
+    networks:
+       - go-network
+    depends_on:
+      stock-db:
+        condition: service_healthy
+
+
   stock-order-db:
     image: postgres:latest
     restart: always
