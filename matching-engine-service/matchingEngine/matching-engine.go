@@ -101,7 +101,7 @@ func (me *MatchingEngine) RunMatchingEngineOrders() {
 						switch result.GetOrderStatus() {
 						case "COMPLETED":
 							sellOrder.SetQuantity(sellOrder.GetQuantity() - buyOrderQuantity)
-							_databaseManager.UpdateStockOrder(sellOrder)
+							_databaseManager.Update(sellOrder)
 							buyOrderQuantity = 0
 						default:
 							me.SellOrderBook.AddOrder(sellOrder)
@@ -118,7 +118,7 @@ func (me *MatchingEngine) RunMatchingEngineOrders() {
 						case "COMPLETED":
 							buyOrder.SetQuantity(buyOrder.GetQuantity() - sellOrder.GetQuantity())
 							buyOrderQuantity -= sellOrder.GetQuantity()
-							_databaseManager.DeleteStockOrder(sellOrder.GetId())
+							_databaseManager.Delete(sellOrder.GetId())
 							sellOrder = me.SellOrderBook.GetBestOrder()
 							if sellOrder == nil {
 								me.BuyOrderBook.AddOrder(buyOrder)
@@ -131,7 +131,7 @@ func (me *MatchingEngine) RunMatchingEngineOrders() {
 					}
 				}
 				if buyOrderQuantity <= 0 {
-					_databaseManager.DeleteStockOrder(buyOrder.GetId())
+					_databaseManager.Delete(buyOrder.GetId())
 				}
 			}
 			me.SellOrderBook.CompleteBestOrderExtraction()
