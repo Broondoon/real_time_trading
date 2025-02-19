@@ -6,18 +6,118 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"net/url"
+	"os"
+	"strings"
 	"time"
+
+	"github.com/golang-jwt/jwt/v5"
 )
+
+var jwtSecret = []byte(os.Getenv("JWT_SECRET"))
+
+type NetworkInterface interface {
+	AddHandleFunc(params HandlerParams)
+	Listen(params ListenerParams)
+	MatchingEngine() HttpClientInterface
+	MicroserviceTemplate() HttpClientInterface
+	UserManagement() HttpClientInterface
+	Authentication() HttpClientInterface
+	OrderInitator() HttpClientInterface
+	OrderExecutor() HttpClientInterface
+	Stocks() HttpClientInterface
+}
+
+type Network struct {
+	MatchingEngineService       HttpClientInterface
+	MicroserviceTemplateService HttpClientInterface
+	UserManagementService       HttpClientInterface
+	AuthenticationService       HttpClientInterface
+	OrderInitatorService        HttpClientInterface
+	OrderExecutorService        HttpClientInterface
+	StocksService               HttpClientInterface
+}
+
+func (n *Network) MatchingEngine() HttpClientInterface {
+	return n.MatchingEngineService
+}
+
+func (n *Network) MicroserviceTemplate() HttpClientInterface {
+	return n.MicroserviceTemplateService
+}
+
+func (n *Network) UserManagement() HttpClientInterface {
+	return n.UserManagementService
+}
+
+func (n *Network) Authentication() HttpClientInterface {
+	return n.AuthenticationService
+}
+
+func (n *Network) OrderInitator() HttpClientInterface {
+	return n.OrderInitatorService
+}
+
+func (n *Network) OrderExecutor() HttpClientInterface {
+	return n.OrderExecutorService
+}
+
+func (n *Network) Stocks() HttpClientInterface {
+	return n.StocksService
+}
+
+func NewNetwork() NetworkInterface {
+	baseURL := os.Getenv("BASE_URL_PREFIX")
+	baseURLPostfix := "/"
+	return &Network{
+		MatchingEngineService:       newHttpClient(baseURL + os.Getenv("MATCHING_ENGINE_HOST") + ":" + os.Getenv("MATCHING_ENGINE_PORT") + baseURLPostfix),
+		MicroserviceTemplateService: newHttpClient(baseURL + os.Getenv("MICROSERVICE_TEMPLATE_HOST") + ":" + os.Getenv("MICROSERVICE_TEMPLATE_PORT") + baseURLPostfix),
+		UserManagementService:       newHttpClient(baseURL + os.Getenv("USER_MANAGEMENT_HOST") + ":" + os.Getenv("USER_MANAGEMENT_PORT") + baseURLPostfix),
+		AuthenticationService:       newHttpClient(baseURL + os.Getenv("AUTH_HOST") + ":" + os.Getenv("AUTH_PORT") + baseURLPostfix),
+		OrderInitatorService:        newHttpClient(baseURL + os.Getenv("ORDER_INITIATOR_HOST") + ":" + os.Getenv("ORDER_INITIATOR_PORT") + baseURLPostfix),
+		OrderExecutorService:        newHttpClient(baseURL + os.Getenv("ORDER_EXECUTOR_HOST") + ":" + os.Getenv("ORDER_EXECUTOR_PORT") + baseURLPostfix),
+		StocksService:               newHttpClient(baseURL + os.Getenv("STOCKS_HOST") + ":" + os.Getenv("STOCKS_PORT") + baseURLPostfix),
+	}
+}
+
+type HandlerParams struct {
+	Pattern string
+	Handler func(http.ResponseWriter, []byte)
+}
+
+// Still probably needs authentication shoved in.
+func (n *Network) AddHandleFunc(params HandlerParams) {
+	http.HandleFunc(params.Pattern, func(w http.ResponseWriter, r *http.Request) {
+		body, err := io.ReadAll(r.Body)
+		if err != nil {
+			fmt.Println("Error, there was an issue with reading the message:", err)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		defer r.Body.Close()
+		w.WriteHeader(http.StatusOK)
+		params.Handler(w, body)
+		w.Write([]byte("Message received successfully!"))
+	})
+}
+
+type ListenerParams struct {
+	Handler http.Handler //can be nil
+}
+
+func (n *Network) Listen(params ListenerParams) {
+	http.ListenAndServe(":"+os.Getenv("PORT"), params.Handler)
+}
+
+// HttpClientInterface is an interface for the HttpClient struct
 
 type HttpClientInterface interface {
 	Get(endpoint string, queryParams map[string]string) ([]byte, error)
 	Post(endpoint string, payload interface{}) ([]byte, error)
 	Put(endpoint string, payload interface{}) ([]byte, error)
 	Delete(endpoint string) ([]byte, error)
-	AddHandleFunc(params HandlerParams)
-	Listen(params ListenerParams)
 }
 
 type HttpClient struct {
@@ -27,9 +127,9 @@ type HttpClient struct {
 	SecretKey []byte
 }
 
-func NewHttpClient(baseURL string) *HttpClient {
+func newHttpClient(envString string) HttpClientInterface {
 	return &HttpClient{
-		BaseURL: baseURL,
+		BaseURL: os.Getenv(envString),
 		Client:  &http.Client{Timeout: 10 * time.Second},
 	}
 }
@@ -161,51 +261,49 @@ func (hc *HttpClient) Delete(endpoint string) ([]byte, error) {
 	return hc.handleResponse(resp)
 }
 
-type HandlerParams struct {
-	Pattern string
-	Handler func(http.ResponseWriter, []byte)
-}
+// ExtractUserIDFromToken extracts the user ID from a JWT token
+func ExtractUserIDFromToken(tokenString string) (uint, error) {
+	if tokenString == "" {
+		log.Println("[ExtractUserIDFromToken] Missing token in request")
+		return 0, errors.New("missing token in request")
+	}
 
-// Still probably needs authentication shoved in.
-func AddHandleFunc(params HandlerParams) {
-	http.HandleFunc(params.Pattern, func(w http.ResponseWriter, r *http.Request) {
-		body, err := io.ReadAll(r.Body)
-		if err != nil {
-			fmt.Println("Error, there was an issue with reading the message:", err)
-			w.WriteHeader(http.StatusInternalServerError)
-			return
+	// Remove "Bearer " prefix if present
+	tokenString = strings.TrimPrefix(tokenString, "Bearer ")
+
+	// Ensure JWT_SECRET is loaded
+	if len(jwtSecret) == 0 {
+		log.Println("[ExtractUserIDFromToken] JWT secret is missing")
+		return 0, errors.New("server misconfiguration: JWT secret is missing")
+	}
+
+	// Parse the token
+	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+		// Ensure the signing method is what we expect
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			log.Printf("[ExtractUserIDFromToken] Unexpected signing method: %v", token.Header["alg"])
+			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 		}
-		defer r.Body.Close()
-		w.WriteHeader(http.StatusOK)
-		params.Handler(w, body)
-		w.Write([]byte("Message received successfully!"))
+		return jwtSecret, nil
 	})
-}
+	if err != nil {
+		log.Printf("[ExtractUserIDFromToken] Token parsing error: %v", err)
+		return 0, fmt.Errorf("invalid token: %v", err)
+	}
 
-type ListenerParams struct {
-	Port    string
-	Handler http.Handler
-}
+	// Extract claims
+	claims, ok := token.Claims.(jwt.MapClaims)
+	if !ok {
+		log.Println("[ExtractUserIDFromToken] Failed to parse token claims")
+		return 0, errors.New("invalid claims structure in token")
+	}
 
-func Listen(params ListenerParams) {
-	http.ListenAndServe(":"+params.Port, params.Handler)
-}
+	// Extract userID from claims
+	userID, ok := claims["sub"].(float64)
+	if !ok {
+		log.Println("[ExtractUserIDFromToken] Missing or malformed user ID in token")
+		return 0, errors.New("missing or malformed user ID in token")
+	}
 
-type FakeHttpClient struct {
-	listenCalled   bool
-	listenerParams ListenerParams
-}
-
-func (fhc *FakeHttpClient) Get(endpoint string, queryParams map[string]string) ([]byte, error) {
-	return nil, nil
-}
-func (fhc *FakeHttpClient) Post(endpoint string, payload interface{}) ([]byte, error) {
-	return nil, nil
-}
-func (fhc *FakeHttpClient) Put(endpoint string, payload interface{}) ([]byte, error) { return nil, nil }
-func (fhc *FakeHttpClient) Delete(endpoint string) ([]byte, error)                   { return nil, nil }
-func (fhc *FakeHttpClient) AddHandleFunc(params HandlerParams)                       {}
-func (fhc *FakeHttpClient) Listen(params ListenerParams) {
-	fhc.listenCalled = true
-	fhc.listenerParams = params
+	return uint(userID), nil
 }

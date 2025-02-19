@@ -11,87 +11,84 @@ type WalletInterface interface {
 	SetUserID(userID string)
 	GetBalance() float64
 	SetBalance(balance float64)
-	WalletToParams() NewWalletParams
-	WalletToJSON() ([]byte, error)
+	ToParams() NewWalletParams
 	entity.EntityInterface
 }
 
 type Wallet struct {
-	// If you need to access a property, please use the Get and Set functions, not the property itself. It is only exposed in case you need to interact with it when altering internal functions.
-	UserID  string
-	Balance float64
-	// Internal Functions should not be interacted with directly. if you need to change functionality, set a new function to the existing internal function.
-	// Instead, interact with the functions through the wallet Interface.
-	GetUserIDInternal  func() string
-	SetUserIDInternal  func(userID string)
-	GetBalanceInternal func() float64
-	SetBalanceInternal func(balance float64)
-	entity.EntityInterface
+	UserID  string  `json:"UserId" gorm:"not null"`
+	Balance float64 `json:"Balance" gorm:"not null"`
+	// The internal function fields have been commented out,
+	// and the getters/setters below operate directly on the properties.
+	/*
+		GetUserIDInternal  func() string         `gorm:"-"`
+		SetUserIDInternal  func(userID string)   `gorm:"-"`
+		GetBalanceInternal func() float64        `gorm:"-"`
+		SetBalanceInternal func(balance float64) `gorm:"-"`
+	*/
+	entity.Entity `gorm:"embedded"`
 }
 
 func (w *Wallet) GetBalance() float64 {
-	return w.GetBalanceInternal()
+	return w.Balance
 }
 
 func (w *Wallet) SetBalance(balance float64) {
-	w.SetBalanceInternal(balance)
+	w.Balance = balance
 }
 
 func (w *Wallet) GetUserID() string {
-	return w.GetUserIDInternal()
+	return w.UserID
 }
 
 func (w *Wallet) SetUserID(userID string) {
-	w.SetUserIDInternal(userID)
+	w.UserID = userID
 }
 
 type NewWalletParams struct {
 	entity.NewEntityParams
+	UserID  string             `json:"UserId" gorm:"not null"`
+	Balance float64            `json:"Balance" gorm:"not null"`
 	User    user.UserInterface // use this or UserId
-	UserId  string             `json:"UserId"` // use this or User
-	Balance float64            `json:"Balance"`
 }
 
-func NewWallet(params NewWalletParams) *Wallet {
+func New(params NewWalletParams) *Wallet {
 	e := entity.NewEntity(params.NewEntityParams)
 	var UserID string
 	if params.User != nil {
 		UserID = params.User.GetId()
 	} else {
-		UserID = params.UserId
+		UserID = params.UserID
 	}
 
 	wb := &Wallet{
-		UserID:          UserID,
-		Balance:         params.Balance,
-		EntityInterface: e,
+		UserID:  UserID,
+		Balance: params.Balance,
+		Entity:  *e,
 	}
-	wb.GetUserIDInternal = func() string { return wb.UserID }
-	wb.SetUserIDInternal = func(userID string) { wb.UserID = userID }
-	wb.GetBalanceInternal = func() float64 { return wb.Balance }
-	wb.SetBalanceInternal = func(balance float64) { wb.Balance = balance }
+	// Using direct field access; no need to set internal function defaults.
 	return wb
 }
 
-func ParseWallet(jsonBytes []byte) (*Wallet, error) {
+func Parse(jsonBytes []byte) (*Wallet, error) {
 	var w NewWalletParams
 	if err := json.Unmarshal(jsonBytes, &w); err != nil {
 		return nil, err
 	}
-	return NewWallet(w), nil
+	return New(w), nil
 }
 
-func (w *Wallet) WalletToParams() NewWalletParams {
+func (w *Wallet) ToParams() NewWalletParams {
 	return NewWalletParams{
 		NewEntityParams: w.EntityToParams(),
 		User:            nil,
-		UserId:          w.GetUserID(),
+		UserID:          w.GetUserID(),
 		Balance:         w.GetBalance(),
 	}
 }
 
-func (w *Wallet) WalletToJSON() ([]byte, error) {
-	return json.Marshal(w.WalletToParams())
+func (w *Wallet) ToJSON() ([]byte, error) {
+	return json.Marshal(w.ToParams())
 }
 
 type FakeWallet struct {
@@ -100,9 +97,9 @@ type FakeWallet struct {
 	Balance float64
 }
 
-func (fw *FakeWallet) GetUserID() string               { return fw.UserID }
-func (fw *FakeWallet) SetUserID(userID string)         { fw.UserID = userID }
-func (fw *FakeWallet) GetBalance() float64             { return fw.Balance }
-func (fw *FakeWallet) SetBalance(balance float64)      { fw.Balance = balance }
-func (fw *FakeWallet) WalletToParams() NewWalletParams { return NewWalletParams{} }
-func (fw *FakeWallet) WalletToJSON() ([]byte, error)   { return []byte{}, nil }
+func (fw *FakeWallet) GetUserID() string          { return fw.UserID }
+func (fw *FakeWallet) SetUserID(userID string)    { fw.UserID = userID }
+func (fw *FakeWallet) GetBalance() float64        { return fw.Balance }
+func (fw *FakeWallet) SetBalance(balance float64) { fw.Balance = balance }
+func (fw *FakeWallet) ToParams() NewWalletParams  { return NewWalletParams{} }
+func (fw *FakeWallet) ToJSON() ([]byte, error)    { return []byte{}, nil }

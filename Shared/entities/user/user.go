@@ -12,49 +12,46 @@ type UserInterface interface {
 	SetUsername(username string)
 	GetPassword() string
 	SetPassword(password string)
-	UserToParams() NewUserParams
-	UserToJSON() ([]byte, error)
+	ToParams() NewUserParams
 	entity.EntityInterface
 }
 
 type User struct {
-	// If you need to access a property, please use the Get and Set functions, not the property itself. It is only exposed in case you need to interact with it when altering internal functions.
-	name     string
-	username string
-	password string
-	// Internal Functions should not be interacted with directly. if you need to change functionality, set a new function to the existing internal function.
-	// Instead, interact with the functions through the User Interface.
-	GetNameInternal     func() string
-	SetNameInternal     func(name string)
-	GetUsernameInternal func() string
-	SetUsernameInternal func(username string)
-	GetPasswordInternal func() string
-	SetPasswordInternal func(password string)
-	entity.EntityInterface
+	Name     string `json:"Name" gorm:"not null"`
+	Username string `json:"Username" gorm:"unique not null"`
+	Password string `json:"Password" gorm:"not null"`
+	// Internal functions removed in favor of direct field access.
+	// GetNameInternal     func() string         `gorm:"-"`
+	// SetNameInternal     func(name string)     `gorm:"-"`
+	// GetUsernameInternal func() string         `gorm:"-"`
+	// SetUsernameInternal func(username string) `gorm:"-"`
+	// GetPasswordInternal func() string         `gorm:"-"`
+	// SetPasswordInternal func(password string) `gorm:"-"`
+	entity.Entity `gorm:"embedded"`
 }
 
 func (u *User) GetName() string {
-	return u.GetNameInternal()
+	return u.Name
 }
 
 func (u *User) SetName(name string) {
-	u.SetNameInternal(name)
+	u.Name = name
 }
 
 func (u *User) GetUsername() string {
-	return u.GetUsernameInternal()
+	return u.Username
 }
 
 func (u *User) SetUsername(username string) {
-	u.SetUsernameInternal(username)
+	u.Username = username
 }
 
 func (u *User) GetPassword() string {
-	return u.GetPasswordInternal()
+	return u.Password
 }
 
 func (u *User) SetPassword(password string) {
-	u.SetPasswordInternal(password)
+	u.Password = password
 }
 
 type NewUserParams struct {
@@ -64,33 +61,30 @@ type NewUserParams struct {
 	Password string `json:"Password"`
 }
 
-func NewUser(params NewUserParams) *User {
+func New(params NewUserParams) *User {
 	e := entity.NewEntity(params.NewEntityParams)
 	u := &User{
-		EntityInterface: e,
-		name:            params.Name,
-		username:        params.Username,
-		password:        params.Password,
+		Entity:   *e,
+		Name:     params.Name,
+		Username: params.Username,
+		Password: params.Password,
 	}
-
-	u.GetNameInternal = func() string { return u.name }
-	u.SetNameInternal = func(name string) { u.name = name }
-	u.SetUsernameInternal = func(username string) { u.username = username }
-	u.GetUsernameInternal = func() string { return u.username }
-	u.SetPasswordInternal = func(password string) { u.password = password }
-	u.GetPasswordInternal = func() string { return u.password }
+	// Internal function assignment removed.
+	// u.SetDefaults()
 	return u
 }
 
-func ParseUser(jsonBytes []byte) (*User, error) {
+// Removed SetDefaults function since internal functions are no longer used.
+
+func Parse(jsonBytes []byte) (*User, error) {
 	var u NewUserParams
 	if err := json.Unmarshal(jsonBytes, &u); err != nil {
 		return nil, err
 	}
-	return NewUser(u), nil
+	return New(u), nil
 }
 
-func (u *User) UserToParams() NewUserParams {
+func (u *User) ToParams() NewUserParams {
 	return NewUserParams{
 		NewEntityParams: u.EntityToParams(),
 		Name:            u.GetName(),
@@ -99,8 +93,8 @@ func (u *User) UserToParams() NewUserParams {
 	}
 }
 
-func (u *User) UserToJSON() ([]byte, error) {
-	return json.Marshal(u.UserToParams())
+func (u *User) ToJSON() ([]byte, error) {
+	return json.Marshal(u.ToParams())
 }
 
 type FakeUser struct {
@@ -116,5 +110,5 @@ func (fu *FakeUser) GetUsername() string         { return fu.Username }
 func (fu *FakeUser) SetUsername(username string) { fu.Username = username }
 func (fu *FakeUser) GetPassword() string         { return fu.Password }
 func (fu *FakeUser) SetPassword(password string) { fu.Password = password }
-func (fu *FakeUser) UserToParams() NewUserParams { return NewUserParams{} }
-func (fu *FakeUser) UserToJSON() ([]byte, error) { return []byte{}, nil }
+func (fu *FakeUser) ToParams() NewUserParams     { return NewUserParams{} }
+func (fu *FakeUser) ToJSON() ([]byte, error)     { return []byte{}, nil }

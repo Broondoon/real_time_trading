@@ -1,0 +1,249 @@
+package database
+
+import (
+	"Shared/entities/entity"
+	"errors"
+	"fmt"
+	"log"
+	"os"
+	"time"
+
+	"github.com/google/uuid"
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
+)
+
+type BaseDatabaseInterface interface {
+	GetDBUrl() string
+	IsConnected() bool
+	SetConnected(connected bool)
+}
+type BaseDatabase struct {
+	DatabaseURLEnv string
+	Connected      bool
+}
+
+type NewBaseDatabaseParams struct {
+	DATABASE_URL_ENV_OVERRIDE string // leave "" for default.
+}
+
+func NewBaseDatabase(params *NewBaseDatabaseParams) BaseDatabaseInterface {
+	envString := "DATABASE_URL"
+	if params.DATABASE_URL_ENV_OVERRIDE != "" {
+		envString = params.DATABASE_URL_ENV_OVERRIDE
+	}
+	return &BaseDatabase{
+		DatabaseURLEnv: envString,
+		Connected:      false,
+	}
+}
+func (d *BaseDatabase) GetDBUrl() string {
+	dsn := os.Getenv(d.DatabaseURLEnv) // "DATABASE_URL" is an ENV variable that
+	// is set in docker-compose.yml
+	if dsn == "" {
+		log.Fatal("DATABASE_URL environment variable is not set.")
+	}
+	return dsn
+}
+
+func (d *BaseDatabase) IsConnected() bool {
+	return d.Connected
+}
+
+func (d *BaseDatabase) SetConnected(connected bool) {
+	d.Connected = connected
+}
+
+type DatabaseInterface interface {
+	BaseDatabaseInterface
+	Connect()
+	Disconnect()
+}
+
+type PostGresDatabaseInterface interface {
+	DatabaseInterface
+	GetDatabaseSession() *gorm.DB
+	GetNewDatabaseSession() *gorm.DB
+}
+
+type PostGresDatabase struct {
+	BaseDatabaseInterface
+	database *gorm.DB
+}
+
+type NewPostGresDatabaseParams struct {
+	*NewBaseDatabaseParams
+}
+
+func NewPostGresDatabase(params *NewPostGresDatabaseParams) PostGresDatabaseInterface {
+	return &PostGresDatabase{
+		BaseDatabaseInterface: NewBaseDatabase(params.NewBaseDatabaseParams),
+	}
+}
+
+func (d *PostGresDatabase) Connect() {
+	if !d.IsConnected() {
+		dsn := d.GetDBUrl()
+		var db *gorm.DB
+		var err error
+		for i := 0; i < 10; i++ { // try 10 times
+			db, err = gorm.Open(postgres.Open(dsn), &gorm.Config{})
+			if err == nil {
+				d.database = db
+				d.SetConnected(true)
+				return
+			}
+			log.Printf("Database not ready yet, retrying... (%d/10)", i+1)
+			time.Sleep(2 * time.Second)
+		}
+		log.Fatal("Database connection failed after multiple attempts: ", err)
+	}
+}
+
+func (d *PostGresDatabase) Disconnect() {
+	if d.IsConnected() {
+		db, err := d.database.DB()
+		if err != nil {
+			log.Fatal("Failed to disconnect from database: ", err)
+		}
+		db.Close()
+		d.SetConnected(false)
+	}
+}
+
+func (d *PostGresDatabase) GetDatabaseSession() *gorm.DB {
+	if !d.IsConnected() {
+		d.Connect()
+	}
+	return d.database
+}
+
+func (d *PostGresDatabase) GetNewDatabaseSession() *gorm.DB {
+	return d.GetDatabaseSession().Session(&gorm.Session{NewDB: true})
+}
+
+type EntityDataInterface[T entity.EntityInterface] interface {
+	PostGresDatabaseInterface
+	GetByID(ID string) (T, error)
+	GetByIDs(IDs []string) (*[]T, error)
+	GetAll() (*[]T, error)
+	Create(entity T) error
+	Update(entity T) error
+	Delete(ID string) error
+	Exists(ID string) (bool, error)
+}
+
+type EntityData[T entity.EntityInterface] struct {
+	PostGresDatabaseInterface
+	// *gorm.DB //note, this allows us to treat this as a gorm.DB WITHIN the EntityData struct. This is not exposed as part of the interface, and thus cannot be used like this with the interface.
+}
+
+func NewEntityData[T entity.EntityInterface](params *NewPostGresDatabaseParams) EntityDataInterface[T] {
+	base := NewPostGresDatabase(params)
+	return &EntityData[T]{
+		PostGresDatabaseInterface: base,
+	}
+}
+
+func (d *EntityData[T]) Exists(ID string) (bool, error) {
+	var ent T
+	result := d.GetNewDatabaseSession().First(&ent, "id = ?", ID)
+	if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+		return false, nil
+	}
+	if result.Error != nil {
+		return false, fmt.Errorf("error checking if entity exists: %s", result.Error.Error())
+	}
+	return true, nil
+}
+
+func (d *EntityData[T]) GetByID(id string) (T, error) {
+	var ent T
+	result := d.GetDatabaseSession().First(&ent, "id = ?", id)
+	if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+		var zero T
+		return zero, fmt.Errorf("record not found for id: %s", id)
+	}
+	if result.Error != nil {
+		var zero T
+		return zero, fmt.Errorf("error getting: %s", result.Error.Error())
+	}
+	ent.SetDefaults()
+	return ent, nil
+}
+
+func (d *EntityData[T]) GetByIDs(ids []string) (*[]T, error) {
+	var entities []T
+	results := d.GetDatabaseSession().Find(&entities, "id IN ?", ids)
+	if results.Error != nil {
+		return nil, fmt.Errorf("error getting by ids: %s", results.Error.Error())
+	}
+	for _, o := range entities {
+		o.SetDefaults()
+	}
+	return &entities, nil
+}
+
+func (d *EntityData[T]) GetAll() (*[]T, error) {
+	var entities []T
+	d.GetDatabaseSession().Find(&entities)
+	for _, o := range entities {
+		o.SetDefaults()
+	}
+	return &entities, nil
+}
+
+func (d *EntityData[T]) Create(entity T) error {
+	candidateID := entity.GetId()
+	if candidateID == "" {
+		candidateID = generateRandomID()
+	}
+	for {
+		result, err := d.Exists(candidateID)
+		if err != nil {
+			return fmt.Errorf("error checking existing: %s", err.Error())
+		}
+
+		if !result {
+			break
+		}
+
+		candidateID = generateRandomID()
+	}
+
+	entity.SetId(candidateID)
+	createResult := d.GetDatabaseSession().Create(entity)
+
+	if createResult.Error != nil {
+		return fmt.Errorf("error creating: %w", createResult.Error)
+	}
+	entity.SetDefaults()
+	return nil
+}
+
+func generateRandomID() string {
+	// Generate a new UUID as the stock ID
+	return uuid.New().String()
+}
+
+func (d *EntityData[T]) Update(entity T) error {
+	updateResult := d.GetDatabaseSession().Save(entity)
+	if updateResult.Error != nil {
+		return fmt.Errorf("error updating %s: %s", entity.GetId(), updateResult.Error.Error())
+	}
+	return nil
+}
+
+func (d *EntityData[T]) Delete(id string) error {
+	ent, err := d.GetByID(id)
+	if err != nil {
+		return fmt.Errorf("error getting %s: %s", id, err.Error())
+	}
+	var zero T
+	deleteResult := d.GetDatabaseSession().Delete(&zero, "id = ?", id)
+	if deleteResult.Error != nil {
+		return fmt.Errorf("error deleting %s: %s", id, deleteResult.Error.Error())
+	}
+	ent.SetDefaults()
+	return nil
+}

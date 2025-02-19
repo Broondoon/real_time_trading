@@ -1,0 +1,12 @@
+CREATE TABLE stockOrder (
+    ID SERIAL PRIMARY KEY,
+    StockID SERIAL,
+    ParentStockOrderID SERIAL,
+    DateCreated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    DateModified TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    IsBuy BOOLEAN NOT NULL,
+    OrderType TEXT NOT NULL,
+    Price DECIMAL NOT NULL,
+    Quantity INT NOT NULL,
+    FOREIGN KEY (ParentStockOrderID) REFERENCES stockOrder(ID)
+);

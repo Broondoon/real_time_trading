@@ -3,5 +3,12 @@ go 1.23.5
 use (
 	./Shared
 	./microservice-template
+	./matching-engine-service
+	./stock-order-database/database-service
+	./stock-order-database/database-access
 	./Test_base
+	./stock-transactions-database/database-access
+	./stock-transactions-database/database-service
+	./stock-database/database-access
+	./stock-database/database-service
 )

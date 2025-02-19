@@ -6,22 +6,40 @@ import (
 	"Shared/entities/stock"
 	"Shared/entities/transaction"
 	"Shared/entities/user"
+	userStock "Shared/entities/user-stock"
 	"Shared/entities/wallet"
 	"fmt"
+	"reflect"
 	"time"
 )
 
+type Test[T any] interface {
+	test(t T)
+}
+
+type TestStruct[T any] struct {
+}
+
+func (t *TestStruct[T]) test(td T) {
+
+	fmt.Println("Test: %s", reflect.TypeOf(td))
+}
+
 func main() {
+
 	// Create a new User
-	u := user.NewUser(user.NewUserParams{
+	u := user.New(user.NewUserParams{
 		NewEntityParams: entity.NewEntityParams{
-			Id:           "u1",
+			ID:           "u1",
 			DateCreated:  time.Now(),
 			DateModified: time.Now(),
 		},
 		Username: "test",
 		Password: "password",
 	})
+
+	test := TestStruct[entity.EntityInterface]{}
+	test.test(u)
 
 	// Print the User
 	fmt.Print("User: ")
@@ -30,13 +48,13 @@ func main() {
 	fmt.Println(u.GetDateModified())
 	fmt.Println(u.GetUsername())
 	fmt.Println(u.GetPassword())
-	fmt.Println(u.UserToParams())
-	fmt.Println(u.UserToJSON())
-	jsonData, err := u.UserToJSON()
+	fmt.Println(u.ToParams())
+	fmt.Println(u.ToJSON())
+	jsonData, err := u.ToJSON()
 	if err != nil {
 		fmt.Println("Error converting user to JSON:", err)
 	} else {
-		parsedUser, _ := user.ParseUser(jsonData)
+		parsedUser, _ := user.Parse(jsonData)
 		fmt.Println(parsedUser.GetId())
 		fmt.Println(parsedUser.GetDateCreated())
 		fmt.Println(parsedUser.GetDateModified())
@@ -45,9 +63,9 @@ func main() {
 	}
 
 	// Create a new Stock
-	s := stock.NewStock(stock.NewStockParams{
+	s := stock.New(stock.NewStockParams{
 		NewEntityParams: entity.NewEntityParams{
-			Id:           "s1",
+			ID:           "s1",
 			DateCreated:  time.Now(),
 			DateModified: time.Now(),
 		},
@@ -62,9 +80,9 @@ func main() {
 	fmt.Println(s.GetName())
 
 	// Create a new Wallet
-	w := wallet.NewWallet(wallet.NewWalletParams{
+	w := wallet.New(wallet.NewWalletParams{
 		NewEntityParams: entity.NewEntityParams{
-			Id:           "w1",
+			ID:           "w1",
 			DateCreated:  time.Now(),
 			DateModified: time.Now(),
 		},
@@ -79,13 +97,13 @@ func main() {
 	fmt.Println(w.GetDateModified())
 	fmt.Println(w.GetUserID())
 	fmt.Println(w.GetBalance())
-	fmt.Println(w.WalletToParams())
-	fmt.Println(w.WalletToJSON())
-	jsonData1, err := w.WalletToJSON()
+	fmt.Println(w.ToParams())
+	fmt.Println(w.ToJSON())
+	jsonData1, err := w.ToJSON()
 	if err != nil {
 		fmt.Println("Error converting user to JSON:", err)
 	} else {
-		parsedWallet, _ := wallet.ParseWallet(jsonData1)
+		parsedWallet, _ := wallet.Parse(jsonData1)
 		fmt.Println(parsedWallet.GetId())
 		fmt.Println(parsedWallet.GetDateCreated())
 		fmt.Println(parsedWallet.GetDateModified())
@@ -94,14 +112,15 @@ func main() {
 	}
 
 	//Create a new Stock Order
-	so := order.NewStockOrder(order.NewStockOrderParams{
+	so := order.New(order.NewStockOrderParams{
 		NewEntityParams: entity.NewEntityParams{
-			Id:           "so1",
+			ID:           "so1",
 			DateCreated:  time.Now(),
 			DateModified: time.Now(),
 		},
 		Stock: s,
 		// StockId: "",
+
 		Quantity:  0,
 		Price:     0.0,
 		OrderType: "MARKET",
@@ -119,9 +138,9 @@ func main() {
 	fmt.Println(so.GetIsBuy())
 
 	// Create a new User Stock
-	us := stock.NewUserStock(stock.NewUserStockParams{
+	us := userStock.New(userStock.NewUserStockParams{
 		NewEntityParams: entity.NewEntityParams{
-			Id:           "us1",
+			ID:           "us1",
 			DateCreated:  time.Now(),
 			DateModified: time.Now(),
 		},
@@ -143,7 +162,7 @@ func main() {
 	// Create a new Stock Transaction
 	st1 := transaction.NewStockTransaction(transaction.NewStockTransactionParams{
 		NewEntityParams: entity.NewEntityParams{
-			Id:           "st1",
+			ID:           "st1",
 			DateCreated:  time.Now(),
 			DateModified: time.Now(),
 		},
@@ -168,7 +187,7 @@ func main() {
 	//Create a new wallet transaction
 	wt := transaction.NewWalletTransaction(transaction.NewWalletTransactionParams{
 		NewEntityParams: entity.NewEntityParams{
-			Id:           "wt1",
+			ID:           "wt1",
 			DateCreated:  time.Now(),
 			DateModified: time.Now(),
 		},
@@ -192,7 +211,7 @@ func main() {
 	// Create a new Stock Transaction
 	st2 := transaction.NewStockTransaction(transaction.NewStockTransactionParams{
 		NewEntityParams: entity.NewEntityParams{
-			Id:           "st2",
+			ID:           "st2",
 			DateCreated:  time.Now(),
 			DateModified: time.Now(),
 		},

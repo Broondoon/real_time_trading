@@ -23,120 +23,132 @@ type StockTransactionInterface interface {
 	SetStockPrice(stockPrice float64)
 	GetQuantity() int
 	SetQuantity(quantity int)
-	StockTransactionToParams() NewStockTransactionParams
-	StockTransactionToJSON() ([]byte, error)
+	ToParams() NewStockTransactionParams
 	entity.EntityInterface
 }
 
 type StockTransaction struct {
-	// If you need to access a property, please use the Get and Set functions, not the property itself. It is only exposed in case you need to interact with it when altering internal functions.
-	StockID                  string
-	ParentStockTransactionID string
-	WalletTransactionID      string
-	OrderStatus              string // COMPLETED, IN_PROGRESS, PARTIALLY_COMPLETE, CANCELLED
-	IsBuy                    bool
-	OrderType                string // MARKET, LIMIT
-	StockPrice               float64
-	Quantity                 int
-	// Internal Functions should not be interacted with directly. if you need to change functionality, set a new function to the existing internal function.
-	// Instead, interact with the functions through the StockTransaction Interface.
-	GetStockIDInternal                  func() string
-	SetStockIDInternal                  func(stockID string)
-	GetParentStockTransactionIDInternal func() string
-	SetParentStockTransactionIDInternal func(parentStockTransactionID string)
-	GetWalletTransactionIDInternal      func() string
-	SetWalletTransactionIDInternal      func(walletTransactionID string)
-	GetOrderStatusInternal              func() string
-	SetOrderStatusInternal              func(orderStatus string)
-	GetIsBuyInternal                    func() bool
-	SetIsBuyInternal                    func(isBuy bool)
-	GetOrderTypeInternal                func() string
-	GetStockPriceInternal               func() float64
-	SetStockPriceInternal               func(stockPrice float64)
-	GetQuantityInternal                 func() int
-	SetQuantityInternal                 func(quantity int)
-	entity.EntityInterface
+	StockID                  string  `json:"StockID" gorm:"not null"`
+	ParentStockTransactionID string  `json:"ParentStockTransactionID"`
+	WalletTransactionID      string  `json:"WalletTransactionID"`
+	OrderStatus              string  `json:"OrderStatus" gorm:"not null"`
+	IsBuy                    bool    `json:"IsBuy" gorm:"not null"`
+	OrderType                string  `json:"OrderType" gorm:"not null"`
+	StockPrice               float64 `json:"StockPrice" gorm:"not null"`
+	Quantity                 int     `json:"Quantity" gorm:"not null"`
+	// Internal Functions (commented out)
+	// GetStockIDInternal                  func() string                         `gorm:"-"`
+	// SetStockIDInternal                  func(stockID string)                  `gorm:"-"`
+	// GetParentStockTransactionIDInternal func() string                         `gorm:"-"`
+	// SetParentStockTransactionIDInternal func(parentStockTransactionID string) `gorm:"-"`
+	// GetWalletTransactionIDInternal      func() string                         `gorm:"-"`
+	// SetWalletTransactionIDInternal      func(walletTransactionID string)      `gorm:"-"`
+	// GetOrderStatusInternal              func() string                         `gorm:"-"`
+	// SetOrderStatusInternal              func(orderStatus string)              `gorm:"-"`
+	// GetIsBuyInternal                    func() bool                           `gorm:"-"`
+	// SetIsBuyInternal                    func(isBuy bool)                      `gorm:"-"`
+	// GetOrderTypeInternal                func() string                         `gorm:"-"`
+	// GetStockPriceInternal               func() float64                        `gorm:"-"`
+	// SetStockPriceInternal               func(stockPrice float64)              `gorm:"-"`
+	// GetQuantityInternal                 func() int                            `gorm:"-"`
+	// SetQuantityInternal                 func(quantity int)                    `gorm:"-"`
+	entity.Entity `gorm:"embedded"`
 }
 
 func (st *StockTransaction) GetStockID() string {
-	return st.GetStockIDInternal()
+	// return st.GetStockIDInternal()
+	return st.StockID
 }
 
 func (st *StockTransaction) SetStockID(stockID string) {
-	st.SetStockIDInternal(stockID)
+	// st.SetStockIDInternal(stockID)
+	st.StockID = stockID
 }
 
 func (st *StockTransaction) GetParentStockTransactionID() string {
-	return st.GetParentStockTransactionIDInternal()
+	// return st.GetParentStockTransactionIDInternal()
+	return st.ParentStockTransactionID
 }
 
 func (st *StockTransaction) SetParentStockTransactionID(parentStockTransactionID string) {
-	st.SetParentStockTransactionIDInternal(parentStockTransactionID)
+	// st.SetParentStockTransactionIDInternal(parentStockTransactionID)
+	st.ParentStockTransactionID = parentStockTransactionID
 }
 
 func (st *StockTransaction) GetWalletTransactionID() string {
-	return st.GetWalletTransactionIDInternal()
+	// return st.GetWalletTransactionIDInternal()
+	return st.WalletTransactionID
 }
 
 func (st *StockTransaction) SetWalletTransactionID(walletTransactionID string) {
-	st.SetWalletTransactionIDInternal(walletTransactionID)
+	// st.SetWalletTransactionIDInternal(walletTransactionID)
+	st.WalletTransactionID = walletTransactionID
 }
 
 func (st *StockTransaction) GetOrderStatus() string {
-	return st.GetOrderStatusInternal()
+	// return st.GetOrderStatusInternal()
+	return st.OrderStatus
 }
 
 func (st *StockTransaction) SetOrderStatus(orderStatus string) {
-	st.SetOrderStatusInternal(orderStatus)
+	// st.SetOrderStatusInternal(orderStatus)
+	st.OrderStatus = orderStatus
 }
 
 func (st *StockTransaction) GetIsBuy() bool {
-	return st.GetIsBuyInternal()
+	// return st.GetIsBuyInternal()
+	return st.IsBuy
 }
 
 func (st *StockTransaction) SetIsBuy(isBuy bool) {
-	st.SetIsBuyInternal(isBuy)
+	// st.SetIsBuyInternal(isBuy)
+	st.IsBuy = isBuy
 }
 
 func (st *StockTransaction) GetOrderType() string {
-	return st.GetOrderTypeInternal()
+	// return st.GetOrderTypeInternal()
+	return st.OrderType
 }
 
 func (st *StockTransaction) GetStockPrice() float64 {
-	return st.GetStockPriceInternal()
+	// return st.GetStockPriceInternal()
+	return st.StockPrice
 }
 
 func (st *StockTransaction) SetStockPrice(stockPrice float64) {
-	st.SetStockPriceInternal(stockPrice)
+	// st.SetStockPriceInternal(stockPrice)
+	st.StockPrice = stockPrice
 }
 
 func (st *StockTransaction) GetQuantity() int {
-	return st.GetQuantityInternal()
+	// return st.GetQuantityInternal()
+	return st.Quantity
 }
 
 func (st *StockTransaction) SetQuantity(quantity int) {
-	st.SetQuantityInternal(quantity)
+	// st.SetQuantityInternal(quantity)
+	st.Quantity = quantity
 }
 
 type NewStockTransactionParams struct {
 	entity.NewEntityParams
-	OrderStatus         string                     `json:"OrderStatus"`
-	WalletTransactionID string                     `json:"WalletTransactionID"` // use this or WalletTransaction or ParentStockTransaction
-	WalletTransaction   WalletTransactionInterface // use this or WalletTransactionID or ParentStockTransaction
+	StockID                  string  `json:"StockID"`
+	ParentStockTransactionID string  `json:"ParentStockTransactionID"`
+	WalletTransactionID      string  `json:"WalletTransactionID"`
+	OrderStatus              string  `json:"OrderStatus"`
+	IsBuy                    bool    `json:"IsBuy"`
+	OrderType                string  `json:"OrderType"`
+	StockPrice               float64 `json:"StockPrice"`
+	Quantity                 int     `json:"Quantity"`
+
+	WalletTransaction WalletTransactionInterface // use this or WalletTransactionID or ParentStockTransaction
 	//use one of the following
-	ParentStockTransaction   StockTransactionInterface
-	ParentStockTransactionID string `json:"ParentStockTransactionID"`
+	ParentStockTransaction StockTransactionInterface
 	//or
-	StockTransactionID string `json:"StockTransactionID"`
 	// And one of the following
 	StockOrder order.StockOrderInterface
 	//or
-	StockID    string               `json:"StockID"` // use this or Stock
-	Stock      stock.StockInterface // use this or StockID
-	IsBuy      bool                 `json:"IsBuy"`
-	OrderType  string               `json:"OrderType"`
-	StockPrice float64              `json:"StockPrice"`
-	Quantity   int                  `json:"Quantity"`
+	Stock stock.StockInterface // use this or StockID
 }
 
 func NewStockTransaction(params NewStockTransactionParams) *StockTransaction {
@@ -192,24 +204,28 @@ func NewStockTransaction(params NewStockTransactionParams) *StockTransaction {
 		OrderType:                orderType,
 		StockPrice:               stockPrice,
 		Quantity:                 quantity,
-		EntityInterface:          e,
+		Entity:                   *e,
 	}
-	st.GetStockIDInternal = func() string { return st.StockID }
-	st.SetStockIDInternal = func(stockID string) { st.StockID = stockID }
-	st.GetParentStockTransactionIDInternal = func() string { return st.ParentStockTransactionID }
-	st.SetParentStockTransactionIDInternal = func(parentStockTransactionID string) { st.ParentStockTransactionID = parentStockTransactionID }
-	st.GetWalletTransactionIDInternal = func() string { return st.WalletTransactionID }
-	st.SetWalletTransactionIDInternal = func(walletTransactionID string) { st.WalletTransactionID = walletTransactionID }
-	st.GetOrderStatusInternal = func() string { return st.OrderStatus }
-	st.SetOrderStatusInternal = func(orderStatus string) { st.OrderStatus = orderStatus }
-	st.GetIsBuyInternal = func() bool { return st.IsBuy }
-	st.SetIsBuyInternal = func(isBuy bool) { st.IsBuy = isBuy }
-	st.GetOrderTypeInternal = func() string { return st.OrderType }
-	st.GetStockPriceInternal = func() float64 { return st.StockPrice }
-	st.SetStockPriceInternal = func(stockPrice float64) { st.StockPrice = stockPrice }
-	st.GetQuantityInternal = func() int { return st.Quantity }
-	st.SetQuantityInternal = func(quantity int) { st.Quantity = quantity }
+	st.SetDefaults()
 	return st
+}
+
+func (st *StockTransaction) SetDefaults() {
+	// st.GetStockIDInternal = func() string { return st.StockID }
+	// st.SetStockIDInternal = func(stockID string) { st.StockID = stockID }
+	// st.GetParentStockTransactionIDInternal = func() string { return st.ParentStockTransactionID }
+	// st.SetParentStockTransactionIDInternal = func(parentStockTransactionID string) { st.ParentStockTransactionID = parentStockTransactionID }
+	// st.GetWalletTransactionIDInternal = func() string { return st.WalletTransactionID }
+	// st.SetWalletTransactionIDInternal = func(walletTransactionID string) { st.WalletTransactionID = walletTransactionID }
+	// st.GetOrderStatusInternal = func() string { return st.OrderStatus }
+	// st.SetOrderStatusInternal = func(orderStatus string) { st.OrderStatus = orderStatus }
+	// st.GetIsBuyInternal = func() bool { return st.IsBuy }
+	// st.SetIsBuyInternal = func(isBuy bool) { st.IsBuy = isBuy }
+	// st.GetOrderTypeInternal = func() string { return st.OrderType }
+	// st.GetStockPriceInternal = func() float64 { return st.StockPrice }
+	// st.SetStockPriceInternal = func(stockPrice float64) { st.StockPrice = stockPrice }
+	// st.GetQuantityInternal = func() int { return st.Quantity }
+	// st.SetQuantityInternal = func(quantity int) { st.Quantity = quantity }
 }
 
 func ParseStockTransaction(jsonBytes []byte) (*StockTransaction, error) {
@@ -220,23 +236,26 @@ func ParseStockTransaction(jsonBytes []byte) (*StockTransaction, error) {
 	return NewStockTransaction(st), nil
 }
 
-func (st *StockTransaction) StockTransactionToParams() NewStockTransactionParams {
+func (st *StockTransaction) ToParams() NewStockTransactionParams {
 	return NewStockTransactionParams{
 		NewEntityParams:          st.EntityToParams(),
-		OrderStatus:              st.GetOrderStatus(),
-		WalletTransactionID:      st.GetWalletTransactionID(),
+		StockID:                  st.GetStockID(),
 		ParentStockTransactionID: st.GetParentStockTransactionID(),
-		StockOrder:               nil,
-		Stock:                    nil,
+		WalletTransactionID:      st.GetWalletTransactionID(),
+		OrderStatus:              st.GetOrderStatus(),
 		IsBuy:                    st.GetIsBuy(),
 		OrderType:                st.GetOrderType(),
 		StockPrice:               st.GetStockPrice(),
 		Quantity:                 st.GetQuantity(),
+		WalletTransaction:        nil,
+		ParentStockTransaction:   nil,
+		StockOrder:               nil,
+		Stock:                    nil,
 	}
 }
 
-func (st *StockTransaction) StockTransactionToJSON() ([]byte, error) {
-	return json.Marshal(st.StockTransactionToParams())
+func (st *StockTransaction) ToJSON() ([]byte, error) {
+	return json.Marshal(st.ToParams())
 }
 
 type FakeStockTransaction struct {
@@ -273,7 +292,7 @@ func (fst *FakeStockTransaction) GetStockPrice() float64            { return fst
 func (fst *FakeStockTransaction) SetStockPrice(stockPrice float64)  { fst.StockPrice = stockPrice }
 func (fst *FakeStockTransaction) GetQuantity() int                  { return fst.Quantity }
 func (fst *FakeStockTransaction) SetQuantity(quantity int)          { fst.Quantity = quantity }
-func (fst *FakeStockTransaction) StockTransactionToParams() NewStockTransactionParams {
+func (fst *FakeStockTransaction) ToParams() NewStockTransactionParams {
 	return NewStockTransactionParams{}
 }
-func (fst *FakeStockTransaction) StockTransactionToJSON() ([]byte, error) { return []byte{}, nil }
+func (fst *FakeStockTransaction) ToJSON() ([]byte, error) { return []byte{}, nil }
