@@ -5,14 +5,13 @@ import (
 	"Shared/network"
 	"databaseAccessStockOrder"
 	"encoding/json"
-	"os"
 )
 
 //"Shared/network"
 
 func main() {
-	networkManager := network.NewHttpClient(os.Getenv("MATCHING_ENGINE_SERVICE_URL"))
-	body, err := networkManager.Get("/getStockIDs", nil)
+	networkManager := network.NewNetwork()
+	body, err := networkManager.UserManagement().Get("/getStockIDs", nil) //probably not the right service to be calling, but I'm not curretnly sure whose storing stocks
 	if err != nil {
 		println("Error getting stock IDs")
 		return

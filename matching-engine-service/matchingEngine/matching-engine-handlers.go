@@ -11,10 +11,10 @@ import (
 
 var _matchingEngineMap map[string]MatchingEngineInterface
 var _databaseManager databaseAccessStockOrder.DatabaseAccessInterface
-var _networkManager network.HttpClientInterface
+var _networkManager network.NetworkInterface
 
 func InitalizeHandlers(stockIDs *[]string,
-	networkManager network.HttpClientInterface, databaseManager databaseAccessStockOrder.DatabaseAccessInterface) {
+	networkManager network.NetworkInterface, databaseManager databaseAccessStockOrder.DatabaseAccessInterface) {
 	_databaseManager = databaseManager
 	_networkManager = networkManager
 	_matchingEngineMap = make(map[string]MatchingEngineInterface)
@@ -134,7 +134,7 @@ func SendToOrderExection(buyOrder order.StockOrderInterface, sellOrder order.Sto
 		Quantity:      quantity,
 	}
 
-	data, err := _networkManager.Post("???", transferEntity)
+	data, err := _networkManager.OrderExecutor().Post("???", transferEntity)
 	if err != nil {
 		return nil
 	}
