@@ -6,7 +6,9 @@ import (
 	"Shared/network"
 	"databaseAccessStockOrder"
 	"encoding/json"
+	"fmt"
 	"net/http"
+	"net/url"
 )
 
 var _matchingEngineMap map[string]MatchingEngineInterface
@@ -24,14 +26,22 @@ func InitalizeHandlers(stockIDs *[]string,
 	}
 
 	//Add handlers
-	networkManager.AddHandleFunc(network.HandlerParams{Pattern: "/createStock", Handler: AddNewStockHandler})
-	networkManager.AddHandleFunc(network.HandlerParams{Pattern: "/placeOrder", Handler: PlaceStockOrderHandler})
-	networkManager.AddHandleFunc(network.HandlerParams{Pattern: "/deleteOrder", Handler: DeleteStockOrderHandler})
+	networkManager.AddHandleFunc(network.HandlerParams{Pattern: "createStock", Handler: AddNewStockHandler})
+	networkManager.AddHandleFunc(network.HandlerParams{Pattern: "placeStockOrder", Handler: PlaceStockOrderHandler})
+	networkManager.AddHandleFunc(network.HandlerParams{Pattern: "deleteOrder", Handler: DeleteStockOrderHandler})
+	networkManager.AddHandleFunc(network.HandlerParams{Pattern: "getStockPrices", Handler: GetStockPricesHandler})
+	http.HandleFunc("/health", healthHandler)
+}
+
+func healthHandler(w http.ResponseWriter, r *http.Request) {
+	// Simple check: you might expand this to test database connectivity, etc.
+	w.WriteHeader(http.StatusOK)
+	fmt.Fprintln(w, "OK")
 }
 
 // Expected input is a stock ID in the body of the request
 // we're expecting {"StockID":"{id value}"}
-func AddNewStockHandler(responseWriter http.ResponseWriter, data []byte) {
+func AddNewStockHandler(responseWriter http.ResponseWriter, data []byte, queryParams url.Values, requestType string) {
 	var jsonData map[string]interface{}
 	err := json.Unmarshal(data, &jsonData)
 	if err != nil {
@@ -65,7 +75,7 @@ func AddNewStock(stockID string) {
 	}
 }
 
-func PlaceStockOrderHandler(responseWriter http.ResponseWriter, data []byte) {
+func PlaceStockOrderHandler(responseWriter http.ResponseWriter, data []byte, queryParams url.Values, requestType string) {
 	//parse the stock order
 	stockOrder, err := order.Parse(data)
 	if err != nil {
@@ -90,7 +100,7 @@ func PlaceStockOrder(stockOrder order.StockOrderInterface) bool {
 	return true
 }
 
-func DeleteStockOrderHandler(responseWriter http.ResponseWriter, data []byte) {
+func DeleteStockOrderHandler(responseWriter http.ResponseWriter, data []byte, queryParams url.Values, requestType string) {
 	var jsonData map[string]interface{}
 	err := json.Unmarshal(data, &jsonData)
 	if err != nil {
@@ -113,6 +123,27 @@ func DeleteStockOrder(orderID string) {
 		return
 	}
 	me.RemoveOrder(orderID, order.GetPrice())
+}
+
+func GetStockPricesHandler(responseWriter http.ResponseWriter, data []byte, queryParams url.Values, requestType string) {
+	prices := GetStockPrices()
+	pricesJSON, err := json.Marshal(prices)
+	if err != nil {
+		responseWriter.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	responseWriter.Write(pricesJSON)
+
+}
+
+func GetStockPrices() network.StockPrices {
+	prices := make(map[string]float64)
+	for stockID, me := range _matchingEngineMap {
+		prices[stockID] = me.GetPrice()
+	}
+	return network.StockPrices{
+		StockPrices: prices,
+	}
 }
 
 func SendToOrderExection(buyOrder order.StockOrderInterface, sellOrder order.StockOrderInterface) transaction.StockTransactionInterface {
