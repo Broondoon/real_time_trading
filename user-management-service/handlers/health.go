@@ -5,7 +5,6 @@ import (
 	"net/http"
 )
 
-// InitializeHealth sets up the health check endpoint
 func InitializeHealth() {
 	http.HandleFunc("/health", healthHandler)
 }

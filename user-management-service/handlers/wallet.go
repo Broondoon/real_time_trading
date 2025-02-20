@@ -8,7 +8,6 @@ import (
 
 var _walletAccess databaseAccessUserManagement.WalletDataAccessInterface
 
-// InitializeWallet sets up wallet routes
 func InitializeWallet(walletAccess databaseAccessUserManagement.WalletDataAccessInterface) {
 	_walletAccess = walletAccess
 
@@ -16,7 +15,6 @@ func InitializeWallet(walletAccess databaseAccessUserManagement.WalletDataAccess
 	http.HandleFunc("/addMoneyToWallet", addMoneyToWalletHandler)
 }
 
-// Get wallet balance
 func getWalletBalanceHandler(w http.ResponseWriter, r *http.Request) {
 	userID := r.URL.Query().Get("userID")
 	if userID == "" {
@@ -33,7 +31,6 @@ func getWalletBalanceHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]float64{"balance": balance})
 }
 
-// Add money to wallet
 func addMoneyToWalletHandler(w http.ResponseWriter, r *http.Request) {
 	var request struct {
 		UserID string  `json:"userID"`

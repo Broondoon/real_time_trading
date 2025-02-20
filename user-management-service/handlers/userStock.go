@@ -8,14 +8,12 @@ import (
 
 var _userStockAccess databaseAccessUserManagement.UserStockDataAccessInterface
 
-// InitializeUserStock sets up user stock routes
 func InitializeUserStock(userStockAccess databaseAccessUserManagement.UserStockDataAccessInterface) {
 	_userStockAccess = userStockAccess
 
 	http.HandleFunc("/getStockPortfolio", getStockPortfolioHandler)
 }
 
-// Get user stock portfolio
 func getStockPortfolioHandler(w http.ResponseWriter, r *http.Request) {
 	userID := r.URL.Query().Get("userID")
 	if userID == "" {
