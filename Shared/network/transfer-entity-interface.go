@@ -1,6 +1,8 @@
 package network
 
 type MatchingEngineToExecutionJSON struct {
+	BuyerID       string  `json:"buyer_id"`
+	SellerID      string  `json:"seller_id"`
 	StockID       string  `json:"stock_id"`
 	BuyOrderID    string  `json:"buy_order_id"`
 	SellOrderID   string  `json:"sell_order_id"`
@@ -20,4 +22,8 @@ type StockID struct {
 
 type StockTransactionID struct {
 	StockTransactionID string `json:"stock_tx_id"`
+}
+
+type WalletBalance struct {
+	Balance float64 `json:"balance"`
 }

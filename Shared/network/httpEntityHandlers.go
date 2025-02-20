@@ -14,23 +14,44 @@ import (
 
 func CreateNetworkEntityHandlers[T entity.EntityInterface](network NetworkInterface, entityName string, databaseManager databaseService.EntityDataInterface[T], Parse func(jsonBytes []byte) (T, error)) {
 	defaults := func(responseWriter http.ResponseWriter, data []byte, queryParams url.Values, requestType string) {
+		println("data: ", string(data))
+		println("queryParams: ", queryParams)
+		println("requestType: ", requestType)
 		if requestType == "GET" || requestType == "" {
 			if queryParams.Get("id") != "" {
-				entity, err := databaseManager.GetByID(queryParams.Get("id"))
-				if errors.Is(err, gorm.ErrRecordNotFound) {
-					responseWriter.WriteHeader(http.StatusNotFound)
-					return
+				if queryParams.Get("foreignKey") != "" {
+					entities, err := databaseManager.GetByForeignID(queryParams.Get("foreignKey"), queryParams.Get("id"))
+					if err != nil {
+						println("error: ", err.Error())
+						responseWriter.WriteHeader(http.StatusInternalServerError)
+						return
+					}
+					entitiesJSON, err := json.Marshal(entities)
+					if err != nil {
+						println("error: ", err.Error())
+						responseWriter.WriteHeader(http.StatusInternalServerError)
+						return
+					}
+					responseWriter.Write(entitiesJSON)
+				} else {
+					entity, err := databaseManager.GetByID(queryParams.Get("id"))
+					if errors.Is(err, gorm.ErrRecordNotFound) {
+						responseWriter.WriteHeader(http.StatusNotFound)
+						return
+					}
+					if err != nil {
+						println("error: ", err.Error())
+						responseWriter.WriteHeader(http.StatusInternalServerError)
+						return
+					}
+					entityJSON, err := entity.ToJSON()
+					if err != nil {
+						println("error: ", err.Error())
+						responseWriter.WriteHeader(http.StatusInternalServerError)
+						return
+					}
+					responseWriter.Write(entityJSON)
 				}
-				if err != nil {
-					responseWriter.WriteHeader(http.StatusInternalServerError)
-					return
-				}
-				entityJSON, err := entity.ToJSON()
-				if err != nil {
-					responseWriter.WriteHeader(http.StatusInternalServerError)
-					return
-				}
-				responseWriter.Write(entityJSON)
 			} else {
 				var entities *[]T
 				var err error
@@ -40,12 +61,14 @@ func CreateNetworkEntityHandlers[T entity.EntityInterface](network NetworkInterf
 					entities, err = databaseManager.GetByIDs(strings.Split(queryParams.Get("ids"), ","))
 				}
 				if err != nil {
+					println("error: ", err.Error())
 					responseWriter.WriteHeader(http.StatusInternalServerError)
 					return
 				}
 
 				entitiesJSON, err := json.Marshal(entities)
 				if err != nil {
+					println("error: ", err.Error())
 					responseWriter.WriteHeader(http.StatusInternalServerError)
 					return
 				}
@@ -54,16 +77,19 @@ func CreateNetworkEntityHandlers[T entity.EntityInterface](network NetworkInterf
 		} else if requestType == "POST" {
 			entity, err := Parse(data)
 			if err != nil {
+				println("error: ", err.Error())
 				responseWriter.WriteHeader(http.StatusBadRequest)
 				return
 			}
 			err = databaseManager.Create(entity)
 			if err != nil {
+				println("error: ", err.Error())
 				responseWriter.WriteHeader(http.StatusInternalServerError)
 				return
 			}
 			entityJSON, err := entity.ToJSON()
 			if err != nil {
+				println("error: ", err.Error())
 				responseWriter.WriteHeader(http.StatusInternalServerError)
 				return
 			}
@@ -71,16 +97,19 @@ func CreateNetworkEntityHandlers[T entity.EntityInterface](network NetworkInterf
 		} else if requestType == "PUT" {
 			entity, err := Parse(data)
 			if err != nil {
+				println("error: ", err.Error())
 				responseWriter.WriteHeader(http.StatusBadRequest)
 				return
 			}
 			err = databaseManager.Update(entity)
 			if err != nil {
+				println("error: ", err.Error())
 				responseWriter.WriteHeader(http.StatusInternalServerError)
 				return
 			}
 			entityJSON, err := entity.ToJSON()
 			if err != nil {
+				println("error: ", err.Error())
 				responseWriter.WriteHeader(http.StatusInternalServerError)
 				return
 			}
@@ -88,6 +117,7 @@ func CreateNetworkEntityHandlers[T entity.EntityInterface](network NetworkInterf
 		} else if requestType == "DELETE" {
 			err := databaseManager.Delete(queryParams.Get("id"))
 			if err != nil {
+				println("error: ", err.Error())
 				responseWriter.WriteHeader(http.StatusInternalServerError)
 				return
 			}

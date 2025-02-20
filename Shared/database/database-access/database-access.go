@@ -31,6 +31,7 @@ type EntityDataAccessInterface[TEntity entity.EntityInterface, TInterface entity
 	GetByID(id string) (TInterface, error)
 	GetAll() (*[]TInterface, error)
 	GetByIDs(ids []string) (*[]TInterface, error)
+	GetByForeignID(foreignIDColumn string, foreignID string) (*[]TInterface, error)
 	Create(entity TInterface) (TInterface, error)
 	Update(entity TInterface) error
 	Delete(id string) error
@@ -87,11 +88,22 @@ func (d *EntityDataAccess[TEntity, TInterface]) GetAll() (*[]TInterface, error) 
 	}
 	return &converted, nil
 }
-
 func (d *EntityDataAccess[TEntity, TInterface]) GetByIDs(ids []string) (*[]TInterface, error) {
 	entities, err := d.EntityDataServiceTemp.GetByIDs(ids)
 	if err != nil {
-		log.Fatal("Failed to get entities by IDs: ", err)
+		log.Fatal("Failed to get entities by Ids: ", err)
+	}
+	converted := make([]TInterface, len(*entities))
+	for i, e := range *entities {
+		converted[i] = interface{}(e).(TInterface)
+	}
+	return &converted, nil
+}
+
+func (d *EntityDataAccess[TEntity, TInterface]) GetByForeignID(foreignIDColumn string, foreignID string) (*[]TInterface, error) {
+	entities, err := d.EntityDataServiceTemp.GetByForeignID(foreignIDColumn, foreignID)
+	if err != nil {
+		log.Fatal("Failed to get entities by ForeignKey: ", err)
 	}
 	converted := make([]TInterface, len(*entities))
 	for i, e := range *entities {
@@ -173,7 +185,6 @@ func (d *EntityDataAccessHTTP[TEntity, TInterface]) Disconnect() {
 }
 
 func (d *EntityDataAccessHTTP[TEntity, TInterface]) GetByID(id string) (TInterface, error) {
-	println("GetByID: ", id)
 	if d.GetRoute == "" {
 		d.GetRoute = d.DefaultRoute
 	}
@@ -225,6 +236,31 @@ func (d *EntityDataAccessHTTP[TEntity, TInterface]) GetByIDs(ids []string) (*[]T
 		var zero []TInterface
 		return &zero, err
 		log.Fatal("Failed to get entities by IDs: ", err)
+	}
+	entities, err := d.ParserList(jsonBytes)
+
+	if err != nil {
+		var zero []TInterface
+		return &zero, err
+		log.Fatal("Failed to unmarshal entities: ", err)
+	}
+	converted := make([]TInterface, len(*entities))
+	for i, e := range *entities {
+		converted[i] = interface{}(e).(TInterface)
+	}
+	return &converted, nil
+}
+
+func (d *EntityDataAccessHTTP[TEntity, TInterface]) GetByForeignID(foreignIDColumn string, foreignID string) (*[]TInterface, error) {
+	if d.GetRoute == "" {
+		d.GetRoute = d.DefaultRoute
+	}
+	queryParams := map[string]string{"foreignKey": foreignIDColumn, "id": foreignID}
+	jsonBytes, err := d._client.Get(d.PostRoute, queryParams)
+	if err != nil {
+		var zero []TInterface
+		return &zero, err
+		log.Fatal("Failed to get entities by foreignKey: ", err)
 	}
 	entities, err := d.ParserList(jsonBytes)
 

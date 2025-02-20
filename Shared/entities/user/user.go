@@ -69,12 +69,8 @@ func New(params NewUserParams) *User {
 		Username: params.Username,
 		Password: params.Password,
 	}
-	// Internal function assignment removed.
-	// u.SetDefaults()
 	return u
 }
-
-// Removed SetDefaults function since internal functions are no longer used.
 
 func Parse(jsonBytes []byte) (*User, error) {
 	var u NewUserParams

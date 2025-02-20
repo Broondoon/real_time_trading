@@ -37,6 +37,9 @@ func main() {
 	fmt.Println(so.GetOrderType())
 	fmt.Println(so.GetIsBuy())
 
+	network := network.NewNetwork()
+	network.UserManagement()
+
 	// //testing database.
 	// _databaseManager := databaseAccessStockOrder.NewDatabaseAccess(&databaseAccessStockOrder.NewDatabaseAccessParams{})
 
@@ -130,11 +133,11 @@ func main() {
 		fmt.Println(err)
 	}
 	fmt.Println("Stock Transaction Created with ID: ", st23.GetId())
+	fmt.Print("Testing get Stock Order: ")
 	st2, err := _databaseManagerStockTransactions.GetByID(st23.GetId())
 	if err != nil {
 		fmt.Println(err)
 	}
-	fmt.Print("Testing get Stock Order: ")
 	fmt.Println(st2.GetId())
 	fmt.Println(st2.GetDateCreated())
 	fmt.Println(st2.GetDateModified())

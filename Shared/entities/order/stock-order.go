@@ -165,22 +165,7 @@ func New(params NewStockOrderParams) *StockOrder {
 		Price:              params.Price,
 		ParentStockOrderID: params.ParentStockOrderID,
 	}
-	so.SetDefaults()
 	return so
-}
-
-func (so *StockOrder) SetDefaults() {
-	// so.GetStockIDInternal = func() string { return so.StockID }
-	// so.SetStockIDInternal = func(stockID string) { so.StockID = stockID }
-	// so.GetIsBuyInternal = func() bool { return so.IsBuy }
-	// so.SetIsBuyInternal = func(isBuy bool) { so.IsBuy = isBuy }
-	// so.GetOrderTypeInternal = func() string { return so.OrderType }
-	// so.GetQuantityInternal = func() int { return so.Quantity }
-	// so.SetQuantityInternal = func(quantity int) { so.Quantity = quantity }
-	// so.GetPriceInternal = func() float64 { return so.Price }
-	// so.SetPriceInternal = func(price float64) { so.Price = price }
-	// so.GetParentStockOrderIDInternal = func() string { return so.ParentStockOrderID }
-	// so.SetParentStockOrderIDInternal = func(parentStockOrderID string) { so.ParentStockOrderID = parentStockOrderID }
 }
 
 func Parse(jsonBytes []byte) (*StockOrder, error) {

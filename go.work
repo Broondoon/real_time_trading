@@ -12,4 +12,6 @@ use (
 	./stock-database/database-access
 	./stock-database/database-service
 	./order-initiator-service
+	./user-management-database/database-access
+	./user-management-database/database-service
 )

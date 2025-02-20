@@ -18,7 +18,6 @@ type BaseEntityInterface interface {
 
 type EntityInterface interface {
 	ToJSON() ([]byte, error)
-	SetDefaults()
 	BaseEntityInterface
 }
 
@@ -73,17 +72,7 @@ func NewEntity(params NewEntityParams) *Entity {
 		DateCreated:  params.DateCreated,
 		DateModified: params.DateModified,
 	}
-	e.setEntityDefaults()
 	return e
-}
-
-func (e *Entity) setEntityDefaults() {
-	// e.SetIdInternal = func(id string) { e.ID = id }
-	// e.GetIdInternal = func() string { return e.ID }
-	// e.SetDateCreatedInternal = func(dateCreated time.Time) { e.DateCreated = dateCreated }
-	// e.GetDateCreatedInternal = func() time.Time { return e.DateCreated }
-	// e.SetDateModifiedInternal = func(dateModified time.Time) { e.DateModified = dateModified }
-	// e.GetDateModifiedInternal = func() time.Time { return e.DateModified }
 }
 
 func ParseEntity(jsonBytes []byte) (BaseEntityInterface, error) {

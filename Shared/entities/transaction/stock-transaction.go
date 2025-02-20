@@ -220,26 +220,7 @@ func NewStockTransaction(params NewStockTransactionParams) *StockTransaction {
 		Timestamp:                params.TimeStamp,
 		Entity:                   *e,
 	}
-	st.SetDefaults()
 	return st
-}
-
-func (st *StockTransaction) SetDefaults() {
-	// st.GetStockIDInternal = func() string { return st.StockID }
-	// st.SetStockIDInternal = func(stockID string) { st.StockID = stockID }
-	// st.GetParentStockTransactionIDInternal = func() string { return st.ParentStockTransactionID }
-	// st.SetParentStockTransactionIDInternal = func(parentStockTransactionID string) { st.ParentStockTransactionID = parentStockTransactionID }
-	// st.GetWalletTransactionIDInternal = func() string { return st.WalletTransactionID }
-	// st.SetWalletTransactionIDInternal = func(walletTransactionID string) { st.WalletTransactionID = walletTransactionID }
-	// st.GetOrderStatusInternal = func() string { return st.OrderStatus }
-	// st.SetOrderStatusInternal = func(orderStatus string) { st.OrderStatus = orderStatus }
-	// st.GetIsBuyInternal = func() bool { return st.IsBuy }
-	// st.SetIsBuyInternal = func(isBuy bool) { st.IsBuy = isBuy }
-	// st.GetOrderTypeInternal = func() string { return st.OrderType }
-	// st.GetStockPriceInternal = func() float64 { return st.StockPrice }
-	// st.SetStockPriceInternal = func(stockPrice float64) { st.StockPrice = stockPrice }
-	// st.GetQuantityInternal = func() int { return st.Quantity }
-	// st.SetQuantityInternal = func(quantity int) { st.Quantity = quantity }
 }
 
 func ParseStockTransaction(jsonBytes []byte) (*StockTransaction, error) {
