@@ -46,12 +46,12 @@ class _LoginPageState extends State<LoginPage> {
               onPressed: _isLoading ? null : () async {
                 print("PRESSED BUTTON TO LOGIN.");
                 setState(() => _isLoading = true);
-                final authController = Provider.of<AuthController>(context, listen: false);
-                bool success = await authController.login(
-                  _usernameController.text,
-                  _passwordController.text,
-                );
-                // bool success = true;
+                // final authController = Provider.of<AuthController>(context, listen: false);
+                // bool success = await authController.login(
+                //   _usernameController.text,
+                //   _passwordController.text,
+                // );
+                bool success = true;
                 setState(() => _isLoading = false);
         
                 // This is an interesting thing! "Mounted" is whether the current widget

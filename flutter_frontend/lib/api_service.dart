@@ -2,8 +2,16 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 
 class APIService {
-  APIService(this.dio);
-  final Dio dio;
+
+  _dio = Dio(
+      BaseOptions(
+        baseUrl: _baseUrl,
+        connectTimeout: const Duration(seconds: 10),
+        receiveTimeout: const Duration(seconds: 10),
+      )
+    );
+
+
 
   // The context is needed to build a SnackBar popup! But it's a pain to pass around the context, and
   //    implementing a dedicated service is a low priority rn.

@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_frontend/router/app_router.dart';
 import 'package:flutter_frontend/views/auth/auth_controller.dart';
-import 'package:flutter_frontend/views/auth/login_page_view.dart';
-import 'package:flutter_frontend/views/home/home_page_view.dart';
 import 'package:provider/provider.dart';
 
 void main() {
@@ -48,12 +46,13 @@ class MyApp extends StatelessWidget {
   }
 }
 
-class InitAuthGate extends StatelessWidget {
-  const InitAuthGate({super.key});
+// Deprecated; Router provides same service
+// class InitAuthGate extends StatelessWidget {
+//   const InitAuthGate({super.key});
 
-  @override
-  Widget build(BuildContext context) {
-    final authController = Provider.of<AuthController>(context);
-    return authController.isLoggedIn ? HomePage() : LoginPage();
-  }
-}
+//   @override
+//   Widget build(BuildContext context) {
+//     final authController = Provider.of<AuthController>(context);
+//     return authController.isLoggedIn ? HomePage() : LoginPage();
+//   }
+// }

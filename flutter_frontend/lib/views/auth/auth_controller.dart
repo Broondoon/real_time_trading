@@ -64,10 +64,7 @@ class AuthController extends ChangeNotifier {
           ) {
             options.headers['Authorization'] = 'Bearer $_token';
           }
-          else {
-            // if NOT /login or /register, then kill
-            
-
+          else {            
             //TODO: re-enable auto-logout
             print("Logout redirect!");
             logout();
