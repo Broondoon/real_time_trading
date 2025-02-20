@@ -24,6 +24,7 @@ type OrderBookDataStructureInterface interface {
 	PopNext() order.StockOrderInterface
 	Remove(params *RemoveParams) order.StockOrderInterface
 	Length() int
+	GetPrice() float64
 }
 
 type RemoveParams struct {
@@ -77,6 +78,13 @@ func NewQueue(params *NewQueueParams) OrderBookDataStructureInterface {
 	return &Queue{
 		BaseOrderBookDataStructureInterface: NewBaseOrderBookDataStructure(params.NewOrderBookDataStructureParams),
 	}
+}
+
+func (q *Queue) GetPrice() float64 {
+	if q.data.Len() == 0 {
+		return 0
+	}
+	return q.data.Front().Value.(order.StockOrderInterface).GetPrice()
 }
 
 // PriceNodeMap Structure, where adding is added according to a logic system, and removing is based on a key system.
@@ -155,6 +163,10 @@ func NewPriceNodeMap(params *NewPriceNodeMapParams) OrderBookDataStructureInterf
 		BaseOrderBookDataStructureInterface: NewBaseOrderBookDataStructure(params.NewOrderBookDataStructureParams),
 		data:                                make(map[float64]*PriceNode),
 	}
+}
+
+func (p *PriceNodeMap) GetPrice() float64 {
+	return p.currentBestPrice
 }
 
 // PriceNode Structure, for internal usage on the PriceNodeMap.

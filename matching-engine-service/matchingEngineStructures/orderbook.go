@@ -13,6 +13,7 @@ type OrderBookInterface interface {
 	AddOrder(stockOrder order.StockOrderInterface)
 	GetMutex() *sync.Mutex
 	GetData() OrderBookDataStructureInterface
+	GetBestPrice() float64
 }
 
 type OrderBook struct {
@@ -26,6 +27,10 @@ func (o *OrderBook) GetData() OrderBookDataStructureInterface {
 
 func (o *OrderBook) GetMutex() *sync.Mutex {
 	return o.mutex
+}
+
+func (o *OrderBook) GetBestPrice() float64 {
+	return o.GetData().GetPrice()
 }
 
 // potential race condition here. if we need to actually put the order back due to complications, while it was extracted, other orders could have been extracted.

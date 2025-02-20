@@ -2,7 +2,7 @@ services:
   microservice-template:
     build:
       context: .
-      dockerfile: ./microservice-template/Dockerfile
+      dockerfile: ./${MICROSERVICE_TEMPLATE_HOST}/Dockerfile
     ports:
       - "${MICROSERVICE_TEMPLATE_PORT}:${MICROSERVICE_TEMPLATE_PORT}"
     env_file:
@@ -22,7 +22,7 @@ services:
   matching-engine-service:
     build: 
           context: .
-          dockerfile: ./matching-engine-service/Dockerfile
+          dockerfile: ./${MATCHING_ENGINE_HOST}/Dockerfile
     ports:
       - "${MATCHING_ENGINE_PORT}:${MATCHING_ENGINE_PORT}"
     env_file:
@@ -33,8 +33,38 @@ services:
     depends_on:
       stock-order-db:
         condition: service_healthy
+      stock-database-service:
+        condition: service_healthy
     networks:
        - go-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://${MATCHING_ENGINE_HOST}:${MATCHING_ENGINE_PORT}/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      
+  order-initiator-service:
+    build: 
+          context: .
+          dockerfile: ./${ORDER_INITIATOR_HOST}/Dockerfile
+    ports:
+      - "${ORDER_INITIATOR_PORT}:${ORDER_INITIATOR_PORT}"
+    env_file:
+      - .env
+    environment:
+      PORT: ${ORDER_INITIATOR_PORT}
+    networks:
+       - go-network
+    depends_on:
+      transaction-database-service:
+        condition: service_healthy
+      matching-engine-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://${ORDER_INITIATOR_HOST}:${TRANSACTION_DATABASE_SERVICE_PORT}/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
   auth-service:
     build: ./auth-service
@@ -87,6 +117,11 @@ services:
     depends_on:
       stock-db:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://stock-database-service:${STOCK_DATABASE_SERVICE_PORT}/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
   transaction-database-service:
     build: 
@@ -120,7 +155,7 @@ services:
       POSTGRES_PASSWORD: ${AUTH_POSTGRES_PASSWORD}
       POSTGRES_DB: ${AUTH_POSTGRES_DB}
     volumes:
-      - db-data:/var/lib/postgresql/data
+      - auth-db-data:/var/lib/postgresql/data
       - ./auth-service/database/init.sql:/docker-entrypoint-initdb.d/init.sql
     healthcheck:
       test:
@@ -141,7 +176,7 @@ services:
       POSTGRES_PASSWORD: ${STOCK_ORDER_POSTGRES_PASSWORD}
       POSTGRES_DB: ${STOCK_ORDER_POSTGRES_DB}
     volumes:
-      - db-data:/var/lib/postgresql/data
+      - stock-order-db-data:/var/lib/postgresql/data
       - ./stock-order-database/init.sql:/docker-entrypoint-initdb.d/init.sql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $STOCK_ORDER_POSTGRES_USER -d $STOCK_ORDER_POSTGRES_DB"]
@@ -161,7 +196,7 @@ services:
       POSTGRES_PASSWORD: ${TRANSACTION_POSTGRES_PASSWORD}
       POSTGRES_DB: ${TRANSACTION_POSTGRES_DB}
     volumes:
-      - db-data:/var/lib/postgresql/data
+      - transaction-db-data:/var/lib/postgresql/data
       - ./transaction-database/init.sql:/docker-entrypoint-initdb.d/init.sql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $TRANSACTION_POSTGRES_USER -d $TRANSACTION_POSTGRES_DB"]
@@ -181,7 +216,7 @@ services:
       POSTGRES_PASSWORD: ${STOCK_POSTGRES_PASSWORD}
       POSTGRES_DB: ${STOCK_POSTGRES_DB}
     volumes:
-      - db-data:/var/lib/postgresql/data
+      - stock-db-data:/var/lib/postgresql/data
       - ./stock-database/init.sql:/docker-entrypoint-initdb.d/init.sql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $STOCK_POSTGRES_USER -d $STOCK_POSTGRES_DB"]
@@ -193,7 +228,11 @@ services:
 
 
 volumes:
-  db-data:
+  stock-db-data:
+  auth-db-data:
+  stock-order-db-data:
+  transaction-db-data:
+
 
 networks:
   go-network:

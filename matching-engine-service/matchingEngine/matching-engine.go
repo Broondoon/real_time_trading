@@ -14,6 +14,7 @@ type MatchingEngineInterface interface {
 	RemoveOrder(orderID string, priceKey float64)
 	RunMatchingEngineOrders()
 	RunMatchingEngineUpdates()
+	GetPrice() float64
 }
 
 type MatchingEngine struct {
@@ -167,6 +168,10 @@ func (me *MatchingEngine) RemoveOrder(orderID string, priceKey float64) {
 	}
 }
 
+func (me *MatchingEngine) GetPrice() float64 {
+	return me.SellOrderBook.GetBestPrice()
+}
+
 //fake matching engine mock for testing
 
 type FakeMatchingEngine struct {
@@ -187,6 +192,3 @@ func (fme *FakeMatchingEngine) RunMatchingEngineUpdates() {
 	fme.updatesCalled = true
 	close(fme.updatesCh)
 }
-
-//hmmm, when we get partial matches and need to reinsert orders, taht might cause race conditions if we need to undo or reinsert orders...
-//we might need to pair pops with locking and then later unlocking on this side.

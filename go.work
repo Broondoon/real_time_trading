@@ -11,4 +11,5 @@ use (
 	./transaction-database/database-service
 	./stock-database/database-access
 	./stock-database/database-service
+	./order-initiator-service
 )

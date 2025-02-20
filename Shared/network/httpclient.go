@@ -25,7 +25,7 @@ type NetworkInterface interface {
 	MicroserviceTemplate() HttpClientInterface
 	UserManagement() HttpClientInterface
 	Authentication() HttpClientInterface
-	OrderInitator() HttpClientInterface
+	OrderInitiator() HttpClientInterface
 	OrderExecutor() HttpClientInterface
 	Stocks() HttpClientInterface
 	Transactions() HttpClientInterface
@@ -36,7 +36,7 @@ type Network struct {
 	MicroserviceTemplateService HttpClientInterface
 	UserManagementService       HttpClientInterface
 	AuthenticationService       HttpClientInterface
-	OrderInitatorService        HttpClientInterface
+	OrderInitiatorService       HttpClientInterface
 	OrderExecutorService        HttpClientInterface
 	StocksService               HttpClientInterface
 	TransactionsService         HttpClientInterface
@@ -58,8 +58,8 @@ func (n *Network) Authentication() HttpClientInterface {
 	return n.AuthenticationService
 }
 
-func (n *Network) OrderInitator() HttpClientInterface {
-	return n.OrderInitatorService
+func (n *Network) OrderInitiator() HttpClientInterface {
+	return n.OrderInitiatorService
 }
 
 func (n *Network) OrderExecutor() HttpClientInterface {
@@ -82,7 +82,7 @@ func NewNetwork() NetworkInterface {
 		MicroserviceTemplateService: newHttpClient(baseURL + os.Getenv("MICROSERVICE_TEMPLATE_HOST") + ":" + os.Getenv("MICROSERVICE_TEMPLATE_PORT") + baseURLPostfix),
 		UserManagementService:       newHttpClient(baseURL + os.Getenv("USER_MANAGEMENT_HOST") + ":" + os.Getenv("USER_MANAGEMENT_PORT") + baseURLPostfix),
 		AuthenticationService:       newHttpClient(baseURL + os.Getenv("AUTH_HOST") + ":" + os.Getenv("AUTH_PORT") + baseURLPostfix),
-		OrderInitatorService:        newHttpClient(baseURL + os.Getenv("ORDER_INITIATOR_HOST") + ":" + os.Getenv("ORDER_INITIATOR_PORT") + baseURLPostfix),
+		OrderInitiatorService:       newHttpClient(baseURL + os.Getenv("ORDER_INITIATOR_HOST") + ":" + os.Getenv("ORDER_INITIATOR_PORT") + baseURLPostfix),
 		OrderExecutorService:        newHttpClient(baseURL + os.Getenv("ORDER_EXECUTOR_HOST") + ":" + os.Getenv("ORDER_EXECUTOR_PORT") + baseURLPostfix),
 		StocksService:               newHttpClient(baseURL + os.Getenv("STOCKS_HOST") + ":" + os.Getenv("STOCKS_PORT") + baseURLPostfix),
 		TransactionsService:         newHttpClient(baseURL + os.Getenv("TRANSACTIONS_HOST") + ":" + os.Getenv("TRANSACTIONS_PORT") + baseURLPostfix),
@@ -100,14 +100,16 @@ func (n *Network) AddHandleFunc(params HandlerParams) {
 		var body []byte
 		var err error
 		var queryParams url.Values
-		if r.Method == http.MethodGet || r.Method == http.MethodDelete {
+		if r.Method == http.MethodGet || r.Method == http.MethodDelete || r.Method == http.MethodPut {
 			//decode params
 			queryParams = r.URL.Query()
 			id := strings.TrimPrefix(r.URL.Path, params.Pattern)
 			if id != "" {
 				queryParams.Add("id", id)
 			}
-		} else {
+		}
+
+		if r.Method == http.MethodPost || r.Method == http.MethodPut {
 			body, err = io.ReadAll(r.Body)
 			if err != nil {
 				fmt.Println("Error, there was an issue with reading the message:", err)

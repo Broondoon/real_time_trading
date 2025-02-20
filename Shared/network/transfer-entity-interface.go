@@ -13,3 +13,11 @@ type MatchingEngineToExecutionJSON struct {
 type StockPrices struct {
 	StockPrices map[string]float64 `json:"stock_prices"`
 }
+
+type StockID struct {
+	StockID string `json:"stock_id"`
+}
+
+type StockTransactionID struct {
+	StockTransactionID string `json:"stock_tx_id"`
+}

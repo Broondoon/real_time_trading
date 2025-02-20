@@ -6,9 +6,12 @@ import (
 	"Shared/network"
 	"databaseAccessStockOrder"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
+
+	"gorm.io/gorm"
 )
 
 var _matchingEngineMap map[string]MatchingEngineInterface
@@ -28,7 +31,7 @@ func InitalizeHandlers(stockIDs *[]string,
 	//Add handlers
 	networkManager.AddHandleFunc(network.HandlerParams{Pattern: "createStock", Handler: AddNewStockHandler})
 	networkManager.AddHandleFunc(network.HandlerParams{Pattern: "placeStockOrder", Handler: PlaceStockOrderHandler})
-	networkManager.AddHandleFunc(network.HandlerParams{Pattern: "deleteOrder", Handler: DeleteStockOrderHandler})
+	networkManager.AddHandleFunc(network.HandlerParams{Pattern: "deleteOrder/", Handler: DeleteStockOrderHandler})
 	networkManager.AddHandleFunc(network.HandlerParams{Pattern: "getStockPrices", Handler: GetStockPricesHandler})
 	http.HandleFunc("/health", healthHandler)
 }
@@ -42,18 +45,14 @@ func healthHandler(w http.ResponseWriter, r *http.Request) {
 // Expected input is a stock ID in the body of the request
 // we're expecting {"StockID":"{id value}"}
 func AddNewStockHandler(responseWriter http.ResponseWriter, data []byte, queryParams url.Values, requestType string) {
-	var jsonData map[string]interface{}
-	err := json.Unmarshal(data, &jsonData)
+	var stockID network.StockID
+	err := json.Unmarshal(data, &stockID)
 	if err != nil {
 		responseWriter.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	stockID, ok := jsonData["StockID"].(string)
-	if !ok {
-		responseWriter.WriteHeader(http.StatusBadRequest)
-		return
-	}
-	AddNewStock(stockID)
+
+	AddNewStock(stockID.StockID)
 }
 
 func AddNewStock(stockID string) {
@@ -101,28 +100,34 @@ func PlaceStockOrder(stockOrder order.StockOrderInterface) bool {
 }
 
 func DeleteStockOrderHandler(responseWriter http.ResponseWriter, data []byte, queryParams url.Values, requestType string) {
-	var jsonData map[string]interface{}
-	err := json.Unmarshal(data, &jsonData)
+	orderID := queryParams.Get("id")
+	err := DeleteStockOrder(orderID)
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		responseWriter.WriteHeader(http.StatusNotFound)
+		return
+	}
 	if err != nil {
-		responseWriter.WriteHeader(http.StatusBadRequest)
+		responseWriter.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	orderID, ok := jsonData["OrderID"].(string)
-	if !ok {
-		responseWriter.WriteHeader(http.StatusBadRequest)
-		return
-	}
-	DeleteStockOrder(orderID)
+	responseWriter.WriteHeader(http.StatusOK)
 }
 
-func DeleteStockOrder(orderID string) {
-	order := _databaseManager.GetByID(orderID)
-	_databaseManager.Delete(orderID)
-	me, ok := _matchingEngineMap[orderID]
+func DeleteStockOrder(orderID string) error {
+	order, err := _databaseManager.GetByID(orderID)
+	if err != nil {
+		return err
+	}
+	err = _databaseManager.Delete(orderID)
+	if err != nil {
+		return err
+	}
+	me, ok := _matchingEngineMap[order.GetStockID()]
 	if !ok {
-		return
+		return nil
 	}
 	me.RemoveOrder(orderID, order.GetPrice())
+	return nil
 }
 
 func GetStockPricesHandler(responseWriter http.ResponseWriter, data []byte, queryParams url.Values, requestType string) {

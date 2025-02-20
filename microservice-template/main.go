@@ -12,6 +12,7 @@ import (
 )
 
 func main() {
+	var err error
 	//Create a new Stock Order
 	so := order.New(order.NewStockOrderParams{
 		NewEntityParams: entity.NewEntityParams{
@@ -126,7 +127,7 @@ func main() {
 	fmt.Println("Testing create Stock Transaction: ")
 	_databaseManagerStockTransactions.Create(st1)
 	fmt.Println("Stock Transaction Created with ID: ", st1.GetId())
-	st2 := _databaseManagerStockTransactions.GetByID(st1.GetId())
+	st2, err := _databaseManagerStockTransactions.GetByID(st1.GetId())
 	fmt.Print("Testing get Stock Order: ")
 	fmt.Println(st2.GetId())
 	fmt.Println(st2.GetDateCreated())
@@ -143,7 +144,10 @@ func main() {
 
 	fmt.Print("Testing group get Stock Transaction: ")
 	idList := []string{"st1", st1.GetId()}
-	st3 := _databaseManagerStockTransactions.GetByIDs(idList)
+	st3, err := _databaseManagerStockTransactions.GetByIDs(idList)
+	if err != nil {
+		fmt.Println(err)
+	}
 	for _, st4 := range *st3 {
 		fmt.Println(st4.GetId())
 		fmt.Println(st4.GetDateCreated())
@@ -162,7 +166,7 @@ func main() {
 	fmt.Println("Testing update Stock Transaction: ")
 	st1.SetOrderStatus("COMPLETE")
 	_databaseManagerStockTransactions.Update(st1)
-	st5 := _databaseManagerStockTransactions.GetByID(st1.GetId())
+	st5, err := _databaseManagerStockTransactions.GetByID(st1.GetId())
 	fmt.Print("Stock Transaction: ")
 	fmt.Println(st5.GetId())
 	fmt.Println(st5.GetDateCreated())
@@ -178,6 +182,12 @@ func main() {
 	fmt.Println(st5.GetTimestamp())
 
 	fmt.Println("Testing delete Stock Transaction: ")
-	_databaseManagerStockTransactions.Delete(so.GetId())
-	_databaseManagerStockTransactions.GetByID(so.GetId())
+	err = _databaseManagerStockTransactions.Delete(so.GetId())
+	if err != nil {
+		fmt.Println(err)
+	}
+	_, err = _databaseManagerStockTransactions.GetByID(so.GetId())
+	if err != nil {
+		fmt.Println(err)
+	}
 }
