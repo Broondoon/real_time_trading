@@ -17,9 +17,9 @@ type UserInterface interface {
 }
 
 type User struct {
-	Name     string `json:"Name" gorm:"not null"`
-	Username string `json:"Username" gorm:"unique not null"`
-	Password string `json:"Password" gorm:"not null"`
+	Name     string `json:"name" gorm:"not null"`
+	Username string `json:"user_name" gorm:"unique not null"`
+	Password string `json:"password" gorm:"not null"`
 	// Internal functions removed in favor of direct field access.
 	// GetNameInternal     func() string         `gorm:"-"`
 	// SetNameInternal     func(name string)     `gorm:"-"`
@@ -56,9 +56,9 @@ func (u *User) SetPassword(password string) {
 
 type NewUserParams struct {
 	entity.NewEntityParams
-	Name     string `json:"Name"`
-	Username string `json:"Username"`
-	Password string `json:"Password"`
+	Name     string `json:"name"`
+	Username string `json:"user_name"`
+	Password string `json:"password"`
 }
 
 func New(params NewUserParams) *User {

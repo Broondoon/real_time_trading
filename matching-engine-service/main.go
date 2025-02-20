@@ -22,7 +22,7 @@ func main() {
 		panic(err)
 	}
 
-	go matchingEngine.InitalizeHandlers(stockList, networkManager, _databaseManager)
+	go matchingEngine.InitalizeHandlers(stockList, networkManager, _databaseManager, _databaseAccess)
 	println("Matching Engine Service Started")
 
 	networkManager.Listen(network.ListenerParams{

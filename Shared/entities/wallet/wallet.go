@@ -16,8 +16,8 @@ type WalletInterface interface {
 }
 
 type Wallet struct {
-	UserID  string  `json:"UserId" gorm:"not null"`
-	Balance float64 `json:"Balance" gorm:"not null"`
+	UserID  string  `json:"user_id" gorm:"not null"`
+	Balance float64 `json:"balance" gorm:"not null"`
 	// The internal function fields have been commented out,
 	// and the getters/setters below operate directly on the properties.
 	/*
@@ -47,8 +47,8 @@ func (w *Wallet) SetUserID(userID string) {
 
 type NewWalletParams struct {
 	entity.NewEntityParams
-	UserID  string             `json:"UserId" gorm:"not null"`
-	Balance float64            `json:"Balance" gorm:"not null"`
+	UserID  string             `json:"user_id" gorm:"not null"`
+	Balance float64            `json:"balance" gorm:"not null"`
 	User    user.UserInterface // use this or UserId
 }
 

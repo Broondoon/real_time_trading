@@ -41,12 +41,12 @@ type StockOrderInterface interface {
 }
 
 type StockOrder struct {
-	StockID            string  `json:"StockID" gorm:"not null"` // use this or Stock
+	StockID            string  `json:"stock_id" gorm:"not null"` // use this or Stock
 	ParentStockOrderID string  `json:"ParentStockOrderID"`
-	IsBuy              bool    `json:"IsBuy" gorm:"not null"`
-	OrderType          string  `json:"OrderType" gorm:"not null"` // MARKET or LIMIT. This can't be changed later.
-	Quantity           int     `json:"Quantity" gorm:"not null"`
-	Price              float64 `json:"Price" gorm:"not null"`
+	IsBuy              bool    `json:"is_buy" gorm:"not null"`
+	OrderType          string  `json:"order_type" gorm:"not null"` // MARKET or LIMIT. This can't be changed later.
+	Quantity           int     `json:"quantity" gorm:"not null"`
+	Price              float64 `json:"price" gorm:"not null"`
 	// Price     `gorm:"embedded"`
 	// If you need to access a property, please use the Get and Set functions, not the property itself. It is only exposed in case you need to interact with it when altering internal functions.
 	// Internal Functions should not be interacted with directly. if you need to change functionality, set a new function to the existing internal function.
@@ -139,11 +139,11 @@ func (so *StockOrder) CreateChildOrder(parent StockOrderInterface, partner Stock
 type NewStockOrderParams struct {
 	entity.NewEntityParams
 	Stock              stock.StockInterface // use this or StockID
-	StockID            string               `json:"StockID"`
-	IsBuy              bool                 `json:"IsBuy"`
-	OrderType          string               `json:"OrderType"` // MARKET or LIMIT. This can't be changed later.
-	Quantity           int                  `json:"Quantity"`
-	Price              float64              `json:"Price"`
+	StockID            string               `json:"stock_id"`
+	IsBuy              bool                 `json:"is_buy"`
+	OrderType          string               `json:"order_type"` // MARKET or LIMIT. This can't be changed later.
+	Quantity           int                  `json:"quantity"`
+	Price              float64              `json:"price"`
 	ParentStockOrderID string               `json:"ParentStockOrderID"`
 }
 

@@ -23,10 +23,10 @@ type UserStockInterface interface {
 }
 
 type UserStock struct {
-	UserID    string `json:"UserID" gorm:"not null"`
-	StockID   string `json:"StockID" gorm:"not null"`
-	StockName string `json:"StockName" gorm:"not null"`
-	Quantity  int    `json:"Quantity" gorm:"not null"`
+	UserID    string `json:"user_id" gorm:"not null"`
+	StockID   string `json:"stock_id" gorm:"not null"`
+	StockName string `json:"stock_name" gorm:"not null"`
+	Quantity  int    `json:"quantity_owned" gorm:"not null"`
 	// The following internal functions have been commented out.
 	// Instead, we use the fields directly in the getters and setters.
 	/*
@@ -76,10 +76,10 @@ func (us *UserStock) SetStockName(stockName string) {
 
 type NewUserStockParams struct {
 	entity.NewEntityParams
-	UserID    string               `json:"UserID"`
-	StockID   string               `json:"StockID"`
-	StockName string               `json:"StockName"`
-	Quantity  int                  `json:"Quantity"`
+	UserID    string               `json:"user_id"`
+	StockID   string               `json:"stock_id"`
+	StockName string               `json:"stock_name"`
+	Quantity  int                  `json:"quantity_owned"`
 	User      user.UserInterface   // use this or UserID
 	Stock     stock.StockInterface // use this or StockID and StockName
 }

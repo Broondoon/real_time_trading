@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"sort"
 
 	"gorm.io/gorm"
 )
@@ -43,6 +44,14 @@ func GetStockTransactions(responseWriter http.ResponseWriter, data []byte, query
 		responseWriter.WriteHeader(http.StatusInternalServerError)
 		return
 	}
+	for _, transaction := range *transactions {
+		//making sure the stock_tx_id is set
+		transaction.GetId()
+	}
+	//sort transactions by timestamp. Oldest to newest
+	sort.SliceStable((*transactions), func(i, j int) bool {
+		return (*transactions)[i].GetTimestamp().Before((*transactions)[j].GetTimestamp())
+	})
 	transactionsJSON, err := json.Marshal(transactions)
 	if err != nil {
 		responseWriter.WriteHeader(http.StatusInternalServerError)
@@ -59,6 +68,14 @@ func getWalletTransactions(responseWriter http.ResponseWriter, data []byte, quer
 		responseWriter.WriteHeader(http.StatusInternalServerError)
 		return
 	}
+	for _, transaction := range *transactions {
+		//making sure the wallet_tx_id is set
+		transaction.GetId()
+	}
+	//sort transactions by timestamp. Oldest to newest
+	sort.SliceStable((*transactions), func(i, j int) bool {
+		return (*transactions)[i].GetTimestamp().Before((*transactions)[j].GetTimestamp())
+	})
 	transactionsJSON, err := json.Marshal(transactions)
 	if err != nil {
 		responseWriter.WriteHeader(http.StatusInternalServerError)

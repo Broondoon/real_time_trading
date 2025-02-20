@@ -23,10 +23,11 @@ type WalletTransactionInterface interface {
 }
 
 type WalletTransaction struct {
-	WalletID           string    `json:"WalletID" gorm:"not null"`
-	StockTransactionID string    `json:"StockTransactionID" gorm:"not null"`
-	IsDebit            bool      `json:"IsDebit" gorm:"not null"`
-	Amount             float64   `json:"Amount" gorm:"not null"`
+	WalletID           string    `json:"wallet_id" gorm:"not null"`
+	WalletTXID         string    `json:"wallet_tx_id" gorm:"-"`
+	StockTransactionID string    `json:"stock_tx_id" gorm:"not null"`
+	IsDebit            bool      `json:"is_debit" gorm:"not null"`
+	Amount             float64   `json:"amount" gorm:"not null"`
 	Timestamp          time.Time `json:"time_stamp"`
 
 	// Internal functions have been commented out.
@@ -39,6 +40,18 @@ type WalletTransaction struct {
 	// GetAmountInternal             func() float64                  `gorm:"-"`
 	// SetAmountInternal             func(amount float64)            `gorm:"-"`
 	entity.Entity `json:"Entity" gorm:"embedded"`
+}
+
+func (st *WalletTransaction) GetId() string {
+	if st.WalletTXID == "" {
+		st.WalletTXID = st.Entity.GetId()
+	}
+	return st.WalletTXID
+}
+
+func (st *WalletTransaction) SetId(id string) {
+	st.WalletTXID = id
+	st.Entity.SetId(id)
 }
 
 func (wt *WalletTransaction) GetWalletID() string {
@@ -83,10 +96,10 @@ func (wt *WalletTransaction) SetTimestamp(timestamp time.Time) {
 
 type NewWalletTransactionParams struct {
 	entity.NewEntityParams
-	WalletID           string    `json:"WalletID" gorm:"not null"`
-	StockTransactionID string    `json:"StockTransactionID" gorm:"not null"`
-	IsDebit            bool      `json:"IsDebit" gorm:"not null"`
-	Amount             float64   `json:"Amount" gorm:"not null"`
+	WalletID           string    `json:"wallet_id" gorm:"not null"`
+	StockTransactionID string    `json:"stock_tx_id" gorm:"not null"`
+	IsDebit            bool      `json:"is_debit" gorm:"not null"`
+	Amount             float64   `json:"amount" gorm:"not null"`
 	Timestamp          time.Time `json:"time_stamp"`
 	Wallet             wallet.WalletInterface
 	StockTransaction   StockTransactionInterface
