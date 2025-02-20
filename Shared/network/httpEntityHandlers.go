@@ -15,7 +15,7 @@ import (
 func CreateNetworkEntityHandlers[T entity.EntityInterface](network NetworkInterface, entityName string, databaseManager databaseService.EntityDataInterface[T], Parse func(jsonBytes []byte) (T, error)) {
 	defaults := func(responseWriter http.ResponseWriter, data []byte, queryParams url.Values, requestType string) {
 		println("data: ", string(data))
-		println("queryParams: ", queryParams)
+		println("queryParams: ", queryParams.Encode())
 		println("requestType: ", requestType)
 		if requestType == "GET" || requestType == "" {
 			if queryParams.Get("id") != "" {

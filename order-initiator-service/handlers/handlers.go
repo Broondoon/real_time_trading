@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"os"
 
 	"gorm.io/gorm"
 )
@@ -26,8 +27,8 @@ func InitalizeHandlers(
 	//listen for cancelStockTransaction.
 
 	//Add handlers
-	networkManager.AddHandleFuncProtected(network.HandlerParams{Pattern: "placeStockOrder", Handler: placeStockOrderHandler})
-	networkManager.AddHandleFuncProtected(network.HandlerParams{Pattern: "cancelStockTransaction", Handler: cancelStockTransactionHandler})
+	networkManager.AddHandleFuncProtected(network.HandlerParams{Pattern: os.Getenv("engine_route") + "/placeStockOrder", Handler: placeStockOrderHandler})
+	networkManager.AddHandleFuncProtected(network.HandlerParams{Pattern: os.Getenv("engine_route") + "/cancelStockTransaction", Handler: cancelStockTransactionHandler})
 	http.HandleFunc("/health", healthHandler)
 }
 

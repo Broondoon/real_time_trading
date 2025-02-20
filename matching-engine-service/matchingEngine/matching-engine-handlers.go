@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"os"
 
 	"gorm.io/gorm"
 )
@@ -32,7 +33,7 @@ func InitalizeHandlers(stockIDs *[]string,
 	networkManager.AddHandleFuncUnprotected(network.HandlerParams{Pattern: "createStock", Handler: AddNewStockHandler})
 	networkManager.AddHandleFuncUnprotected(network.HandlerParams{Pattern: "placeStockOrder", Handler: PlaceStockOrderHandler})
 	networkManager.AddHandleFuncUnprotected(network.HandlerParams{Pattern: "deleteOrder/", Handler: DeleteStockOrderHandler})
-	networkManager.AddHandleFuncProtected(network.HandlerParams{Pattern: "getStockPrices", Handler: GetStockPricesHandler})
+	networkManager.AddHandleFuncProtected(network.HandlerParams{Pattern: os.Getenv("transaction_route") + "/getStockPrices", Handler: GetStockPricesHandler})
 	http.HandleFunc("/health", healthHandler)
 }
 
@@ -167,6 +168,8 @@ func SendToOrderExection(buyOrder order.StockOrderInterface, sellOrder order.Sto
 		StockPrice:    sellOrder.GetPrice(),
 		Quantity:      quantity,
 	}
+
+	//need to figure out how to get the user IDs from the orders
 
 	data, err := _networkManager.OrderExecutor().Post("orderexecutor", transferEntity)
 	if err != nil {

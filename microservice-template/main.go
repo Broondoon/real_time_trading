@@ -191,7 +191,24 @@ func main() {
 	fmt.Println(st5.GetTimestamp())
 
 	fmt.Print("Testing group get Stock Transaction by foreign key: ", st23.GetStockID())
-	st6, err := _databaseManagerStockTransactions.GetByStockID(st23.GetStockID())
+	st6, err := _databaseManagerStockTransactions.GetByForeignID("StockID", st23.GetStockID())
+	if err != nil {
+		fmt.Println(err)
+	}
+	for _, st7 := range *st6 {
+		fmt.Println(st7.GetId())
+		fmt.Println(st7.GetDateCreated())
+		fmt.Println(st7.GetDateModified())
+		fmt.Println(st7.GetOrderStatus())
+		fmt.Println(st7.GetStockID())
+		fmt.Println(st7.GetParentStockTransactionID())
+		fmt.Println(st7.GetWalletTransactionID())
+		fmt.Println(st7.GetIsBuy())
+		fmt.Println(st7.GetOrderType())
+		fmt.Println(st7.GetStockPrice())
+		fmt.Println(st7.GetQuantity())
+		fmt.Println(st7.GetTimestamp())
+	}
 
 	fmt.Println("Testing delete Stock Transaction: ")
 	err = _databaseManagerStockTransactions.Delete(st23.GetId())
