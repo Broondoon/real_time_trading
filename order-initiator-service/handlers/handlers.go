@@ -26,8 +26,8 @@ func InitalizeHandlers(
 	//listen for cancelStockTransaction.
 
 	//Add handlers
-	networkManager.AddHandleFunc(network.HandlerParams{Pattern: "placeStockOrder", Handler: placeStockOrderHandler})
-	networkManager.AddHandleFunc(network.HandlerParams{Pattern: "cancelStockTransaction", Handler: cancelStockTransactionHandler})
+	networkManager.AddHandleFuncProtected(network.HandlerParams{Pattern: "placeStockOrder", Handler: placeStockOrderHandler})
+	networkManager.AddHandleFuncProtected(network.HandlerParams{Pattern: "cancelStockTransaction", Handler: cancelStockTransactionHandler})
 	http.HandleFunc("/health", healthHandler)
 }
 

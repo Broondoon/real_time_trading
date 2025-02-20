@@ -131,6 +131,18 @@ func ParseWalletTransaction(jsonBytes []byte) (*WalletTransaction, error) {
 	return NewWalletTransaction(wt), nil
 }
 
+func ParseWalletTransactionList(jsonBytes []byte) (*[]*WalletTransaction, error) {
+	var so []NewWalletTransactionParams
+	if err := json.Unmarshal(jsonBytes, &so); err != nil {
+		return nil, err
+	}
+	soList := make([]*WalletTransaction, len(so))
+	for i, s := range so {
+		soList[i] = NewWalletTransaction(s)
+	}
+	return &soList, nil
+}
+
 func (wt *WalletTransaction) ToParams() NewWalletTransactionParams {
 	return NewWalletTransactionParams{
 		NewEntityParams:    wt.EntityToParams(),

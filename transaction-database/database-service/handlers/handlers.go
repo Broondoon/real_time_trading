@@ -23,9 +23,9 @@ func InitalizeHandlers(
 	_networkManager = networkManager
 
 	//Add handlers
-	networkManager.AddHandleFunc(network.HandlerParams{Pattern: "getStockTransactions", Handler: GetStockTransactions})
-	networkManager.AddHandleFunc(network.HandlerParams{Pattern: "getWalletTransactions", Handler: getWalletTransactions})
-	networkManager.AddHandleFunc(network.HandlerParams{Pattern: "cancelStockTransaction/", Handler: cancelStockTransactionHandler})
+	networkManager.AddHandleFuncProtected(network.HandlerParams{Pattern: "getStockTransactions", Handler: GetStockTransactions})
+	networkManager.AddHandleFuncProtected(network.HandlerParams{Pattern: "getWalletTransactions", Handler: getWalletTransactions})
+	networkManager.AddHandleFuncUnprotected(network.HandlerParams{Pattern: "cancelStockTransaction/", Handler: cancelStockTransactionHandler})
 	network.CreateNetworkEntityHandlers[*transaction.StockTransaction](_networkManager, os.Getenv("TRANSACTION_DATABASE_SERVICE_STOCK_ROUTE"), _databaseManager.StockTransactions(), transaction.ParseStockTransaction)
 	network.CreateNetworkEntityHandlers[*transaction.WalletTransaction](_networkManager, os.Getenv("TRANSACTION_DATABASE_SERVICE_WALLET_ROUTE"), _databaseManager.WalletTransactions(), transaction.ParseWalletTransaction)
 	http.HandleFunc("/health", healthHandler)

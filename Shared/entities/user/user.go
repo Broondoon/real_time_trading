@@ -84,6 +84,18 @@ func Parse(jsonBytes []byte) (*User, error) {
 	return New(u), nil
 }
 
+func ParseList(jsonBytes []byte) (*[]*User, error) {
+	var so []NewUserParams
+	if err := json.Unmarshal(jsonBytes, &so); err != nil {
+		return nil, err
+	}
+	soList := make([]*User, len(so))
+	for i, s := range so {
+		soList[i] = New(s)
+	}
+	return &soList, nil
+}
+
 func (u *User) ToParams() NewUserParams {
 	return NewUserParams{
 		NewEntityParams: u.EntityToParams(),

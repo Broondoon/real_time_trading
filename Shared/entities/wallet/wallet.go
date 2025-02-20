@@ -78,6 +78,18 @@ func Parse(jsonBytes []byte) (*Wallet, error) {
 	return New(w), nil
 }
 
+func ParseList(jsonBytes []byte) (*[]*Wallet, error) {
+	var so []NewWalletParams
+	if err := json.Unmarshal(jsonBytes, &so); err != nil {
+		return nil, err
+	}
+	soList := make([]*Wallet, len(so))
+	for i, s := range so {
+		soList[i] = New(s)
+	}
+	return &soList, nil
+}
+
 func (w *Wallet) ToParams() NewWalletParams {
 	return NewWalletParams{
 		NewEntityParams: w.EntityToParams(),

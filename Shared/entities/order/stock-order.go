@@ -191,6 +191,18 @@ func Parse(jsonBytes []byte) (*StockOrder, error) {
 	return New(so), nil
 }
 
+func ParseList(jsonBytes []byte) (*[]*StockOrder, error) {
+	var so []NewStockOrderParams
+	if err := json.Unmarshal(jsonBytes, &so); err != nil {
+		return nil, err
+	}
+	soList := make([]*StockOrder, len(so))
+	for i, s := range so {
+		soList[i] = New(s)
+	}
+	return &soList, nil
+}
+
 func (so *StockOrder) ToParams() NewStockOrderParams {
 	return NewStockOrderParams{
 		NewEntityParams: so.EntityToParams(),
