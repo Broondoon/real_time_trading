@@ -125,9 +125,15 @@ func main() {
 
 	fmt.Println("HTTP and Database Test")
 	fmt.Println("Testing create Stock Transaction: ")
-	_databaseManagerStockTransactions.Create(st1)
-	fmt.Println("Stock Transaction Created with ID: ", st1.GetId())
-	st2, err := _databaseManagerStockTransactions.GetByID(st1.GetId())
+	st23, err := _databaseManagerStockTransactions.Create(st1)
+	if err != nil {
+		fmt.Println(err)
+	}
+	fmt.Println("Stock Transaction Created with ID: ", st23.GetId())
+	st2, err := _databaseManagerStockTransactions.GetByID(st23.GetId())
+	if err != nil {
+		fmt.Println(err)
+	}
 	fmt.Print("Testing get Stock Order: ")
 	fmt.Println(st2.GetId())
 	fmt.Println(st2.GetDateCreated())
@@ -143,7 +149,7 @@ func main() {
 	fmt.Println(st2.GetTimestamp())
 
 	fmt.Print("Testing group get Stock Transaction: ")
-	idList := []string{"st1", st1.GetId()}
+	idList := []string{"st1", st23.GetId()}
 	st3, err := _databaseManagerStockTransactions.GetByIDs(idList)
 	if err != nil {
 		fmt.Println(err)
@@ -164,9 +170,12 @@ func main() {
 	}
 
 	fmt.Println("Testing update Stock Transaction: ")
-	st1.SetOrderStatus("COMPLETE")
-	_databaseManagerStockTransactions.Update(st1)
-	st5, err := _databaseManagerStockTransactions.GetByID(st1.GetId())
+	st23.SetOrderStatus("COMPLETE")
+	_databaseManagerStockTransactions.Update(st23)
+	st5, err := _databaseManagerStockTransactions.GetByID(st23.GetId())
+	if err != nil {
+		fmt.Println(err)
+	}
 	fmt.Print("Stock Transaction: ")
 	fmt.Println(st5.GetId())
 	fmt.Println(st5.GetDateCreated())
@@ -182,11 +191,11 @@ func main() {
 	fmt.Println(st5.GetTimestamp())
 
 	fmt.Println("Testing delete Stock Transaction: ")
-	err = _databaseManagerStockTransactions.Delete(so.GetId())
+	err = _databaseManagerStockTransactions.Delete(st23.GetId())
 	if err != nil {
 		fmt.Println(err)
 	}
-	_, err = _databaseManagerStockTransactions.GetByID(so.GetId())
+	_, err = _databaseManagerStockTransactions.GetByID(st23.GetId())
 	if err != nil {
 		fmt.Println(err)
 	}

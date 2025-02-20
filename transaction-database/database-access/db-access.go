@@ -54,6 +54,19 @@ func NewDatabaseAccess(params *NewDatabaseAccessParams) DatabaseAccessInterface 
 		params.WalletTransactionParams.DefaultRoute = os.Getenv("TRANSACTION_DATABASE_SERVICE_WALLET_ROUTE")
 	}
 
+	if params.StockTransactionParams.Parser == nil {
+		params.StockTransactionParams.Parser = transaction.ParseStockTransaction
+	}
+	if params.WalletTransactionParams.Parser == nil {
+		params.WalletTransactionParams.Parser = transaction.ParseWalletTransaction
+	}
+	if params.StockTransactionParams.ParserList == nil {
+		params.StockTransactionParams.ParserList = transaction.ParseStockTransactionList
+	}
+	if params.WalletTransactionParams.ParserList == nil {
+		params.WalletTransactionParams.ParserList = transaction.ParseWalletTransactionList
+	}
+
 	dba := &DatabaseAccess{
 		StockTransactionDataAccessInterface:  databaseAccess.NewEntityDataAccessHTTP[*transaction.StockTransaction, transaction.StockTransactionInterface](params.StockTransactionParams),
 		WalletTransactionDataAccessInterface: databaseAccess.NewEntityDataAccessHTTP[*transaction.WalletTransaction, transaction.WalletTransactionInterface](params.WalletTransactionParams),

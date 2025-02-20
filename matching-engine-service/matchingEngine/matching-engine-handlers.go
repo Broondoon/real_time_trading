@@ -29,10 +29,10 @@ func InitalizeHandlers(stockIDs *[]string,
 	}
 
 	//Add handlers
-	networkManager.AddHandleFunc(network.HandlerParams{Pattern: "createStock", Handler: AddNewStockHandler})
-	networkManager.AddHandleFunc(network.HandlerParams{Pattern: "placeStockOrder", Handler: PlaceStockOrderHandler})
-	networkManager.AddHandleFunc(network.HandlerParams{Pattern: "deleteOrder/", Handler: DeleteStockOrderHandler})
-	networkManager.AddHandleFunc(network.HandlerParams{Pattern: "getStockPrices", Handler: GetStockPricesHandler})
+	networkManager.AddHandleFuncUnprotected(network.HandlerParams{Pattern: "createStock", Handler: AddNewStockHandler})
+	networkManager.AddHandleFuncUnprotected(network.HandlerParams{Pattern: "placeStockOrder", Handler: PlaceStockOrderHandler})
+	networkManager.AddHandleFuncUnprotected(network.HandlerParams{Pattern: "deleteOrder/", Handler: DeleteStockOrderHandler})
+	networkManager.AddHandleFuncProtected(network.HandlerParams{Pattern: "getStockPrices", Handler: GetStockPricesHandler})
 	http.HandleFunc("/health", healthHandler)
 }
 

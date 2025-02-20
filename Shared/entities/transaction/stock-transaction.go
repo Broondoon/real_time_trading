@@ -250,6 +250,18 @@ func ParseStockTransaction(jsonBytes []byte) (*StockTransaction, error) {
 	return NewStockTransaction(st), nil
 }
 
+func ParseStockTransactionList(jsonBytes []byte) (*[]*StockTransaction, error) {
+	var so []NewStockTransactionParams
+	if err := json.Unmarshal(jsonBytes, &so); err != nil {
+		return nil, err
+	}
+	soList := make([]*StockTransaction, len(so))
+	for i, s := range so {
+		soList[i] = NewStockTransaction(s)
+	}
+	return &soList, nil
+}
+
 func (st *StockTransaction) ToParams() NewStockTransactionParams {
 	return NewStockTransactionParams{
 		NewEntityParams:          st.EntityToParams(),

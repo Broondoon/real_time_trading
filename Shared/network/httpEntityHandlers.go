@@ -25,7 +25,7 @@ func CreateNetworkEntityHandlers[T entity.EntityInterface](network NetworkInterf
 					responseWriter.WriteHeader(http.StatusInternalServerError)
 					return
 				}
-				entityJSON, err := entity.EntityToJSON()
+				entityJSON, err := entity.ToJSON()
 				if err != nil {
 					responseWriter.WriteHeader(http.StatusInternalServerError)
 					return
@@ -62,7 +62,7 @@ func CreateNetworkEntityHandlers[T entity.EntityInterface](network NetworkInterf
 				responseWriter.WriteHeader(http.StatusInternalServerError)
 				return
 			}
-			entityJSON, err := entity.EntityToJSON()
+			entityJSON, err := entity.ToJSON()
 			if err != nil {
 				responseWriter.WriteHeader(http.StatusInternalServerError)
 				return
@@ -79,7 +79,7 @@ func CreateNetworkEntityHandlers[T entity.EntityInterface](network NetworkInterf
 				responseWriter.WriteHeader(http.StatusInternalServerError)
 				return
 			}
-			entityJSON, err := entity.EntityToJSON()
+			entityJSON, err := entity.ToJSON()
 			if err != nil {
 				responseWriter.WriteHeader(http.StatusInternalServerError)
 				return
@@ -94,6 +94,6 @@ func CreateNetworkEntityHandlers[T entity.EntityInterface](network NetworkInterf
 		}
 	}
 
-	network.AddHandleFunc(HandlerParams{Pattern: entityName + "/", Handler: defaults})
-	network.AddHandleFunc(HandlerParams{Pattern: entityName, Handler: defaults})
+	network.AddHandleFuncUnprotected(HandlerParams{Pattern: entityName + "/", Handler: defaults})
+	network.AddHandleFuncUnprotected(HandlerParams{Pattern: entityName, Handler: defaults})
 }

@@ -60,6 +60,18 @@ func Parse(jsonBytes []byte) (*Stock, error) {
 	return New(s), nil
 }
 
+func ParseList(jsonBytes []byte) (*[]*Stock, error) {
+	var so []NewStockParams
+	if err := json.Unmarshal(jsonBytes, &so); err != nil {
+		return nil, err
+	}
+	soList := make([]*Stock, len(so))
+	for i, s := range so {
+		soList[i] = New(s)
+	}
+	return &soList, nil
+}
+
 func (s *Stock) ToParams() NewStockParams {
 	return NewStockParams{
 		NewEntityParams: s.EntityToParams(),
