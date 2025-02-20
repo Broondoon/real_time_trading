@@ -44,7 +44,7 @@ func InitalizeHandlers(stockIDs *[]string,
 func healthHandler(w http.ResponseWriter, r *http.Request) {
 	// Simple check: you might expand this to test database connectivity, etc.
 	w.WriteHeader(http.StatusOK)
-	fmt.Fprintln(w, "OK")
+	fmt.Println(w, "OK")
 }
 
 // Expected input is a stock ID in the body of the request

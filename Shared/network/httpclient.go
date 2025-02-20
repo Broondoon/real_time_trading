@@ -104,13 +104,14 @@ type HandlerParams struct {
 }
 
 func handleFunc(params HandlerParams, w http.ResponseWriter, r *http.Request) {
+	fmt.Println("Handling request for: ", r.URL.Path)
 	var body []byte
 	var err error
 	var queryParams url.Values
 	if r.Method == http.MethodGet || r.Method == http.MethodDelete || r.Method == http.MethodPut {
 		//decode params
 		queryParams = r.URL.Query()
-		id := strings.TrimPrefix(r.URL.Path, params.Pattern)
+		id := strings.TrimPrefix(r.URL.Path, "/"+params.Pattern)
 		if id != "" {
 			queryParams.Add("id", id)
 		}
@@ -259,13 +260,13 @@ func (hc *HttpClient) Get(endpoint string, queryParams map[string]string) ([]byt
 func (hc *HttpClient) Post(endpoint string, payload interface{}) ([]byte, error) {
 	jsonData, err := json.Marshal(payload)
 	if err != nil {
-		println("Error: ", err.Error())
+		fmt.Println("Error: ", err.Error())
 		return nil, err
 	}
 
 	req, err := http.NewRequest(http.MethodPost, hc.BaseURL+endpoint, bytes.NewBuffer(jsonData))
 	if err != nil {
-		print("Error: ", err.Error())
+		fmt.Println("Error: ", err.Error())
 		return nil, err
 	}
 

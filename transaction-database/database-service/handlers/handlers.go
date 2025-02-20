@@ -35,7 +35,7 @@ func InitalizeHandlers(
 func healthHandler(w http.ResponseWriter, r *http.Request) {
 	// Simple check: you might expand this to test database connectivity, etc.
 	w.WriteHeader(http.StatusOK)
-	fmt.Fprintln(w, "OK")
+	fmt.Println(w, "OK")
 }
 
 func GetStockTransactions(responseWriter http.ResponseWriter, data []byte, queryParams url.Values, requestType string) {
@@ -65,6 +65,7 @@ func GetStockTransactions(responseWriter http.ResponseWriter, data []byte, query
 func getWalletTransactions(responseWriter http.ResponseWriter, data []byte, queryParams url.Values, requestType string) {
 	transactions, err := _databaseManager.WalletTransactions().GetAll()
 	if err != nil {
+		fmt.Println("error: ", err.Error())
 		responseWriter.WriteHeader(http.StatusInternalServerError)
 		return
 	}
