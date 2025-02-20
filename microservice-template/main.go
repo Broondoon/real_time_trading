@@ -37,9 +37,6 @@ func main() {
 	fmt.Println(so.GetOrderType())
 	fmt.Println(so.GetIsBuy())
 
-	network := network.NewNetwork()
-	network.UserManagement()
-
 	// //testing database.
 	// _databaseManager := databaseAccessStockOrder.NewDatabaseAccess(&databaseAccessStockOrder.NewDatabaseAccessParams{})
 
@@ -192,6 +189,9 @@ func main() {
 	fmt.Println(st5.GetStockPrice())
 	fmt.Println(st5.GetQuantity())
 	fmt.Println(st5.GetTimestamp())
+
+	fmt.Print("Testing group get Stock Transaction by foreign key: ", st23.GetStockID())
+	st6, err := _databaseManagerStockTransactions.GetByStockID(st23.GetStockID())
 
 	fmt.Println("Testing delete Stock Transaction: ")
 	err = _databaseManagerStockTransactions.Delete(st23.GetId())
