@@ -27,3 +27,8 @@ type StockTransactionID struct {
 type WalletBalance struct {
 	Balance float64 `json:"balance"`
 }
+
+type AddStock struct {
+	StockID  string `json:"stock_id"`
+	Quantity int    `json:"quantity"`
+}
