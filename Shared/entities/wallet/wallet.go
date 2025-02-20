@@ -103,3 +103,9 @@ func (fw *FakeWallet) GetBalance() float64        { return fw.Balance }
 func (fw *FakeWallet) SetBalance(balance float64) { fw.Balance = balance }
 func (fw *FakeWallet) ToParams() NewWalletParams  { return NewWalletParams{} }
 func (fw *FakeWallet) ToJSON() ([]byte, error)    { return []byte{}, nil }
+
+func (w *Wallet) SetDefaults() {
+	if w.Balance == 0 {
+		w.Balance = 0.00
+	}
+}
