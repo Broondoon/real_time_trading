@@ -4,11 +4,15 @@ use (
 	./Shared
 	./microservice-template
 	./matching-engine-service
+	./order-executor-service
 	./stock-order-database/database-service
 	./stock-order-database/database-access
 	./Test_base
-	./stock-transactions-database/database-access
-	./stock-transactions-database/database-service
+	./transaction-database/database-access
+	./transaction-database/database-service
 	./stock-database/database-access
 	./stock-database/database-service
+	./order-initiator-service
+	./user-management-database/database-access
+	./user-management-database/database-service
 )
