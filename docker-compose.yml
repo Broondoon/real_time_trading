@@ -61,7 +61,7 @@ services:
       matching-engine-service:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://${ORDER_INITIATOR_HOST}:${TRANSACTION_DATABASE_SERVICE_PORT}/health"]
+      test: ["CMD", "curl", "-f", "http://${ORDER_INITIATOR_HOST}:${ORDER_INITIATOR_PORT}/health"]
       interval: 30s
       timeout: 10s
       retries: 3
