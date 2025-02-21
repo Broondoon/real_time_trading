@@ -149,8 +149,8 @@ func (n *Network) AddHandleFuncProtected(params HandlerParams) {
 		handleFunc(params, w, r)
 	})
 	//To reable after testing is done.
-	//protectedHandler := TokenAuthMiddleware(handler)
-	http.Handle("/"+params.Pattern, handler) //protectedHandler)
+	protectedHandler := TokenAuthMiddleware(handler)
+	http.Handle("/"+params.Pattern, protectedHandler)
 }
 
 type ListenerParams struct {
@@ -217,6 +217,9 @@ func (hc *HttpClient) authenticate(req *http.Request) error {
 func (hc *HttpClient) handleResponse(resp *http.Response) ([]byte, error) {
 	if resp.StatusCode >= 400 {
 		return nil, fmt.Errorf("server returned error: %d %s", resp.StatusCode, resp.Status)
+	}
+	if resp.StatusCode == http.StatusResetContent {
+		return nil, errors.New("204 No Content")
 	}
 
 	defer resp.Body.Close()

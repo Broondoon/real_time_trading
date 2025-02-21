@@ -217,6 +217,8 @@ func (d *EntityData[T]) GetAll() (*[]T, error) {
 }
 
 func (d *EntityData[T]) Create(entity T) error {
+	json, _ := entity.ToJSON()
+	print("Creating entity: ", string(json))
 	candidateID := entity.GetId()
 	if candidateID == "" {
 		candidateID = generateRandomID()

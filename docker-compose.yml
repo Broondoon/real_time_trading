@@ -69,6 +69,8 @@ services:
         condition: service_healthy
       stock-database-service:
         condition: service_healthy
+      order-executor-service:
+        condition: service_healthy
     networks:
       - go-network
     healthcheck:
@@ -99,6 +101,33 @@ services:
       interval: ${HEALTHCHECK_INTERVAL}
       timeout: ${HEALTHCHECK_TIMEOUT}
       retries: ${HEALTHCHECK_RETRIES}
+
+
+  order-executor-service:
+    build:
+          context: .
+          dockerfile: ./${ORDER_EXECUTOR_HOST}/Dockerfile
+    ports:
+      - "${ORDER_EXECUTOR_PORT}:${ORDER_EXECUTOR_PORT}"
+    env_file:
+      - .env
+    environment:
+      PORT: ${ORDER_EXECUTOR_PORT}
+    networks:
+       - go-network
+    depends_on:
+      transaction-database-service:
+        condition: service_healthy
+      user-management-database-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://${ORDER_EXECUTOR_HOST}:${ORDER_EXECUTOR_PORT}/health"]
+      interval: ${HEALTHCHECK_INTERVAL}
+      timeout: ${HEALTHCHECK_TIMEOUT}
+      retries: ${HEALTHCHECK_RETRIES}
+
+
+
 
   auth-service:
     build: ./auth-service
@@ -132,6 +161,7 @@ services:
       - auth-db
       - frontend
       - user-management-service
+      - order-initiator-service
     networks:
       - go-network
 
