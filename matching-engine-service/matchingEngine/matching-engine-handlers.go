@@ -2,7 +2,6 @@ package matchingEngine
 
 import (
 	"Shared/entities/order"
-	"Shared/entities/transaction"
 	"Shared/network"
 	"databaseAccessStock"
 	"databaseAccessStockOrder"
@@ -203,36 +202,33 @@ func GetStockPrices() (*[]network.StockPrice, error) {
 	return &stockPrices, nil
 }
 
-func SendToOrderExection(buyOrder order.StockOrderInterface, sellOrder order.StockOrderInterface) transaction.StockTransactionInterface {
-	buyQty := buyOrder.GetQuantity()
-	sellQty := sellOrder.GetQuantity()
-	quantity := buyQty
-	if sellQty < buyQty {
-		quantity = sellQty
-	}
-	transferEntity := network.MatchingEngineToExecutionJSON{
-		BuyerID:       buyOrder.GetUserID(),
-		SellerID:      sellOrder.GetUserID(),
-		StockID:       buyOrder.GetStockID(),
-		BuyOrderID:    buyOrder.GetId(),
-		SellOrderID:   sellOrder.GetId(),
-		IsBuyPartial:  buyQty > sellQty,
-		IsSellPartial: buyQty < sellQty,
-		StockPrice:    sellOrder.GetPrice(),
-		Quantity:      quantity,
-	}
+func SendToOrderExection(buyOrder order.StockOrderInterface, sellOrder order.StockOrderInterface) string {
+	// buyQty := buyOrder.GetQuantity()
+	// sellQty := sellOrder.GetQuantity()
+	// quantity := buyQty
+	// if sellQty < buyQty {
+	// 	quantity = sellQty
+	// }
+	// transferEntity := network.MatchingEngineToExecutionJSON{
+	// 	BuyerID:       buyOrder.GetUserID(),
+	// 	SellerID:      sellOrder.GetUserID(),
+	// 	StockID:       buyOrder.GetStockID(),
+	// 	BuyOrderID:    buyOrder.GetId(),
+	// 	SellOrderID:   sellOrder.GetId(),
+	// 	IsBuyPartial:  buyQty > sellQty,
+	// 	IsSellPartial: buyQty < sellQty,
+	// 	StockPrice:    sellOrder.GetPrice(),
+	// 	Quantity:      quantity,
+	// }
 
-	data, err := _networkManager.OrderExecutor().Post("orderexecutor", transferEntity)
-	if err != nil {
-		println("Error: ", err.Error())
-		return nil
-	}
-	transaction, errParse := transaction.ParseStockTransaction(data)
-	if errParse != nil {
-		println("Error: ", err.Error())
-		return nil
-	}
-
+	// data, err := _networkManager.OrderExecutor().Post("orderexecutor", transferEntity)
+	// if err.Error() == "204 No Content" {
+	// 	return "NOT COMPLETED"
+	// } else if err != nil {
+	// 	println("Error: ", err.Error())
+	// 	return "ERROR"
+	// }
+	// print("Matched Data: ", string(data))
 	//send to order execution
-	return transaction
+	return "COMPLETED"
 }

@@ -3,7 +3,6 @@ package matchingEngine
 import (
 	"MatchingEngineService/matchingEngineStructures"
 	"Shared/entities/order"
-	"Shared/entities/transaction"
 	"databaseAccessStockOrder"
 	"fmt"
 )
@@ -24,7 +23,7 @@ type MatchingEngine struct {
 	SellOrderBook       matchingEngineStructures.SellOrderBookInterface
 	orderChannel        chan order.StockOrderInterface
 	updateChannel       chan *UpdateParams
-	SendToOrderExection func(buyOrder order.StockOrderInterface, sellOrder order.StockOrderInterface) transaction.StockTransactionInterface
+	SendToOrderExection func(buyOrder order.StockOrderInterface, sellOrder order.StockOrderInterface) string
 	//dirty fix
 	DatabaseManager databaseAccessStockOrder.DatabaseAccessInterface
 }
@@ -32,7 +31,7 @@ type MatchingEngine struct {
 type NewMatchingEngineParams struct {
 	StockID                  string
 	InitalOrders             *[]order.StockOrderInterface
-	SendToOrderExecutionFunc func(buyOrder order.StockOrderInterface, sellOrder order.StockOrderInterface) transaction.StockTransactionInterface
+	SendToOrderExecutionFunc func(buyOrder order.StockOrderInterface, sellOrder order.StockOrderInterface) string
 	DatabaseManager          databaseAccessStockOrder.DatabaseAccessInterface
 }
 
@@ -82,11 +81,11 @@ func (me *MatchingEngine) RunMatchingEngineOrders() {
 					if buyOrderQuantity == sellOrder.GetQuantity() {
 						//create a transaction
 						result := me.SendToOrderExection(buyOrder, sellOrder)
-						if result == nil {
+						if result == "ERROR" {
 							me.SellOrderBook.AddOrder(sellOrder)
 							buyOrderQuantity = 0
 						}
-						switch result.GetOrderStatus() {
+						switch result {
 						case "COMPLETED":
 							buyOrderQuantity = 0
 						default:
@@ -96,11 +95,11 @@ func (me *MatchingEngine) RunMatchingEngineOrders() {
 					} else if buyOrderQuantity < sellOrder.GetQuantity() {
 						childOrder := sellOrder.CreateChildOrder(sellOrder, buyOrder)
 						result := me.SendToOrderExection(buyOrder, childOrder)
-						if result == nil {
+						if result == "ERROR" {
 							me.SellOrderBook.AddOrder(sellOrder)
 							buyOrderQuantity = 0
 						}
-						switch result.GetOrderStatus() {
+						switch result {
 						case "COMPLETED":
 							sellOrder.SetQuantity(sellOrder.GetQuantity() - buyOrderQuantity)
 							_databaseManager.Update(sellOrder)
@@ -112,11 +111,11 @@ func (me *MatchingEngine) RunMatchingEngineOrders() {
 					} else {
 						childOrder := buyOrder.CreateChildOrder(buyOrder, sellOrder)
 						result := me.SendToOrderExection(childOrder, sellOrder)
-						if result == nil {
+						if result == "ERROR" {
 							me.SellOrderBook.AddOrder(sellOrder)
 							buyOrderQuantity = 0
 						}
-						switch result.GetOrderStatus() {
+						switch result {
 						case "COMPLETED":
 							buyOrder.SetQuantity(buyOrder.GetQuantity() - sellOrder.GetQuantity())
 							buyOrderQuantity -= sellOrder.GetQuantity()
@@ -133,6 +132,7 @@ func (me *MatchingEngine) RunMatchingEngineOrders() {
 					}
 				}
 				if buyOrderQuantity <= 0 {
+					println("finishing Order: ", buyOrder.GetId())
 					_databaseManager.Delete(buyOrder.GetId())
 				}
 			}

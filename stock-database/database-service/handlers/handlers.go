@@ -35,6 +35,7 @@ func healthHandler(w http.ResponseWriter, r *http.Request) {
 func GetStockIDsHandler(responseWriter http.ResponseWriter, data []byte, queryParams url.Values, requestType string) {
 	stocks, err := _databaseManager.GetAll()
 	if err != nil {
+		println("Error: ", err.Error())
 		responseWriter.WriteHeader(http.StatusInternalServerError)
 		return
 	}

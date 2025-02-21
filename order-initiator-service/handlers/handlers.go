@@ -38,14 +38,17 @@ func healthHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func placeStockOrderHandler(responseWriter http.ResponseWriter, data []byte, queryParams url.Values, requestType string) {
+	println("Placing stock order")
 	stockOrder, err := order.Parse(data)
 	if err != nil {
+		println("Error: ", err.Error())
 		responseWriter.WriteHeader(http.StatusBadRequest)
 		return
 	}
 	stockOrder.SetUserID(queryParams.Get("userID"))
 	err = placeStockOrder(stockOrder)
 	if err != nil {
+		println("Error: ", err.Error())
 		responseWriter.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -60,6 +63,7 @@ func placeStockOrder(stockOrder order.StockOrderInterface) error {
 
 	createdTransaction, err := _databaseAccess.StockTransaction().Create(transaction)
 	if err != nil {
+		println("Error: ", err.Error())
 		return err
 	}
 	stockOrder.SetId(createdTransaction.GetId())
@@ -69,9 +73,11 @@ func placeStockOrder(stockOrder order.StockOrderInterface) error {
 }
 
 func cancelStockTransactionHandler(responseWriter http.ResponseWriter, data []byte, queryParams url.Values, requestType string) {
+	println("Cancelling stock transaction")
 	var stockID network.StockTransactionID
 	err := json.Unmarshal(data, &stockID)
 	if err != nil {
+		println("Error: ", err.Error())
 		responseWriter.WriteHeader(http.StatusBadRequest)
 		return
 	}
@@ -81,6 +87,7 @@ func cancelStockTransactionHandler(responseWriter http.ResponseWriter, data []by
 		return
 	}
 	if err != nil {
+		println("Error: ", err.Error())
 		responseWriter.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -91,11 +98,13 @@ func cancelStockTransaction(id string) error {
 	//pass to matching engine
 	_, err := _networkManager.Transactions().Put("cancelStockTransaction/"+id, nil)
 	if err != nil {
+		println("Error: ", err.Error())
 		return err
 	}
 
 	_, err = _networkManager.MatchingEngine().Delete("deleteOrder/" + id)
 	if err != nil {
+		println("Error: ", err.Error())
 		return err
 	}
 	return nil

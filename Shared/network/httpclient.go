@@ -218,6 +218,9 @@ func (hc *HttpClient) handleResponse(resp *http.Response) ([]byte, error) {
 	if resp.StatusCode >= 400 {
 		return nil, fmt.Errorf("server returned error: %d %s", resp.StatusCode, resp.Status)
 	}
+	if resp.StatusCode == http.StatusResetContent {
+		return nil, errors.New("204 No Content")
+	}
 
 	defer resp.Body.Close()
 	body, err := io.ReadAll(resp.Body)
