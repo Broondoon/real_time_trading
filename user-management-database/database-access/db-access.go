@@ -6,6 +6,7 @@ import (
 	"Shared/entities/wallet"
 	"Shared/network"
 	"errors"
+	"fmt"
 	"os"
 )
 
@@ -60,16 +61,16 @@ func NewDatabaseAccess(params *NewDatabaseAccessParams) DatabaseAccessInterface 
 	}
 
 	if params.UserStockParams.Client == nil {
-		params.UserStockParams.Client = params.Network.UserManagement()
+		params.UserStockParams.Client = params.Network.UserManagementDatabase()
 	}
 	if params.UserStockParams.DefaultRoute == "" {
 		params.UserStockParams.DefaultRoute = os.Getenv("USER_MANAGEMENT_DATABASE_SERVICE_USER_STOCK_ROUTE")
 	}
 	if params.WalletParams.Client == nil {
-		params.WalletParams.Client = params.Network.UserManagement()
+		params.WalletParams.Client = params.Network.UserManagementDatabase()
 	}
 	if params.WalletParams.DefaultRoute == "" {
-		params.WalletParams.DefaultRoute = os.Getenv("USER_MANAGEMENT_DATABASE_SERVICE_WALLET_ROUTE")
+		params.WalletParams.DefaultRoute = os.Getenv("USER_MANAGEMENT_SERVICE_WALLET_ROUTE")
 	}
 
 	if params.UserStockParams.Parser == nil {
@@ -137,9 +138,12 @@ func (d *WalletDataAccess) AddMoneyToWallet(userID string, amount float64) error
 func (d *WalletDataAccess) GetWalletBalance(userID string) (float64, error) {
 	walletList, err := d.GetByForeignID("user_id", userID)
 	if err != nil {
+		fmt.Printf("[DEBUG] Error fetching wallet by foreign ID for userID %s: %v\n", userID, err)
 		return 0, err
 	}
+	fmt.Printf("[DEBUG] Retrieved walletList for userID %s: %v\n", userID, walletList)
 	if len(*walletList) == 0 {
+		fmt.Printf("[DEBUG] No wallet found for userID: %s\n", userID)
 		return 0, errors.New("no wallet found for user")
 	}
 	wallet := (*walletList)[0]

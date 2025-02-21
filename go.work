@@ -15,4 +15,6 @@ use (
 	./order-initiator-service
 	./user-management-database/database-access
 	./user-management-database/database-service
+	./user-management-service
+	./user-management-tests
 )

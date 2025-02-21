@@ -166,3 +166,12 @@ func (fus *FakeUserStock) GetQuantity() int              { return fus.Quantity }
 func (fus *FakeUserStock) SetQuantity(quantity int)      { fus.Quantity = quantity }
 func (fus *FakeUserStock) ToParams() NewUserStockParams  { return NewUserStockParams{} }
 func (fus *FakeUserStock) ToJSON() ([]byte, error)       { return []byte{}, nil }
+
+func (us *UserStock) SetDefaults() {
+	if us.Quantity == 0 {
+		us.Quantity = 0
+	}
+	if us.StockName == "" {
+		us.StockName = "Unknown"
+	}
+}
