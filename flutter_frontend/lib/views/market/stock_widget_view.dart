@@ -22,6 +22,7 @@ class StockWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     return InkWell(
       onTap: () {
+        print("$stockName pressed");
         Provider.of<MarketStateProvider>(
           context,
           listen: false,

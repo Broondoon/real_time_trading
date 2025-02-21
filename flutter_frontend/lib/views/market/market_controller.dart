@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 class MarketStateProvider extends ChangeNotifier {
-  String _currStockId = '99';
+  String _currStockId = '-1';
   String get getCurrStockId => _currStockId;
 
   String _currStockName = 'Google';
@@ -16,6 +16,9 @@ class MarketStateProvider extends ChangeNotifier {
       _currStockName = name;
       _currStockPrice = price;
       notifyListeners();
+    }
+    else {
+      print('Stock ID already shown.');
     }
   }
 }

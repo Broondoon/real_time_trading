@@ -37,7 +37,7 @@ class APIService {
         "success": true,
         "data": [
           {"stock_id":1,"stock_name":"Apple","current_price":100},
-          {"stock_id":1, "stock_name":"Google","current_price":200}
+          {"stock_id":2, "stock_name":"Google","current_price":200}
         ]
       };
 
