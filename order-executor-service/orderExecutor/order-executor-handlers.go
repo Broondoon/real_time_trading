@@ -33,7 +33,6 @@ func healthHandler(w http.ResponseWriter, r *http.Request) {
 
 
 func executorHandler(responseWriter http.ResponseWriter, data []byte, queryParams url.Values, requestType string) {
-    // Parse the data
     var orderData network.MatchingEngineToExecutionJSON
     err := json.Unmarshal(data, &orderData)
     if err != nil {
