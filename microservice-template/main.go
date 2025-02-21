@@ -105,13 +105,6 @@ func main() {
 		IsBuy:     false,
 	})
 
-	//check prices
-	val, err = networkManager.MatchingEngine().Get("engine/getStockPrices", nil)
-	if err != nil {
-		panic(err)
-	}
-	println(string(val))
-
 	so5 := order.New(order.NewStockOrderParams{
 		NewEntityParams: entity.NewEntityParams{
 			ID:           "so5",
@@ -145,9 +138,16 @@ func main() {
 		}
 		println(string(val))
 	}
+	//check prices
+	val, err = networkManager.MatchingEngine().Get("engine/getStockPrices", nil)
+	if err != nil {
+		panic(err)
+	}
+	println(string(val))
+	println("Stock Prices gotten")
 
-	//cancel so4
-	stockTransactionIdObject := network.StockTransactionID{StockTransactionID: so4.GetId()}
+	//cancel so3
+	stockTransactionIdObject := network.StockTransactionID{StockTransactionID: so3.GetId()}
 	val, err = networkManager.OrderInitiator().Post("engine/cancelStockOrder", stockTransactionIdObject)
 	if err != nil {
 		panic(err)
