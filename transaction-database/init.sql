@@ -1,5 +1,6 @@
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE TABLE stockTransactions (
-    ID SERIAL PRIMARY KEY,
+    ID UUID PRIMARY KEY,
     StockID SERIAL,
     ParentStockTransactionID SERIAL,
     UserStockTransactionID SERIAL,
@@ -16,7 +17,7 @@ CREATE TABLE stockTransactions (
 );
 
 CREATE TABLE walletTransactions (
-    ID SERIAL PRIMARY KEY,
+    ID UUID PRIMARY KEY,
     StockTransactionID SERIAL,
     WalletID SERIAL,
     UserStockTransactionID SERIAL,
