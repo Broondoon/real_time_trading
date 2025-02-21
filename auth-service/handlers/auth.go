@@ -38,10 +38,29 @@ func Register(c *gin.Context) {
 		return
 	}
 
-	hashedPassword, _ := HashPassword(input.Password)
-	user := models.User{Username: input.Username, Password: hashedPassword, Name: input.Name}
+	// Check if the username already exists.
+	var existingUser models.User
+	if err := database.DB.Where("user_name = ?", input.Username).First(&existingUser).Error; err == nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "User already exists"})
+		return
+	}
 
-	database.DB.Create(&user)
+	// Hash the password.
+	hashedPassword, err := HashPassword(input.Password)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error hashing password"})
+		return
+	}
+	user := models.User{
+		Username: input.Username,
+		Password: hashedPassword,
+		Name:     input.Name,
+	}
+
+	if err := database.DB.Create(&user).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
 	c.JSON(http.StatusOK, gin.H{"message": "User registered"})
 }
 
@@ -56,14 +75,22 @@ func Login(c *gin.Context) {
 	database.DB.Where("username = ?", input.Username).First(&user)
 
 	if user.ID == 0 || !CheckPasswordHash(input.Password, user.Password) {
-		// if the user.ID is 0 that mmeans no user existed with that username
-		// in the DB and the user.ID unint is left at default value in Go: 0
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid Credentials"})
 		return
 	}
 
-	token, _ := GenerateToken(user.ID)
-	c.JSON(http.StatusOK, gin.H{"token": token})
+	token, err := GenerateToken(user.ID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Token generation failed"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"data": gin.H{
+			"token": token,
+		},
+	})
 }
 
 func Test(c *gin.Context) {
