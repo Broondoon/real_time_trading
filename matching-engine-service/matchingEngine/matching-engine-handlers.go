@@ -151,6 +151,7 @@ func DeleteStockOrder(orderID string) error {
 }
 
 func GetStockPricesHandler(responseWriter http.ResponseWriter, data []byte, queryParams url.Values, requestType string) {
+	println("Getting stock prices")
 	prices, err := GetStockPrices()
 	if err != nil {
 		println("Error: ", err.Error())
@@ -164,7 +165,6 @@ func GetStockPricesHandler(responseWriter http.ResponseWriter, data []byte, quer
 		return
 	}
 	responseWriter.Write(pricesJSON)
-
 }
 
 func GetStockPrices() (*[]network.StockPrice, error) {
@@ -203,32 +203,32 @@ func GetStockPrices() (*[]network.StockPrice, error) {
 }
 
 func SendToOrderExection(buyOrder order.StockOrderInterface, sellOrder order.StockOrderInterface) string {
-	// buyQty := buyOrder.GetQuantity()
-	// sellQty := sellOrder.GetQuantity()
-	// quantity := buyQty
-	// if sellQty < buyQty {
-	// 	quantity = sellQty
-	// }
-	// transferEntity := network.MatchingEngineToExecutionJSON{
-	// 	BuyerID:       buyOrder.GetUserID(),
-	// 	SellerID:      sellOrder.GetUserID(),
-	// 	StockID:       buyOrder.GetStockID(),
-	// 	BuyOrderID:    buyOrder.GetId(),
-	// 	SellOrderID:   sellOrder.GetId(),
-	// 	IsBuyPartial:  buyQty > sellQty,
-	// 	IsSellPartial: buyQty < sellQty,
-	// 	StockPrice:    sellOrder.GetPrice(),
-	// 	Quantity:      quantity,
-	// }
+	buyQty := buyOrder.GetQuantity()
+	sellQty := sellOrder.GetQuantity()
+	quantity := buyQty
+	if sellQty < buyQty {
+		quantity = sellQty
+	}
+	transferEntity := network.MatchingEngineToExecutionJSON{
+		BuyerID:       buyOrder.GetUserID(),
+		SellerID:      sellOrder.GetUserID(),
+		StockID:       buyOrder.GetStockID(),
+		BuyOrderID:    buyOrder.GetId(),
+		SellOrderID:   sellOrder.GetId(),
+		IsBuyPartial:  buyQty > sellQty,
+		IsSellPartial: buyQty < sellQty,
+		StockPrice:    sellOrder.GetPrice(),
+		Quantity:      quantity,
+	}
 
-	// data, err := _networkManager.OrderExecutor().Post("orderexecutor", transferEntity)
-	// if err.Error() == "204 No Content" {
-	// 	return "NOT COMPLETED"
-	// } else if err != nil {
-	// 	println("Error: ", err.Error())
-	// 	return "ERROR"
-	// }
-	// print("Matched Data: ", string(data))
+	data, err := _networkManager.OrderExecutor().Post("orderexecutor", transferEntity)
+	if err.Error() == "204 No Content" {
+		return "NOT COMPLETED"
+	} else if err != nil {
+		println("Error: ", err.Error())
+		return "ERROR"
+	}
+	print("Matched Data: ", string(data))
 	//send to order execution
 	return "COMPLETED"
 }

@@ -97,6 +97,7 @@ services:
       - auth-service
       - auth-db
       - frontend
+      - order-initiator-service
     networks:
       - go-network
 
