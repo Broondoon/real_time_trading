@@ -3,7 +3,6 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_frontend/api_service.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:dio/dio.dart';
 
@@ -19,7 +18,7 @@ class AuthController extends ChangeNotifier {
   final String _baseUrl = 'http://localhost:3001/';
   
   // Class objects; these could be dependency injected, no? Something to think about in the future.
-  late Dio _dio;
+  late Dio authdio;
   late Dio _unauthDio;
   // late APIService _apiService;
 
@@ -27,15 +26,12 @@ class AuthController extends ChangeNotifier {
   final int _tokenLifetime = 3600;
   DateTime? _tokenExpiration;
 
-  // REGISTER_RESPONSE=$(curl -s -X POST "$BASE_URL/authentication/register" -H "Content-Type: application/json" \
-  //   -d "{\"username\": \"$USERNAME\", \"password\": \"$PASSWORD\"}")
-
   AuthController() {
-    _dio = Dio(
+    authdio = Dio(
       BaseOptions(
         baseUrl: _baseUrl,
-        connectTimeout: const Duration(seconds: 10),
-        receiveTimeout: const Duration(seconds: 10),
+        // connectTimeout: const Duration(seconds: 10),
+        // receiveTimeout: const Duration(seconds: 10),
       )
     );
 
@@ -45,17 +41,8 @@ class AuthController extends ChangeNotifier {
       )
     );
 
-    // TODO: would be nicer if this could be done in the instantiation rather than here
-    // although, this is default value
-    _dio.options.contentType = Headers.jsonContentType;
-    // _unauthDio.options.
-
-    // _apiService = APIService(
-    //   _dio,
-    // );
-
     // This is an INTERCEPTOR which adds JWT to Auth header
-    _dio.interceptors.add(
+    authdio.interceptors.add(
       InterceptorsWrapper(
         onRequest: (options, handler) {
           if (_token != null 
@@ -64,10 +51,7 @@ class AuthController extends ChangeNotifier {
           ) {
             options.headers['Authorization'] = 'Bearer $_token';
           }
-          else {
-            // if NOT /login or /register, then kill
-            
-
+          else {            
             //TODO: re-enable auto-logout
             print("Logout redirect!");
             logout();
@@ -81,24 +65,6 @@ class AuthController extends ChangeNotifier {
           return handler.next(options);
         },
         onError: (DioException e, handler) async {
-          // // If the token has expired...
-          // if (e.response?.statusCode == 401) {
-          //   // Try for a new refreshed token.
-          //   bool refreshed = await refreshToken();
-            
-          //   // And try again!
-          //   if (refreshed) {
-          //     return handler.resolve(
-          //       await retry(e.requestOptions)
-          //     );
-          //   }
-          //   else {
-          //     // If that failed, we force move to login page.
-          //     await logout();
-          //     return handler.reject(e);
-          //   }
-          // }
-
           // ...let's just force logout if there's an issue.
           await logout();
           return handler.next(e);
@@ -119,7 +85,7 @@ class AuthController extends ChangeNotifier {
 
     if (_token != null && expirationString != null) {
       _tokenExpiration = DateTime.tryParse(expirationString);
-      _dio.options.headers['Authorization'] = 'Bearer $_token';
+      authdio.options.headers['Authorization'] = 'Bearer $_token';
     }
     else {
       _token = null;
@@ -142,17 +108,6 @@ class AuthController extends ChangeNotifier {
         data: jsonEncode(reqData),
       );
 
-      // I now realize this is functionally USELESS until I create some unique
-      //    behaviour that I control into the api service. TODO: do that
-      // final response = await _apiService.post(
-      //   '/login',
-      //   data: {
-      //     'username': username,
-      //     'password': pwd,
-      //   },
-      // );
-      // if (response == null) return false;
-
       print("STATUS CODE RESPONSE:");
       print(response.statusCode);
 
@@ -169,7 +124,7 @@ class AuthController extends ChangeNotifier {
           key: 'tokenExpiration',
           value: _tokenExpiration!.toIso8601String()
         );
-        _dio.options.headers['Authorization'] = 'Bearer $_token';
+        authdio.options.headers['Authorization'] = 'Bearer $_token';
         notifyListeners();
         return true;
       }
@@ -225,23 +180,7 @@ class AuthController extends ChangeNotifier {
     await _storage.delete(
       key: 'tokenExpiration',
     );
-    _dio.options.headers.remove('Authorization');
+    authdio.options.headers.remove('Authorization');
     notifyListeners();
   }
-
-  // This is just an example method
-  Future<dynamic> fetchData() async {
-    try {
-      final response = await _dio.get('/protected');
-      return response.data;
-    }
-    on DioException catch (e) {
-      print('>> Exception: could not fetch data: $e');
-      if (e.response?.statusCode == 401) {
-        print('>> Token expired, which should be handled by the interceptor.');
-      }
-      rethrow;
-    }
-  }
-
 }
