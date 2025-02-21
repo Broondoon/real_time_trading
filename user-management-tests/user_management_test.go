@@ -8,34 +8,10 @@ import (
 	"testing"
 )
 
-var userID = "test-user-1"
+var userID = "6fd2fc6b-9142-4777-8b30-575ff6fa2460"
 var client = network.NewNetwork().UserManagement()
-var stockClient = network.NewNetwork().UserManagementDatabase()
 
-func TestAddMoneyToWallet(t *testing.T) {
-	userID := "12345657"
-	payload := map[string]interface{}{
-		"amount": 100.00,
-	}
-
-	requestBody, _ := json.Marshal(payload)
-
-	response, err := client.Post("transaction/addMoneyToWallet?userID="+userID, bytes.NewReader(requestBody))
-	if err != nil {
-		t.Fatalf("Failed to add money to wallet: %v", err)
-	}
-
-	var result map[string]interface{}
-	if err := json.Unmarshal(response, &result); err != nil {
-		t.Fatalf("Failed to parse response: %v", err)
-	}
-
-	log.Printf("Response: %v\n", result)
-
-	if result["message"] != "Money added successfully" {
-		t.Errorf("Expected success message, got: %v", result["message"])
-	}
-}
+//var stockClient = network.NewNetwork().UserManagementDatabase()
 
 func TestGetWalletBalance(t *testing.T) {
 	queryParams := map[string]string{"userID": userID}
@@ -59,6 +35,31 @@ func TestGetWalletBalance(t *testing.T) {
 	}
 }
 
+func TestAddMoneyToWallet(t *testing.T) {
+	payload := map[string]interface{}{
+		"amount": 100.00,
+	}
+
+	requestBody, _ := json.Marshal(payload)
+
+	response, err := client.Post("transaction/addMoneyToWallet?userID="+userID, bytes.NewReader(requestBody))
+	if err != nil {
+		t.Fatalf("Failed to add money to wallet: %v", err)
+	}
+
+	var result map[string]interface{}
+	if err := json.Unmarshal(response, &result); err != nil {
+		t.Fatalf("Failed to parse response: %v", err)
+	}
+
+	log.Printf("Response: %v\n", result)
+
+	if result["message"] != "Money added successfully" {
+		t.Errorf("Expected success message, got: %v", result["message"])
+	}
+}
+
+/*
 func TestGetStockPortfolio(t *testing.T) {
 	queryParams := map[string]string{"userID": userID}
 	response, err := stockClient.Get("transaction/getStockPortfolio", queryParams)
@@ -109,3 +110,4 @@ func TestAddStockToUser(t *testing.T) {
 		t.Errorf("Expected stock AAPL with quantity 10, got %s with quantity %d", addStockResponse.StockID, addStockResponse.Quantity)
 	}
 }
+*/

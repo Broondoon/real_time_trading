@@ -4,6 +4,7 @@ import (
 	"Shared/network"
 	"databaseAccessUserManagement"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/url"
 )
@@ -18,20 +19,34 @@ func InitializeWallet(walletAccess databaseAccessUserManagement.WalletDataAccess
 	_walletAccess = walletAccess
 
 	networkManager.AddHandleFuncProtected(network.HandlerParams{Pattern: "transaction/getWalletBalance", Handler: getWalletBalanceHandler})
-	networkManager.AddHandleFuncProtected(network.HandlerParams{Pattern: "transaction/addMoneyToWallet", Handler: getWalletBalanceHandler})
+	networkManager.AddHandleFuncProtected(network.HandlerParams{Pattern: "transaction/addMoneyToWallet", Handler: addMoneyToWalletHandler})
 }
 
 func getWalletBalanceHandler(responseWriter http.ResponseWriter, data []byte, queryParams url.Values, requestType string) {
 	userID := queryParams.Get("userID")
+	if userID == "" {
+		// Fallback if "userID" isn’t provided.
+		userID = queryParams.Get("id")
+	}
+	fmt.Printf("Received request to get wallet balance. userID=%s\n", userID)
+
+	fmt.Printf("Request Type: %s\n", requestType)
+	fmt.Printf("Query Params: %v\n", queryParams)
+	fmt.Printf("Request Body: %s\n", string(data))
+	fmt.Printf("Extracted userID: %s\n", userID)
 
 	if userID == "" {
+		fmt.Println("Error: Missing userID in query parameters.")
 		responseWriter.WriteHeader(http.StatusBadRequest)
+		fmt.Println("===== [END] getWalletBalanceHandler - Failed: Missing userID =====")
 		return
 	}
 
 	balance, err := _walletAccess.GetWalletBalance(userID)
 	if err != nil {
+		fmt.Printf("Error: Failed to get wallet balance for userID=%s. Reason: %v\n", userID, err)
 		responseWriter.WriteHeader(http.StatusBadRequest)
+		fmt.Println("===== [END] getWalletBalanceHandler - Failed: Database Error =====")
 		return
 	}
 
@@ -43,6 +58,7 @@ func getWalletBalanceHandler(responseWriter http.ResponseWriter, data []byte, qu
 		return
 	}
 
+	fmt.Println("Sending successful response...")
 	responseWriter.Header().Set("Content-Type", "application/json")
 	responseWriter.WriteHeader(http.StatusOK)
 	responseWriter.Write(walletJSON)

@@ -131,6 +131,7 @@ services:
       - auth-service
       - auth-db
       - frontend
+      - user-management-service
     networks:
       - go-network
 

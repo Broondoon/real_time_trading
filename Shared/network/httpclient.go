@@ -230,6 +230,7 @@ func (hc *HttpClient) handleResponse(resp *http.Response) ([]byte, error) {
 
 func (hc *HttpClient) Get(endpoint string, queryParams map[string]string) ([]byte, error) {
 	url, err := url.Parse(hc.BaseURL + endpoint)
+	fmt.Printf("[DEBUG] GET Request URL: %s\n", url.String())
 	if err != nil {
 		return nil, err
 	}
