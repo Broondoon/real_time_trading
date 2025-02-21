@@ -1,13 +1,14 @@
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE TABLE stockOrder (
-    ID SERIAL PRIMARY KEY,
-    StockID SERIAL,
-    ParentStockOrderID SERIAL,
+    ID UUID PRIMARY KEY,
+    StockID UUID,
+    ParentStockOrderID UUID,
     DateCreated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     DateModified TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     IsBuy BOOLEAN NOT NULL,
     OrderType TEXT NOT NULL,
     Price DECIMAL NOT NULL,
     Quantity INT NOT NULL,
-    UserID SERIAL NOT NULL,
+    UserID UUID NOT NULL,
     FOREIGN KEY (ParentStockOrderID) REFERENCES stockOrder(ID)
 );

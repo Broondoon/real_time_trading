@@ -35,7 +35,7 @@ func InitalizeHandlers(
 func healthHandler(w http.ResponseWriter, r *http.Request) {
 	// Simple check: you might expand this to test database connectivity, etc.
 	w.WriteHeader(http.StatusOK)
-	fmt.Println(w, "OK")
+	//fmt.Println(w, "OK")
 }
 
 func GetStockTransactions(responseWriter http.ResponseWriter, data []byte, queryParams url.Values, requestType string) {
