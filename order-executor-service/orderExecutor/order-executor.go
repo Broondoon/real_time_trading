@@ -103,7 +103,7 @@ func updateWalletBalances(
     databaseAccessUser databaseAccessUserManagement.DatabaseAccessInterface,
     databaseAccessTransact databaseAccessTransaction.DatabaseAccessInterface) error {
 
-    // Create buyer's wallet transaction (debit)
+
     buyerWT := transaction.NewWalletTransaction(transaction.NewWalletTransactionParams{
         NewEntityParams: entity.NewEntityParams{
             DateCreated:  time.Now(),
@@ -116,7 +116,7 @@ func updateWalletBalances(
     })
     buyerWT.SetTimestamp(time.Now())
 
-    // Create seller's wallet transaction (credit)
+
     sellerWT := transaction.NewWalletTransaction(transaction.NewWalletTransactionParams{
         NewEntityParams: entity.NewEntityParams{
             DateCreated:  time.Now(),
@@ -129,14 +129,13 @@ func updateWalletBalances(
     })
     sellerWT.SetTimestamp(time.Now())
 
-    // Update buyer's wallet balance
+
     buyerWallet.SetBalance(buyerWallet.GetBalance() - totalCost)
     err := databaseAccessUser.Wallet().Update(buyerWallet)
     if err != nil {
         return fmt.Errorf("failed to update buyer wallet: %v", err)
     }
 
-    // Update seller's wallet balance
     sellerWallet.SetBalance(sellerWallet.GetBalance() + totalCost)
     err = databaseAccessUser.Wallet().Update(sellerWallet)
     if err != nil {
@@ -185,7 +184,6 @@ func updateUserStocks(
         return fmt.Errorf("failed to get seller stocks: %v", err)
     }
 
-    // Find seller's stock holding first (fail fast if seller doesn't have stock)
     var sellerStock userStock.UserStockInterface
     for _, stock := range *sellerStocks {
         if stock.GetStockID() == stockID {
@@ -198,12 +196,12 @@ func updateUserStocks(
         return fmt.Errorf("seller does not own stock %s", stockID)
     }
 
-    // Validate seller has enough shares (fail fast)
+
     if sellerStock.GetQuantity() < quantity {
         return fmt.Errorf("seller does not have enough shares of stock %s", stockID)
     }
 
-    // Find or create buyer's stock holding
+
     var buyerStock userStock.UserStockInterface
     for _, stock := range *buyerStocks {
         if stock.GetStockID() == stockID {
@@ -213,7 +211,6 @@ func updateUserStocks(
     }
 
     if buyerStock == nil {
-        // Create new stock holding for buyer
         buyerStock = userStock.New(userStock.NewUserStockParams{
             NewEntityParams: entity.NewEntityParams{
                 DateCreated:  time.Now(),
@@ -291,14 +288,9 @@ func updateUserStocks(
 
 
 
-
-
-
 func calculateTotalTransactionCost(quantity int, stockPrice float64) float64 {
     return float64(quantity) * stockPrice
 }
-
-
 
 
 
