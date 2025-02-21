@@ -4,6 +4,7 @@ import (
 	"Shared/network"
 	databaseServiceUserManagement "databaseServiceUserManagement/database-connection"
 	userManagementDatabaseHandlers "databaseServiceUserManagement/handlers"
+	"fmt"
 )
 
 //"Shared/network"
@@ -13,7 +14,7 @@ func main() {
 	_databaseManager := databaseServiceUserManagement.NewDatabaseService(&databaseServiceUserManagement.NewDatabaseServiceParams{})
 
 	go userManagementDatabaseHandlers.InitalizeHandlers(networkManager, _databaseManager)
-	println("User Management Database Service Started")
+	fmt.Println("User Management Database Service Started")
 
 	networkManager.Listen(network.ListenerParams{
 		Handler: nil,

@@ -5,6 +5,7 @@ import (
 	"Shared/entities/order"
 	"Shared/entities/transaction"
 	"databaseAccessStockOrder"
+	"fmt"
 )
 
 // https://gobyexample.com/channels
@@ -61,7 +62,7 @@ func (me *MatchingEngine) RunMatchingEngineOrders() {
 	for {
 
 		stockOrder := <-me.orderChannel
-		println("Order received")
+		fmt.Println("Order received")
 		if stockOrder.GetOrderType() == order.OrderTypeMarket {
 			me.BuyOrderBook.AddOrder(stockOrder)
 		} else {
@@ -149,7 +150,7 @@ type UpdateParams struct {
 func (me *MatchingEngine) RunMatchingEngineUpdates() {
 	for {
 		updateParams := <-me.updateChannel
-		println("Removing Order")
+		fmt.Println("Removing Order")
 		me.SellOrderBook.RemoveOrder(&matchingEngineStructures.RemoveParams{
 			OrderID:  updateParams.OrderID,
 			PriceKey: updateParams.PriceKey,

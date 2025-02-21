@@ -5,6 +5,7 @@ import (
 	"Shared/network"
 	"databaseAccessStock"
 	"databaseAccessStockOrder"
+	"fmt"
 )
 
 //"Shared/network"
@@ -22,8 +23,8 @@ func main() {
 		panic(err)
 	}
 
-	go matchingEngine.InitalizeHandlers(stockList, networkManager, _databaseManager)
-	println("Matching Engine Service Started")
+	go matchingEngine.InitalizeHandlers(stockList, networkManager, _databaseManager, _databaseAccess)
+	fmt.Println("Matching Engine Service Started")
 
 	networkManager.Listen(network.ListenerParams{
 		Handler: nil,

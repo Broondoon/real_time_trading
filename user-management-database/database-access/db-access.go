@@ -114,11 +114,11 @@ func (d *DatabaseAccess) Wallet() WalletDataAccessInterface {
 }
 
 func (d *UserStocksDataAccess) GetUserStocks(userID string) (*[]userStock.UserStockInterface, error) {
-	return d.GetByForeignID("UserID", userID)
+	return d.GetByForeignID("user_id", userID)
 }
 
 func (d *WalletDataAccess) AddMoneyToWallet(userID string, amount float64) error {
-	walletList, err := d.GetByForeignID("UserID", userID)
+	walletList, err := d.GetByForeignID("user_id", userID)
 	if err != nil {
 		return err
 	}
@@ -135,7 +135,7 @@ func (d *WalletDataAccess) AddMoneyToWallet(userID string, amount float64) error
 }
 
 func (d *WalletDataAccess) GetWalletBalance(userID string) (float64, error) {
-	walletList, err := d.GetByForeignID("UserID", userID)
+	walletList, err := d.GetByForeignID("user_id", userID)
 	if err != nil {
 		return 0, err
 	}

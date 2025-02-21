@@ -4,12 +4,15 @@ import (
 	"Shared/entities/order"
 	"Shared/entities/transaction"
 	"Shared/network"
+	"databaseAccessStock"
 	"databaseAccessStockOrder"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
+	"os"
+	"sort"
 
 	"gorm.io/gorm"
 )
@@ -17,11 +20,13 @@ import (
 var _matchingEngineMap map[string]MatchingEngineInterface
 var _databaseManager databaseAccessStockOrder.DatabaseAccessInterface
 var _networkManager network.NetworkInterface
+var _stockDatabaseAccess databaseAccessStock.DatabaseAccessInterface
 
 func InitalizeHandlers(stockIDs *[]string,
-	networkManager network.NetworkInterface, databaseManager databaseAccessStockOrder.DatabaseAccessInterface) {
+	networkManager network.NetworkInterface, databaseManager databaseAccessStockOrder.DatabaseAccessInterface, stockDatabaseAccess databaseAccessStock.DatabaseAccessInterface) {
 	_databaseManager = databaseManager
 	_networkManager = networkManager
+	_stockDatabaseAccess = stockDatabaseAccess
 	_matchingEngineMap = make(map[string]MatchingEngineInterface)
 	//Create all matching engines for stocks.
 	for _, stockID := range *stockIDs {
@@ -32,14 +37,14 @@ func InitalizeHandlers(stockIDs *[]string,
 	networkManager.AddHandleFuncUnprotected(network.HandlerParams{Pattern: "createStock", Handler: AddNewStockHandler})
 	networkManager.AddHandleFuncUnprotected(network.HandlerParams{Pattern: "placeStockOrder", Handler: PlaceStockOrderHandler})
 	networkManager.AddHandleFuncUnprotected(network.HandlerParams{Pattern: "deleteOrder/", Handler: DeleteStockOrderHandler})
-	networkManager.AddHandleFuncProtected(network.HandlerParams{Pattern: "getStockPrices", Handler: GetStockPricesHandler})
+	networkManager.AddHandleFuncProtected(network.HandlerParams{Pattern: os.Getenv("transaction_route") + "/getStockPrices", Handler: GetStockPricesHandler})
 	http.HandleFunc("/health", healthHandler)
 }
 
 func healthHandler(w http.ResponseWriter, r *http.Request) {
 	// Simple check: you might expand this to test database connectivity, etc.
 	w.WriteHeader(http.StatusOK)
-	fmt.Fprintln(w, "OK")
+	fmt.Println(w, "OK")
 }
 
 // Expected input is a stock ID in the body of the request
@@ -131,7 +136,11 @@ func DeleteStockOrder(orderID string) error {
 }
 
 func GetStockPricesHandler(responseWriter http.ResponseWriter, data []byte, queryParams url.Values, requestType string) {
-	prices := GetStockPrices()
+	prices, err := GetStockPrices()
+	if err != nil {
+		responseWriter.WriteHeader(http.StatusInternalServerError)
+		return
+	}
 	pricesJSON, err := json.Marshal(prices)
 	if err != nil {
 		responseWriter.WriteHeader(http.StatusInternalServerError)
@@ -141,14 +150,38 @@ func GetStockPricesHandler(responseWriter http.ResponseWriter, data []byte, quer
 
 }
 
-func GetStockPrices() network.StockPrices {
+func GetStockPrices() (*[]network.StockPrice, error) {
+	stocks, err := _stockDatabaseAccess.GetAll()
+	if err != nil {
+		return nil, err
+	}
+	//create a map from the stock ids to names
+	stockIDToName := make(map[string]string)
+	for _, stock := range *stocks {
+		stockIDToName[stock.GetId()] = stock.GetName()
+	}
+	//get the prices for each stock
 	prices := make(map[string]float64)
 	for stockID, me := range _matchingEngineMap {
 		prices[stockID] = me.GetPrice()
 	}
-	return network.StockPrices{
-		StockPrices: prices,
+	//create the stock prices
+	stockPrices := make([]network.StockPrice, len(prices))
+	i := 0
+	for stockID, price := range prices {
+		stockPrices[i] = network.StockPrice{
+			StockID:   stockID,
+			StockName: stockIDToName[stockID],
+			Price:     price,
+		}
+		i++
 	}
+	//sort by stock name in lexicographically decreasing order
+	sort.SliceStable(stockPrices, func(i, j int) bool {
+		return stockPrices[i].StockName > stockPrices[j].StockName
+	})
+
+	return &stockPrices, nil
 }
 
 func SendToOrderExection(buyOrder order.StockOrderInterface, sellOrder order.StockOrderInterface) transaction.StockTransactionInterface {
@@ -159,6 +192,8 @@ func SendToOrderExection(buyOrder order.StockOrderInterface, sellOrder order.Sto
 		quantity = sellQty
 	}
 	transferEntity := network.MatchingEngineToExecutionJSON{
+		BuyerID:       buyOrder.GetUserID(),
+		SellerID:      sellOrder.GetUserID(),
 		StockID:       buyOrder.GetStockID(),
 		BuyOrderID:    buyOrder.GetId(),
 		SellOrderID:   sellOrder.GetId(),
@@ -168,7 +203,7 @@ func SendToOrderExection(buyOrder order.StockOrderInterface, sellOrder order.Sto
 		Quantity:      quantity,
 	}
 
-	data, err := _networkManager.OrderExecutor().Post("orderexecutor", transferEntity)
+	data, err := _networkManager.OrderExecutor().Post("/orderexecutor", transferEntity)
 	if err != nil {
 		return nil
 	}

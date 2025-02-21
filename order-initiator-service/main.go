@@ -4,6 +4,7 @@ import (
 	OrderInitiatorService "OrderInitiatorService/handlers"
 	"Shared/network"
 	"databaseAccessTransaction"
+	"fmt"
 )
 
 //"Shared/network"
@@ -17,7 +18,7 @@ func main() {
 	})
 
 	go OrderInitiatorService.InitalizeHandlers(networkManager, databaseAccess)
-	println("Matching Engine Service Started")
+	fmt.Println("Matching Engine Service Started")
 
 	networkManager.Listen(network.ListenerParams{
 		Handler: nil,

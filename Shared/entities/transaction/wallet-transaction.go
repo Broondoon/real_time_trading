@@ -18,15 +18,17 @@ type WalletTransactionInterface interface {
 	SetAmount(amount float64)
 	GetTimestamp() time.Time
 	SetTimestamp(timestamp time.Time)
+	SetWalletTXID()
 	ToParams() NewWalletTransactionParams
 	entity.EntityInterface
 }
 
 type WalletTransaction struct {
-	WalletID           string    `json:"WalletID" gorm:"not null"`
-	StockTransactionID string    `json:"StockTransactionID" gorm:"not null"`
-	IsDebit            bool      `json:"IsDebit" gorm:"not null"`
-	Amount             float64   `json:"Amount" gorm:"not null"`
+	WalletID           string    `json:"wallet_id" gorm:"not null"`
+	WalletTXID         string    `json:"wallet_tx_id" gorm:"-"`
+	StockTransactionID string    `json:"stock_tx_id" gorm:"not null"`
+	IsDebit            bool      `json:"is_debit" gorm:"not null"`
+	Amount             float64   `json:"amount" gorm:"not null"`
 	Timestamp          time.Time `json:"time_stamp"`
 
 	// Internal functions have been commented out.
@@ -81,15 +83,19 @@ func (wt *WalletTransaction) SetTimestamp(timestamp time.Time) {
 	wt.Timestamp = timestamp
 }
 
+func (wt *WalletTransaction) SetWalletTXID() {
+	wt.WalletTXID = wt.GetId()
+}
+
 type NewWalletTransactionParams struct {
-	entity.NewEntityParams
-	WalletID           string    `json:"WalletID" gorm:"not null"`
-	StockTransactionID string    `json:"StockTransactionID" gorm:"not null"`
-	IsDebit            bool      `json:"IsDebit" gorm:"not null"`
-	Amount             float64   `json:"Amount" gorm:"not null"`
-	Timestamp          time.Time `json:"time_stamp"`
-	Wallet             wallet.WalletInterface
-	StockTransaction   StockTransactionInterface
+	entity.NewEntityParams `json:"Entity"`
+	WalletID               string    `json:"wallet_id" gorm:"not null"`
+	StockTransactionID     string    `json:"stock_tx_id" gorm:"not null"`
+	IsDebit                bool      `json:"is_debit" gorm:"not null"`
+	Amount                 float64   `json:"amount" gorm:"not null"`
+	Timestamp              time.Time `json:"time_stamp"`
+	Wallet                 wallet.WalletInterface
+	StockTransaction       StockTransactionInterface
 }
 
 func NewWalletTransaction(params NewWalletTransactionParams) *WalletTransaction {

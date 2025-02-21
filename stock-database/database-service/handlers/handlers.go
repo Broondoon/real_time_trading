@@ -20,7 +20,7 @@ func InitalizeHandlers(
 	_networkManager = networkManager
 
 	//Add handlers
-	_networkManager.AddHandleFuncProtected(network.HandlerParams{Pattern: "createStock", Handler: AddNewStockHandler})
+	_networkManager.AddHandleFuncProtected(network.HandlerParams{Pattern: os.Getenv("setup_route") + "/createStock", Handler: AddNewStockHandler})
 	_networkManager.AddHandleFuncUnprotected(network.HandlerParams{Pattern: "getStockIDs", Handler: GetStockIDsHandler})
 	network.CreateNetworkEntityHandlers[*stock.Stock](_networkManager, os.Getenv("STOCK_DATABASE_SERVICE_ROUTE"), _databaseManager, stock.Parse)
 	http.HandleFunc("/health", healthHandler)
@@ -30,7 +30,7 @@ func InitalizeHandlers(
 func healthHandler(w http.ResponseWriter, r *http.Request) {
 	// Simple check: you might expand this to test database connectivity, etc.
 	w.WriteHeader(http.StatusOK)
-	fmt.Fprintln(w, "OK")
+	fmt.Println(w, "OK")
 }
 
 func GetStockIDsHandler(responseWriter http.ResponseWriter, data []byte, queryParams url.Values, requestType string) {

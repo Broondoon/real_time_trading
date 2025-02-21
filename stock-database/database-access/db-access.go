@@ -11,6 +11,7 @@ type EntityDataAccessInterface = databaseAccess.EntityDataAccessInterface[*stock
 
 type DatabaseAccessInterface interface {
 	databaseAccess.DatabaseAccessInterface
+	EntityDataAccessInterface
 	GetStockIDs() (*[]string, error)
 }
 

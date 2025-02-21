@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"os"
 
 	"gorm.io/gorm"
 )
@@ -26,15 +27,15 @@ func InitalizeHandlers(
 	//listen for cancelStockTransaction.
 
 	//Add handlers
-	networkManager.AddHandleFuncProtected(network.HandlerParams{Pattern: "placeStockOrder", Handler: placeStockOrderHandler})
-	networkManager.AddHandleFuncProtected(network.HandlerParams{Pattern: "cancelStockTransaction", Handler: cancelStockTransactionHandler})
+	networkManager.AddHandleFuncProtected(network.HandlerParams{Pattern: os.Getenv("engine_route") + "/placeStockOrder", Handler: placeStockOrderHandler})
+	networkManager.AddHandleFuncProtected(network.HandlerParams{Pattern: os.Getenv("engine_route") + "/cancelStockTransaction", Handler: cancelStockTransactionHandler})
 	http.HandleFunc("/health", healthHandler)
 }
 
 func healthHandler(w http.ResponseWriter, r *http.Request) {
 	// Simple check: you might expand this to test database connectivity, etc.
 	w.WriteHeader(http.StatusOK)
-	fmt.Fprintln(w, "OK")
+	fmt.Println(w, "OK")
 }
 
 func placeStockOrderHandler(responseWriter http.ResponseWriter, data []byte, queryParams url.Values, requestType string) {
@@ -43,6 +44,7 @@ func placeStockOrderHandler(responseWriter http.ResponseWriter, data []byte, que
 		responseWriter.WriteHeader(http.StatusBadRequest)
 		return
 	}
+	stockOrder.SetUserID(queryParams.Get("userID"))
 	err = placeStockOrder(stockOrder)
 	if err != nil {
 		responseWriter.WriteHeader(http.StatusInternalServerError)

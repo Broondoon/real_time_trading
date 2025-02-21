@@ -41,8 +41,8 @@ func main() {
 	test := TestStruct[entity.EntityInterface]{}
 	test.test(u)
 
-	// Print the User
-	fmt.Print("User: ")
+	// fmt.Println the User
+	fmt.Println("User: ")
 	fmt.Println(u.GetId())
 	fmt.Println(u.GetDateCreated())
 	fmt.Println(u.GetDateModified())
@@ -72,8 +72,8 @@ func main() {
 		Name: "test",
 	})
 
-	// Print the Stock
-	fmt.Print("Stock: ")
+	// fmt.Println the Stock
+	fmt.Println("Stock: ")
 	fmt.Println(s.GetId())
 	fmt.Println(s.GetDateCreated())
 	fmt.Println(s.GetDateModified())
@@ -90,8 +90,8 @@ func main() {
 		// UserId:  "",
 		Balance: 0.0,
 	})
-	// Print the Wallet
-	fmt.Print("Wallet: ")
+	// fmt.Println the Wallet
+	fmt.Println("Wallet: ")
 	fmt.Println(w.GetId())
 	fmt.Println(w.GetDateCreated())
 	fmt.Println(w.GetDateModified())
@@ -126,8 +126,8 @@ func main() {
 		OrderType: "MARKET",
 		IsBuy:     true,
 	})
-	// Print the Stock Order
-	fmt.Print("Stock Order: ")
+	// fmt.Println the Stock Order
+	fmt.Println("Stock Order: ")
 	fmt.Println(so.GetId())
 	fmt.Println(so.GetDateCreated())
 	fmt.Println(so.GetDateModified())
@@ -150,8 +150,8 @@ func main() {
 		// StockID: "",
 		Quantity: 0,
 	})
-	// Print the User Stock
-	fmt.Print("User Stock: ")
+	// fmt.Println the User Stock
+	fmt.Println("User Stock: ")
 	fmt.Println(us.GetId())
 	fmt.Println(us.GetDateCreated())
 	fmt.Println(us.GetDateModified())
@@ -170,8 +170,8 @@ func main() {
 		StockOrder:  so,
 	})
 
-	// Print the Stock Transaction
-	fmt.Print("Stock Transaction: ")
+	// fmt.Println the Stock Transaction
+	fmt.Println("Stock Transaction: ")
 	fmt.Println(st1.GetId())
 	fmt.Println(st1.GetDateCreated())
 	fmt.Println(st1.GetDateModified())
@@ -198,8 +198,8 @@ func main() {
 		IsDebit: true,
 		Amount:  0.0,
 	})
-	// Print the Wallet Transaction
-	fmt.Print("Wallet Transaction: ")
+	// fmt.Println the Wallet Transaction
+	fmt.Println("Wallet Transaction: ")
 	fmt.Println(wt.GetId())
 	fmt.Println(wt.GetDateCreated())
 	fmt.Println(wt.GetDateModified())
@@ -220,8 +220,8 @@ func main() {
 		ParentStockTransaction: st1,
 	})
 
-	// Print the Stock Transaction
-	fmt.Print("Stock Transaction: ")
+	// fmt.Println the Stock Transaction
+	fmt.Println("Stock Transaction: ")
 	fmt.Println(st2.GetId())
 	fmt.Println(st2.GetDateCreated())
 	fmt.Println(st2.GetDateModified())
