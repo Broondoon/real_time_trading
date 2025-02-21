@@ -14,7 +14,7 @@ func main() {
 	_databaseManager := databaseServiceStock.NewDatabaseService(&databaseServiceStock.NewDatabaseServiceParams{})
 
 	go stockDatabaseHandlers.InitalizeHandlers(networkManager, _databaseManager)
-	fmt.Println("Matching Engine Service Started")
+	fmt.Println("Stock Database Service Started")
 
 	networkManager.Listen(network.ListenerParams{
 		Handler: nil,

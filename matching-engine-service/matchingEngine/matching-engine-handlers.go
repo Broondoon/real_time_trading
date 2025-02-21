@@ -49,20 +49,29 @@ func healthHandler(w http.ResponseWriter, r *http.Request) {
 // Expected input is a stock ID in the body of the request
 // we're expecting {"StockID":"{id value}"}
 func AddNewStockHandler(responseWriter http.ResponseWriter, data []byte, queryParams url.Values, requestType string) {
+	println("Adding new stock")
+	println("Data: ", string(data))
+	println("Query Params: ", queryParams.Encode())
+	println("Request Type: ", requestType)
 	var stockID network.StockID
 	err := json.Unmarshal(data, &stockID)
 	if err != nil {
+		println("Error: ", err.Error())
 		responseWriter.WriteHeader(http.StatusBadRequest)
 		return
 	}
+	println("Stock ID: ", stockID.StockID)
 
 	AddNewStock(stockID.StockID)
+	responseWriter.WriteHeader(http.StatusOK)
 }
 
 func AddNewStock(stockID string) {
+	println("Parsed Stock ID: ", stockID)
 	_, ok := _matchingEngineMap[stockID]
 	//if we don't have a matching engine for this stock, create one
 	if !ok {
+		println("creating matching engine for stock: ", stockID)
 		stockOrders := _databaseManager.GetInitialStockOrdersForStock(stockID)
 		ordersInterface := make([]order.StockOrderInterface, len(*stockOrders))
 		copy(ordersInterface, *stockOrders)
@@ -72,9 +81,11 @@ func AddNewStock(stockID string) {
 			SendToOrderExecutionFunc: SendToOrderExection,
 			DatabaseManager:          _databaseManager,
 		})
+		println("created matching engine for stock: ", stockID)
 		_matchingEngineMap[stockID] = me
 		go me.RunMatchingEngineOrders()
 		go me.RunMatchingEngineUpdates()
+		println("running matching engine for stock: ", stockID)
 	}
 }
 
@@ -82,6 +93,8 @@ func PlaceStockOrderHandler(responseWriter http.ResponseWriter, data []byte, que
 	//parse the stock order
 	stockOrder, err := order.Parse(data)
 	if err != nil {
+		println("Error: ", err.Error())
+
 		responseWriter.WriteHeader(http.StatusBadRequest)
 		return
 	}
@@ -111,6 +124,7 @@ func DeleteStockOrderHandler(responseWriter http.ResponseWriter, data []byte, qu
 		return
 	}
 	if err != nil {
+		println("Error: ", err.Error())
 		responseWriter.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -120,14 +134,17 @@ func DeleteStockOrderHandler(responseWriter http.ResponseWriter, data []byte, qu
 func DeleteStockOrder(orderID string) error {
 	order, err := _databaseManager.GetByID(orderID)
 	if err != nil {
+		println("Error: ", err.Error())
 		return err
 	}
 	err = _databaseManager.Delete(orderID)
 	if err != nil {
+		println("Error: ", err.Error())
 		return err
 	}
 	me, ok := _matchingEngineMap[order.GetStockID()]
 	if !ok {
+		println("Error: ", err.Error())
 		return nil
 	}
 	me.RemoveOrder(orderID, order.GetPrice())
@@ -137,11 +154,13 @@ func DeleteStockOrder(orderID string) error {
 func GetStockPricesHandler(responseWriter http.ResponseWriter, data []byte, queryParams url.Values, requestType string) {
 	prices, err := GetStockPrices()
 	if err != nil {
+		println("Error: ", err.Error())
 		responseWriter.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 	pricesJSON, err := json.Marshal(prices)
 	if err != nil {
+		println("Error: ", err.Error())
 		responseWriter.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -152,6 +171,7 @@ func GetStockPricesHandler(responseWriter http.ResponseWriter, data []byte, quer
 func GetStockPrices() (*[]network.StockPrice, error) {
 	stocks, err := _stockDatabaseAccess.GetAll()
 	if err != nil {
+		println("Error: ", err.Error())
 		return nil, err
 	}
 	//create a map from the stock ids to names
@@ -204,10 +224,12 @@ func SendToOrderExection(buyOrder order.StockOrderInterface, sellOrder order.Sto
 
 	data, err := _networkManager.OrderExecutor().Post("orderexecutor", transferEntity)
 	if err != nil {
+		println("Error: ", err.Error())
 		return nil
 	}
 	transaction, errParse := transaction.ParseStockTransaction(data)
 	if errParse != nil {
+		println("Error: ", err.Error())
 		return nil
 	}
 
