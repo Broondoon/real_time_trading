@@ -40,7 +40,7 @@ func Register(c *gin.Context) {
 
 	// Check if the username already exists.
 	var existingUser models.User
-	if err := database.DB.Where("user_name = ?", input.Username).First(&existingUser).Error; err == nil {
+	if err := database.DB.Where("Username = ?", input.Username).First(&existingUser).Error; err == nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "User already exists"})
 		return
 	}
