@@ -18,13 +18,127 @@ import (
 
 var jwtSecret = []byte(os.Getenv("JWT_SECRET"))
 
+type NetworkInterface interface {
+	AddHandleFunc(params HandlerParams)
+	Listen(params ListenerParams)
+	MatchingEngine() HttpClientInterface
+	MicroserviceTemplate() HttpClientInterface
+	UserManagement() HttpClientInterface
+	Authentication() HttpClientInterface
+	OrderInitiator() HttpClientInterface
+	OrderExecutor() HttpClientInterface
+	Stocks() HttpClientInterface
+	Transactions() HttpClientInterface
+}
+
+type Network struct {
+	MatchingEngineService       HttpClientInterface
+	MicroserviceTemplateService HttpClientInterface
+	UserManagementService       HttpClientInterface
+	AuthenticationService       HttpClientInterface
+	OrderInitiatorService       HttpClientInterface
+	OrderExecutorService        HttpClientInterface
+	StocksService               HttpClientInterface
+	TransactionsService         HttpClientInterface
+}
+
+func (n *Network) MatchingEngine() HttpClientInterface {
+	return n.MatchingEngineService
+}
+
+func (n *Network) MicroserviceTemplate() HttpClientInterface {
+	return n.MicroserviceTemplateService
+}
+
+func (n *Network) UserManagement() HttpClientInterface {
+	return n.UserManagementService
+}
+
+func (n *Network) Authentication() HttpClientInterface {
+	return n.AuthenticationService
+}
+
+func (n *Network) OrderInitiator() HttpClientInterface {
+	return n.OrderInitiatorService
+}
+
+func (n *Network) OrderExecutor() HttpClientInterface {
+	return n.OrderExecutorService
+}
+
+func (n *Network) Stocks() HttpClientInterface {
+	return n.StocksService
+}
+
+func (n *Network) Transactions() HttpClientInterface {
+	return n.TransactionsService
+}
+
+func NewNetwork() NetworkInterface {
+	baseURL := os.Getenv("BASE_URL_PREFIX")
+	baseURLPostfix := "/"
+	return &Network{
+		MatchingEngineService:       newHttpClient(baseURL + os.Getenv("MATCHING_ENGINE_HOST") + ":" + os.Getenv("MATCHING_ENGINE_PORT") + baseURLPostfix),
+		MicroserviceTemplateService: newHttpClient(baseURL + os.Getenv("MICROSERVICE_TEMPLATE_HOST") + ":" + os.Getenv("MICROSERVICE_TEMPLATE_PORT") + baseURLPostfix),
+		UserManagementService:       newHttpClient(baseURL + os.Getenv("USER_MANAGEMENT_HOST") + ":" + os.Getenv("USER_MANAGEMENT_PORT") + baseURLPostfix),
+		AuthenticationService:       newHttpClient(baseURL + os.Getenv("AUTH_HOST") + ":" + os.Getenv("AUTH_PORT") + baseURLPostfix),
+		OrderInitiatorService:       newHttpClient(baseURL + os.Getenv("ORDER_INITIATOR_HOST") + ":" + os.Getenv("ORDER_INITIATOR_PORT") + baseURLPostfix),
+		OrderExecutorService:        newHttpClient(baseURL + os.Getenv("ORDER_EXECUTOR_HOST") + ":" + os.Getenv("ORDER_EXECUTOR_PORT") + baseURLPostfix),
+		StocksService:               newHttpClient(baseURL + os.Getenv("STOCKS_HOST") + ":" + os.Getenv("STOCKS_PORT") + baseURLPostfix),
+		TransactionsService:         newHttpClient(baseURL + os.Getenv("TRANSACTIONS_HOST") + ":" + os.Getenv("TRANSACTIONS_PORT") + baseURLPostfix),
+	}
+}
+
+type HandlerParams struct {
+	Pattern string
+	Handler func(http.ResponseWriter, []byte, url.Values, string)
+}
+
+// Still probably needs authentication shoved in.
+func (n *Network) AddHandleFunc(params HandlerParams) {
+	http.HandleFunc("/"+params.Pattern, func(w http.ResponseWriter, r *http.Request) {
+		var body []byte
+		var err error
+		var queryParams url.Values
+		if r.Method == http.MethodGet || r.Method == http.MethodDelete || r.Method == http.MethodPut {
+			//decode params
+			queryParams = r.URL.Query()
+			id := strings.TrimPrefix(r.URL.Path, params.Pattern)
+			if id != "" {
+				queryParams.Add("id", id)
+			}
+		}
+
+		if r.Method == http.MethodPost || r.Method == http.MethodPut {
+			body, err = io.ReadAll(r.Body)
+			if err != nil {
+				fmt.Println("Error, there was an issue with reading the message:", err)
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+			defer r.Body.Close()
+		}
+		params.Handler(w, body, queryParams, r.Method)
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("Message received successfully!"))
+	})
+}
+
+type ListenerParams struct {
+	Handler http.Handler //can be nil
+}
+
+func (n *Network) Listen(params ListenerParams) {
+	http.ListenAndServe(":"+os.Getenv("PORT"), params.Handler)
+}
+
+// HttpClientInterface is an interface for the HttpClient struct
+
 type HttpClientInterface interface {
 	Get(endpoint string, queryParams map[string]string) ([]byte, error)
 	Post(endpoint string, payload interface{}) ([]byte, error)
 	Put(endpoint string, payload interface{}) ([]byte, error)
 	Delete(endpoint string) ([]byte, error)
-	AddHandleFunc(params HandlerParams)
-	Listen(params ListenerParams)
 }
 
 type HttpClient struct {
@@ -34,9 +148,9 @@ type HttpClient struct {
 	SecretKey []byte
 }
 
-func NewHttpClient(baseURL string) *HttpClient {
+func newHttpClient(envString string) HttpClientInterface {
 	return &HttpClient{
-		BaseURL: baseURL,
+		BaseURL: os.Getenv(envString),
 		Client:  &http.Client{Timeout: 10 * time.Second},
 	}
 }
@@ -168,36 +282,6 @@ func (hc *HttpClient) Delete(endpoint string) ([]byte, error) {
 	return hc.handleResponse(resp)
 }
 
-type HandlerParams struct {
-	Pattern string
-	Handler func(http.ResponseWriter, []byte)
-}
-
-// Still probably needs authentication shoved in.
-func AddHandleFunc(params HandlerParams) {
-	http.HandleFunc(params.Pattern, func(w http.ResponseWriter, r *http.Request) {
-		body, err := io.ReadAll(r.Body)
-		if err != nil {
-			fmt.Println("Error, there was an issue with reading the message:", err)
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-		defer r.Body.Close()
-		w.WriteHeader(http.StatusOK)
-		params.Handler(w, body)
-		w.Write([]byte("Message received successfully!"))
-	})
-}
-
-type ListenerParams struct {
-	Port    string
-	Handler http.Handler
-}
-
-func Listen(params ListenerParams) {
-	http.ListenAndServe(":"+params.Port, params.Handler)
-}
-
 // ExtractUserIDFromToken extracts the user ID from a JWT token
 func ExtractUserIDFromToken(tokenString string) (uint, error) {
 	if tokenString == "" {
@@ -243,23 +327,4 @@ func ExtractUserIDFromToken(tokenString string) (uint, error) {
 	}
 
 	return uint(userID), nil
-}
-
-type FakeHttpClient struct {
-	listenCalled   bool
-	listenerParams ListenerParams
-}
-
-func (fhc *FakeHttpClient) Get(endpoint string, queryParams map[string]string) ([]byte, error) {
-	return nil, nil
-}
-func (fhc *FakeHttpClient) Post(endpoint string, payload interface{}) ([]byte, error) {
-	return nil, nil
-}
-func (fhc *FakeHttpClient) Put(endpoint string, payload interface{}) ([]byte, error) { return nil, nil }
-func (fhc *FakeHttpClient) Delete(endpoint string) ([]byte, error)                   { return nil, nil }
-func (fhc *FakeHttpClient) AddHandleFunc(params HandlerParams)                       {}
-func (fhc *FakeHttpClient) Listen(params ListenerParams) {
-	fhc.listenCalled = true
-	fhc.listenerParams = params
 }
