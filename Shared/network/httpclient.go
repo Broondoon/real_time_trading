@@ -149,8 +149,8 @@ func (n *Network) AddHandleFuncProtected(params HandlerParams) {
 		handleFunc(params, w, r)
 	})
 	//To reable after testing is done.
-	//protectedHandler := TokenAuthMiddleware(handler)
-	http.Handle("/"+params.Pattern, handler) //protectedHandler)
+	protectedHandler := TokenAuthMiddleware(handler)
+	http.Handle("/"+params.Pattern, protectedHandler)
 }
 
 type ListenerParams struct {
