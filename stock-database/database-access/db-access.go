@@ -11,6 +11,7 @@ type EntityDataAccessInterface = databaseAccess.EntityDataAccessInterface[*stock
 
 type DatabaseAccessInterface interface {
 	databaseAccess.DatabaseAccessInterface
+	EntityDataAccessInterface
 	GetStockIDs() (*[]string, error)
 }
 
@@ -37,6 +38,12 @@ func NewDatabaseAccess(params *NewDatabaseAccessParams) DatabaseAccessInterface 
 	}
 	if params.NewEntityDataAccessHTTPParams.DefaultRoute == "" {
 		params.NewEntityDataAccessHTTPParams.DefaultRoute = os.Getenv("STOCK_DATABASE_SERVICE_ROUTE")
+	}
+	if params.NewEntityDataAccessHTTPParams.Parser == nil {
+		params.NewEntityDataAccessHTTPParams.Parser = stock.Parse
+	}
+	if params.NewEntityDataAccessHTTPParams.ParserList == nil {
+		params.NewEntityDataAccessHTTPParams.ParserList = stock.ParseList
 	}
 
 	dba := &DatabaseAccess{

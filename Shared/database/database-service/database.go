@@ -129,6 +129,7 @@ type EntityDataInterface[T entity.EntityInterface] interface {
 	PostGresDatabaseInterface
 	GetByID(ID string) (T, error)
 	GetByIDs(IDs []string) (*[]T, error)
+	GetByForeignID(foreignIDColumn string, foreignID string) (*[]T, error)
 	GetAll() (*[]T, error)
 	Create(entity T) error
 	Update(entity T) error
@@ -166,7 +167,8 @@ func (d *EntityData[T]) Exists(ID string) (bool, error) {
 		return false, nil
 	}
 	if result.Error != nil {
-		return false, fmt.Errorf("error checking if entity exists: %s", result.Error.Error())
+		fmt.Printf("error checking if entity exists: %s", result.Error.Error())
+		return false, result.Error
 	}
 	return true, nil
 }
@@ -176,13 +178,14 @@ func (d *EntityData[T]) GetByID(id string) (T, error) {
 	result := d.GetDatabaseSession().First(&ent, "id = ?", id)
 	if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 		var zero T
-		return zero, fmt.Errorf("record not found for id: %s", id)
+		fmt.Printf("record not found for id: %s", id)
+		return zero, result.Error
 	}
 	if result.Error != nil {
 		var zero T
-		return zero, fmt.Errorf("error getting: %s", result.Error.Error())
+		fmt.Printf("error getting: %s", result.Error.Error())
+		return zero, result.Error
 	}
-	ent.SetDefaults()
 	return ent, nil
 }
 
@@ -190,10 +193,19 @@ func (d *EntityData[T]) GetByIDs(ids []string) (*[]T, error) {
 	var entities []T
 	results := d.GetDatabaseSession().Find(&entities, "id IN ?", ids)
 	if results.Error != nil {
-		return nil, fmt.Errorf("error getting by ids: %s", results.Error.Error())
+		fmt.Printf("error getting by ids: %s", results.Error.Error())
+		return nil, results.Error
 	}
-	for _, o := range entities {
-		o.SetDefaults()
+	return &entities, nil
+}
+
+// This needs the table column names, whihc is a little diffrent
+func (d *EntityData[T]) GetByForeignID(foreignIDColumn string, foreignID string) (*[]T, error) {
+	var entities []T
+	results := d.GetDatabaseSession().Find(&entities, foreignIDColumn+" = ?", foreignID)
+	if results.Error != nil {
+		fmt.Printf("error getting by foreignKey: %s", results.Error.Error())
+		return nil, results.Error
 	}
 	return &entities, nil
 }
@@ -201,13 +213,12 @@ func (d *EntityData[T]) GetByIDs(ids []string) (*[]T, error) {
 func (d *EntityData[T]) GetAll() (*[]T, error) {
 	var entities []T
 	d.GetDatabaseSession().Find(&entities)
-	for _, o := range entities {
-		o.SetDefaults()
-	}
 	return &entities, nil
 }
 
 func (d *EntityData[T]) Create(entity T) error {
+	json, _ := entity.ToJSON()
+	print("Creating entity: ", string(json))
 	candidateID := entity.GetId()
 	if candidateID == "" {
 		candidateID = generateRandomID()
@@ -215,7 +226,8 @@ func (d *EntityData[T]) Create(entity T) error {
 	for {
 		result, err := d.Exists(candidateID)
 		if err != nil {
-			return fmt.Errorf("error checking existing: %s", err.Error())
+			fmt.Printf("error checking existing: %s", err.Error())
+			return err
 		}
 
 		if !result {
@@ -229,9 +241,9 @@ func (d *EntityData[T]) Create(entity T) error {
 	createResult := d.GetDatabaseSession().Create(entity)
 
 	if createResult.Error != nil {
-		return fmt.Errorf("error creating: %w", createResult.Error)
+		fmt.Printf("error creating %s: %s", entity.GetId(), createResult.Error.Error())
+		return createResult.Error
 	}
-	entity.SetDefaults()
 	return nil
 }
 
@@ -243,21 +255,22 @@ func generateRandomID() string {
 func (d *EntityData[T]) Update(entity T) error {
 	updateResult := d.GetDatabaseSession().Save(entity)
 	if updateResult.Error != nil {
-		return fmt.Errorf("error updating %s: %s", entity.GetId(), updateResult.Error.Error())
+		fmt.Printf("error updating %s: %s", entity.GetId(), updateResult.Error.Error())
+		return updateResult.Error
 	}
 	return nil
 }
 
 func (d *EntityData[T]) Delete(id string) error {
-	ent, err := d.GetByID(id)
+	_, err := d.GetByID(id)
 	if err != nil {
-		return fmt.Errorf("error getting %s: %s", id, err.Error())
+		return err
 	}
 	var zero T
 	deleteResult := d.GetDatabaseSession().Delete(&zero, "id = ?", id)
 	if deleteResult.Error != nil {
-		return fmt.Errorf("error deleting %s: %s", id, deleteResult.Error.Error())
+		fmt.Printf("error deleting %s: %s", id, deleteResult.Error.Error())
+		return deleteResult.Error
 	}
-	ent.SetDefaults()
 	return nil
 }

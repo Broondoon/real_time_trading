@@ -4,7 +4,7 @@ import (
 	"Shared/database/database-service"
 	"Shared/entities/entity"
 	"Shared/network"
-	"encoding/json"
+	"fmt"
 	"log"
 	"strings"
 )
@@ -32,6 +32,7 @@ type EntityDataAccessInterface[TEntity entity.EntityInterface, TInterface entity
 	GetByID(id string) (TInterface, error)
 	GetAll() (*[]TInterface, error)
 	GetByIDs(ids []string) (*[]TInterface, error)
+	GetByForeignID(foreignIDColumn string, foreignID string) (*[]TInterface, error)
 	Create(entity TInterface) (TInterface, error)
 	Update(entity TInterface) error
 	Delete(id string) error
@@ -88,11 +89,22 @@ func (d *EntityDataAccess[TEntity, TInterface]) GetAll() (*[]TInterface, error) 
 	}
 	return &converted, nil
 }
-
 func (d *EntityDataAccess[TEntity, TInterface]) GetByIDs(ids []string) (*[]TInterface, error) {
 	entities, err := d.EntityDataServiceTemp.GetByIDs(ids)
 	if err != nil {
-		log.Fatal("Failed to get entities by IDs: ", err)
+		log.Fatal("Failed to get entities by Ids: ", err)
+	}
+	converted := make([]TInterface, len(*entities))
+	for i, e := range *entities {
+		converted[i] = interface{}(e).(TInterface)
+	}
+	return &converted, nil
+}
+
+func (d *EntityDataAccess[TEntity, TInterface]) GetByForeignID(foreignIDColumn string, foreignID string) (*[]TInterface, error) {
+	entities, err := d.EntityDataServiceTemp.GetByForeignID(foreignIDColumn, foreignID)
+	if err != nil {
+		log.Fatal("Failed to get entities by ForeignKey: ", err)
 	}
 	converted := make([]TInterface, len(*entities))
 	for i, e := range *entities {
@@ -133,6 +145,8 @@ type EntityDataAccessHTTP[TEntity entity.EntityInterface, TInterface entity.Enti
 	PutRoute     string
 	DeleteRoute  string
 	DefaultRoute string
+	Parser       func([]byte) (TEntity, error)
+	ParserList   func([]byte) (*[]TEntity, error)
 }
 
 type NewEntityDataAccessHTTPParams[TEntity entity.EntityInterface] struct {
@@ -143,6 +157,8 @@ type NewEntityDataAccessHTTPParams[TEntity entity.EntityInterface] struct {
 	PutRoute                 string
 	DeleteRoute              string
 	DefaultRoute             string
+	Parser                   func([]byte) (TEntity, error)
+	ParserList               func([]byte) (*[]TEntity, error)
 }
 
 func NewEntityDataAccessHTTP[TEntity entity.EntityInterface, TInterface entity.EntityInterface](params *NewEntityDataAccessHTTPParams[TEntity]) EntityDataAccessInterface[TEntity, TInterface] {
@@ -157,6 +173,8 @@ func NewEntityDataAccessHTTP[TEntity entity.EntityInterface, TInterface entity.E
 		PutRoute:                    params.PutRoute,
 		DeleteRoute:                 params.DeleteRoute,
 		DefaultRoute:                params.DefaultRoute,
+		Parser:                      params.Parser,
+		ParserList:                  params.ParserList,
 	}
 }
 
@@ -178,10 +196,10 @@ func (d *EntityDataAccessHTTP[TEntity, TInterface]) GetByID(id string) (TInterfa
 		return zero, err
 		log.Fatal("Failed to get entity by ID: ", err)
 	}
-	var entity TEntity
-	err = json.Unmarshal(jsonBytes, &entity)
+	entity, err := d.Parser(jsonBytes)
 	if err != nil {
 		var zero TInterface
+		fmt.Println("Failed to unmarshal entity: ", err)
 		return zero, err
 		log.Fatal("Failed to unmarshal entity: ", err)
 	}
@@ -195,18 +213,19 @@ func (d *EntityDataAccessHTTP[TEntity, TInterface]) GetAll() (*[]TInterface, err
 	jsonBytes, err := d._client.Get(d.GetRoute, nil)
 	if err != nil {
 		var zero []TInterface
+		fmt.Println("Failed to get all entities: ", err)
 		return &zero, err
 		log.Fatal("Failed to get all entities: ", err)
 	}
-	var entities []TEntity
-	err = json.Unmarshal(jsonBytes, &entities)
+	entities, err := d.ParserList(jsonBytes)
 	if err != nil {
 		var zero []TInterface
+		fmt.Println("Failed to unmarshal entities: ", err)
 		return &zero, err
 		log.Fatal("Failed to unmarshal entities: ", err)
 	}
-	converted := make([]TInterface, len(entities))
-	for i, e := range entities {
+	converted := make([]TInterface, len(*entities))
+	for i, e := range *entities {
 		converted[i] = interface{}(e).(TInterface)
 	}
 	return &converted, nil
@@ -220,18 +239,46 @@ func (d *EntityDataAccessHTTP[TEntity, TInterface]) GetByIDs(ids []string) (*[]T
 	jsonBytes, err := d._client.Get(d.PostRoute, queryParams)
 	if err != nil {
 		var zero []TInterface
+		fmt.Println("Failed to get entities by IDs: ", err)
 		return &zero, err
 		log.Fatal("Failed to get entities by IDs: ", err)
 	}
-	var entities []TEntity
-	err = json.Unmarshal(jsonBytes, &entities)
+	entities, err := d.ParserList(jsonBytes)
 	if err != nil {
 		var zero []TInterface
+		fmt.Println("Failed to unmarshal entities: ", err)
 		return &zero, err
 		log.Fatal("Failed to unmarshal entities: ", err)
 	}
-	converted := make([]TInterface, len(entities))
-	for i, e := range entities {
+	converted := make([]TInterface, len(*entities))
+	for i, e := range *entities {
+		converted[i] = interface{}(e).(TInterface)
+	}
+	return &converted, nil
+}
+
+func (d *EntityDataAccessHTTP[TEntity, TInterface]) GetByForeignID(foreignIDColumn string, foreignID string) (*[]TInterface, error) {
+	if d.GetRoute == "" {
+		d.GetRoute = d.DefaultRoute
+	}
+	queryParams := map[string]string{"foreignKey": foreignIDColumn, "id": foreignID}
+	jsonBytes, err := d._client.Get(d.PostRoute, queryParams)
+	if err != nil {
+		var zero []TInterface
+		fmt.Println("Failed to get entities by foreignKey: ", err)
+		return &zero, err
+		log.Fatal("Failed to get entities by foreignKey: ", err)
+	}
+	entities, err := d.ParserList(jsonBytes)
+
+	if err != nil {
+		var zero []TInterface
+		fmt.Println("Failed to unmarshal entities: ", err)
+		return &zero, err
+		log.Fatal("Failed to unmarshal entities: ", err)
+	}
+	converted := make([]TInterface, len(*entities))
+	for i, e := range *entities {
 		converted[i] = interface{}(e).(TInterface)
 	}
 	return &converted, nil
@@ -244,13 +291,14 @@ func (d *EntityDataAccessHTTP[TEntity, TInterface]) Create(entity TInterface) (T
 	jsonBytes, err := d._client.Post(d.PostRoute, entity)
 	if err != nil {
 		var zero TInterface
+		fmt.Println("Failed to create entity: ", err)
 		return zero, err
 		log.Fatal("Failed to create entity: ", err)
 	}
-	var newEntity TEntity
-	err = json.Unmarshal(jsonBytes, &newEntity)
+	newEntity, err := d.Parser(jsonBytes)
 	if err != nil {
 		var zero TInterface
+		fmt.Println("Failed to unmarshal entity: ", err)
 		return zero, err
 		log.Fatal("Failed to unmarshal entity: ", err)
 	}
@@ -263,6 +311,7 @@ func (d *EntityDataAccessHTTP[TEntity, TInterface]) Update(entity TInterface) er
 	}
 	_, err := d._client.Put(d.PutRoute, entity)
 	if err != nil {
+		fmt.Println("Failed to update entity: ", err)
 		return err
 		log.Fatal("Failed to update entity: ", err)
 	}
@@ -275,6 +324,7 @@ func (d *EntityDataAccessHTTP[TEntity, TInterface]) Delete(id string) error {
 	}
 	_, err := d._client.Delete(d.DeleteRoute + "/" + id)
 	if err != nil {
+		fmt.Println("Failed to delete entity: ", err)
 		return err
 		log.Fatal("Failed to delete entity: ", err)
 	}

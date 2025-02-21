@@ -2,6 +2,7 @@ package network
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -19,7 +20,8 @@ import (
 var jwtSecret = []byte(os.Getenv("JWT_SECRET"))
 
 type NetworkInterface interface {
-	AddHandleFunc(params HandlerParams)
+	AddHandleFuncUnprotected(params HandlerParams)
+	AddHandleFuncProtected(params HandlerParams)
 	Listen(params ListenerParams)
 	MatchingEngine() HttpClientInterface
 	MicroserviceTemplate() HttpClientInterface
@@ -29,17 +31,19 @@ type NetworkInterface interface {
 	OrderExecutor() HttpClientInterface
 	Stocks() HttpClientInterface
 	Transactions() HttpClientInterface
+	UserManagementDatabase() HttpClientInterface
 }
 
 type Network struct {
-	MatchingEngineService       HttpClientInterface
-	MicroserviceTemplateService HttpClientInterface
-	UserManagementService       HttpClientInterface
-	AuthenticationService       HttpClientInterface
-	OrderInitiatorService       HttpClientInterface
-	OrderExecutorService        HttpClientInterface
-	StocksService               HttpClientInterface
-	TransactionsService         HttpClientInterface
+	MatchingEngineService         HttpClientInterface
+	MicroserviceTemplateService   HttpClientInterface
+	UserManagementService         HttpClientInterface
+	AuthenticationService         HttpClientInterface
+	OrderInitiatorService         HttpClientInterface
+	OrderExecutorService          HttpClientInterface
+	StocksService                 HttpClientInterface
+	TransactionsService           HttpClientInterface
+	UserManagementDatabaseService HttpClientInterface
 }
 
 func (n *Network) MatchingEngine() HttpClientInterface {
@@ -74,18 +78,23 @@ func (n *Network) Transactions() HttpClientInterface {
 	return n.TransactionsService
 }
 
+func (n *Network) UserManagementDatabase() HttpClientInterface {
+	return n.UserManagementDatabaseService
+}
+
 func NewNetwork() NetworkInterface {
 	baseURL := os.Getenv("BASE_URL_PREFIX")
 	baseURLPostfix := "/"
 	return &Network{
-		MatchingEngineService:       newHttpClient(baseURL + os.Getenv("MATCHING_ENGINE_HOST") + ":" + os.Getenv("MATCHING_ENGINE_PORT") + baseURLPostfix),
-		MicroserviceTemplateService: newHttpClient(baseURL + os.Getenv("MICROSERVICE_TEMPLATE_HOST") + ":" + os.Getenv("MICROSERVICE_TEMPLATE_PORT") + baseURLPostfix),
-		UserManagementService:       newHttpClient(baseURL + os.Getenv("USER_MANAGEMENT_HOST") + ":" + os.Getenv("USER_MANAGEMENT_PORT") + baseURLPostfix),
-		AuthenticationService:       newHttpClient(baseURL + os.Getenv("AUTH_HOST") + ":" + os.Getenv("AUTH_PORT") + baseURLPostfix),
-		OrderInitiatorService:       newHttpClient(baseURL + os.Getenv("ORDER_INITIATOR_HOST") + ":" + os.Getenv("ORDER_INITIATOR_PORT") + baseURLPostfix),
-		OrderExecutorService:        newHttpClient(baseURL + os.Getenv("ORDER_EXECUTOR_HOST") + ":" + os.Getenv("ORDER_EXECUTOR_PORT") + baseURLPostfix),
-		StocksService:               newHttpClient(baseURL + os.Getenv("STOCKS_HOST") + ":" + os.Getenv("STOCKS_PORT") + baseURLPostfix),
-		TransactionsService:         newHttpClient(baseURL + os.Getenv("TRANSACTIONS_HOST") + ":" + os.Getenv("TRANSACTIONS_PORT") + baseURLPostfix),
+		MatchingEngineService:         newHttpClient(baseURL + os.Getenv("MATCHING_ENGINE_HOST") + ":" + os.Getenv("MATCHING_ENGINE_PORT") + baseURLPostfix),
+		MicroserviceTemplateService:   newHttpClient(baseURL + os.Getenv("MICROSERVICE_TEMPLATE_HOST") + ":" + os.Getenv("MICROSERVICE_TEMPLATE_PORT") + baseURLPostfix),
+		UserManagementService:         newHttpClient(baseURL + os.Getenv("USER_MANAGEMENT_HOST") + ":" + os.Getenv("USER_MANAGEMENT_PORT") + baseURLPostfix),
+		AuthenticationService:         newHttpClient(baseURL + os.Getenv("AUTH_HOST") + ":" + os.Getenv("AUTH_PORT") + baseURLPostfix),
+		OrderInitiatorService:         newHttpClient(baseURL + os.Getenv("ORDER_INITIATOR_HOST") + ":" + os.Getenv("ORDER_INITIATOR_PORT") + baseURLPostfix),
+		OrderExecutorService:          newHttpClient(baseURL + os.Getenv("ORDER_EXECUTOR_HOST") + ":" + os.Getenv("ORDER_EXECUTOR_PORT") + baseURLPostfix),
+		StocksService:                 newHttpClient(baseURL + os.Getenv("STOCK_DATABASE_SERVICE_HOST") + ":" + os.Getenv("STOCK_DATABASE_SERVICE_PORT") + baseURLPostfix),
+		TransactionsService:           newHttpClient(baseURL + os.Getenv("TRANSACTION_DATABASE_SERVICE_HOST") + ":" + os.Getenv("TRANSACTION_DATABASE_SERVICE_PORT") + baseURLPostfix),
+		UserManagementDatabaseService: newHttpClient(baseURL + os.Getenv("USER_MANAGEMENT_DATABASE_SERVICE_HOST") + ":" + os.Getenv("USER_MANAGEMENT_DATABASE_SERVICE_PORT") + baseURLPostfix),
 	}
 }
 
@@ -94,34 +103,54 @@ type HandlerParams struct {
 	Handler func(http.ResponseWriter, []byte, url.Values, string)
 }
 
-// Still probably needs authentication shoved in.
-func (n *Network) AddHandleFunc(params HandlerParams) {
-	http.HandleFunc("/"+params.Pattern, func(w http.ResponseWriter, r *http.Request) {
-		var body []byte
-		var err error
-		var queryParams url.Values
-		if r.Method == http.MethodGet || r.Method == http.MethodDelete || r.Method == http.MethodPut {
-			//decode params
-			queryParams = r.URL.Query()
-			id := strings.TrimPrefix(r.URL.Path, params.Pattern)
-			if id != "" {
-				queryParams.Add("id", id)
-			}
+func handleFunc(params HandlerParams, w http.ResponseWriter, r *http.Request) {
+	// fmt.Println("Handling request for: ", r.URL.Path)
+	var body []byte
+	var err error
+	var queryParams url.Values
+	if r.Method == http.MethodGet || r.Method == http.MethodDelete || r.Method == http.MethodPut {
+		//decode params
+		queryParams = r.URL.Query()
+		id := strings.TrimPrefix(r.URL.Path, "/"+params.Pattern)
+		if id != "" {
+			queryParams.Add("id", id)
 		}
+	}
 
-		if r.Method == http.MethodPost || r.Method == http.MethodPut {
-			body, err = io.ReadAll(r.Body)
-			if err != nil {
-				fmt.Println("Error, there was an issue with reading the message:", err)
-				w.WriteHeader(http.StatusInternalServerError)
-				return
-			}
-			defer r.Body.Close()
+	if r.Method == http.MethodPost || r.Method == http.MethodPut {
+		body, err = io.ReadAll(r.Body)
+		if err != nil {
+			fmt.Println("Error, there was an issue with reading the message:", err)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
 		}
-		params.Handler(w, body, queryParams, r.Method)
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("Message received successfully!"))
+		defer r.Body.Close()
+	}
+	if r.Context().Value("userID") != nil {
+		queryParams.Add("userID", r.Context().Value("userID").(string))
+	}
+
+	params.Handler(w, body, queryParams, r.Method)
+	//w.WriteHeader(http.StatusOK)
+}
+
+// For Internal handlers
+func (n *Network) AddHandleFuncUnprotected(params HandlerParams) {
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		handleFunc(params, w, r)
 	})
+	http.Handle("/"+params.Pattern, handler)
+
+}
+
+// For Protected handlers (I.E exposed to the outside)
+func (n *Network) AddHandleFuncProtected(params HandlerParams) {
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		handleFunc(params, w, r)
+	})
+	//To reable after testing is done.
+	protectedHandler := TokenAuthMiddleware(handler)
+	http.Handle("/"+params.Pattern, protectedHandler)
 }
 
 type ListenerParams struct {
@@ -148,22 +177,34 @@ type HttpClient struct {
 	SecretKey []byte
 }
 
-func newHttpClient(envString string) HttpClientInterface {
+func newHttpClient(baseURL string) HttpClientInterface {
 	return &HttpClient{
-		BaseURL: os.Getenv(envString),
+		BaseURL: baseURL,
 		Client:  &http.Client{Timeout: 10 * time.Second},
 	}
 }
 
-func (hc *HttpClient) setAuthToken(token string) {
-	hc.AuthToken = token
-}
+// func (hc *HttpClient) setAuthToken() {
+// 	context.
+// 	token, err := GenerateToken()
+// 	hc.AuthToken = token
+// }
 
-func (hc *HttpClient) generateToken() error {
+// func (hc *HttpClient) generateToken() error {
 
-	hc.AuthToken = "your_generated_token_here"
-	return nil
-}
+// 	hc.AuthToken = "your_generated_token_here"
+// 	return nil
+// }
+
+// func GenerateToken(userID uint) (string, error) {
+// 	var jwtsecret = []byte(os.Getenv("JWT_SECRET"))
+// 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+// 		"sub": userID,
+// 		"exp": time.Now().Add(time.Hour * 1).Unix(),
+// 	})
+
+// 	return token.SignedString(jwtsecret)
+// }
 
 func (hc *HttpClient) authenticate(req *http.Request) error {
 	if hc.AuthToken == "" {
@@ -176,6 +217,9 @@ func (hc *HttpClient) authenticate(req *http.Request) error {
 func (hc *HttpClient) handleResponse(resp *http.Response) ([]byte, error) {
 	if resp.StatusCode >= 400 {
 		return nil, fmt.Errorf("server returned error: %d %s", resp.StatusCode, resp.Status)
+	}
+	if resp.StatusCode == http.StatusResetContent {
+		return nil, errors.New("204 No Content")
 	}
 
 	defer resp.Body.Close()
@@ -204,9 +248,9 @@ func (hc *HttpClient) Get(endpoint string, queryParams map[string]string) ([]byt
 		return nil, err
 	}
 
-	if err := hc.authenticate(req); err != nil {
-		return nil, err
-	}
+	// if err := hc.authenticate(req); err != nil {
+	// 	return nil, err
+	// }
 
 	resp, err := hc.Client.Do(req)
 	if err != nil {
@@ -219,18 +263,20 @@ func (hc *HttpClient) Get(endpoint string, queryParams map[string]string) ([]byt
 func (hc *HttpClient) Post(endpoint string, payload interface{}) ([]byte, error) {
 	jsonData, err := json.Marshal(payload)
 	if err != nil {
+		fmt.Println("Error: ", err.Error())
 		return nil, err
 	}
 
 	req, err := http.NewRequest(http.MethodPost, hc.BaseURL+endpoint, bytes.NewBuffer(jsonData))
 	if err != nil {
+		fmt.Println("Error: ", err.Error())
 		return nil, err
 	}
 
 	req.Header.Set("Content-Type", "application/json")
-	if err := hc.authenticate(req); err != nil {
-		return nil, err
-	}
+	// if err := hc.authenticate(req); err != nil {
+	// 	return nil, err
+	// }
 
 	resp, err := hc.Client.Do(req)
 	if err != nil {
@@ -252,9 +298,9 @@ func (hc *HttpClient) Put(endpoint string, payload interface{}) ([]byte, error) 
 	}
 
 	req.Header.Set("Content-Type", "application/json")
-	if err := hc.authenticate(req); err != nil {
-		return nil, err
-	}
+	// if err := hc.authenticate(req); err != nil {
+	// 	return nil, err
+	// }
 
 	resp, err := hc.Client.Do(req)
 	if err != nil {
@@ -270,9 +316,9 @@ func (hc *HttpClient) Delete(endpoint string) ([]byte, error) {
 		return nil, err
 	}
 
-	if err := hc.authenticate(req); err != nil {
-		return nil, err
-	}
+	// if err := hc.authenticate(req); err != nil {
+	// 	return nil, err
+	// }
 
 	resp, err := hc.Client.Do(req)
 	if err != nil {
@@ -327,4 +373,24 @@ func ExtractUserIDFromToken(tokenString string) (uint, error) {
 	}
 
 	return uint(userID), nil
+}
+
+func TokenAuthMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		tokenString := r.Header.Get("Authorization")
+		if tokenString == "" {
+			http.Error(w, "Unauthorized: missing token", http.StatusUnauthorized)
+			return
+		}
+		// Validate token and extract user ID
+		userID, err := ExtractUserIDFromToken(tokenString)
+		if err != nil {
+			http.Error(w, "Unauthorized: invalid token", http.StatusUnauthorized)
+			return
+		}
+		// Optionally, you can add the userID to the context:
+		ctx := r.Context()
+		ctx = context.WithValue(ctx, "userID", userID)
+		next.ServeHTTP(w, r.WithContext(ctx))
+	})
 }

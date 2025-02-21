@@ -1,8 +1,10 @@
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE TABLE stockTransactions (
-    ID SERIAL PRIMARY KEY,
-    StockID SERIAL,
-    ParentStockTransactionID SERIAL,
-    WalletTransactionID SERIAL,
+    ID UUID PRIMARY KEY,
+    StockID UUID,
+    ParentStockTransactionID UUID,
+    UserStockTransactionID UUID,
+    WalletTransactionID UUID,
     DateCreated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     DateModified TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     OrderStatus TEXT NOT NULL,
@@ -15,9 +17,10 @@ CREATE TABLE stockTransactions (
 );
 
 CREATE TABLE walletTransactions (
-    ID SERIAL PRIMARY KEY,
-    StockTransactionID SERIAL,
-    WalletID SERIAL,
+    ID UUID PRIMARY KEY,
+    StockTransactionID UUID,
+    WalletID UUID,
+    UserStockTransactionID UUID,
     DateCreated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     DateModified TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     IsDebit BOOLEAN NOT NULL,

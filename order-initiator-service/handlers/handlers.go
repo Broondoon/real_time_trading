@@ -7,9 +7,9 @@ import (
 	"databaseAccessTransaction"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"net/http"
 	"net/url"
+	"os"
 
 	"gorm.io/gorm"
 )
@@ -26,25 +26,29 @@ func InitalizeHandlers(
 	//listen for cancelStockTransaction.
 
 	//Add handlers
-	networkManager.AddHandleFunc(network.HandlerParams{Pattern: "placeStockOrder", Handler: placeStockOrderHandler})
-	networkManager.AddHandleFunc(network.HandlerParams{Pattern: "cancelStockTransaction", Handler: cancelStockTransactionHandler})
+	networkManager.AddHandleFuncProtected(network.HandlerParams{Pattern: os.Getenv("engine_route") + "/placeStockOrder", Handler: placeStockOrderHandler})
+	networkManager.AddHandleFuncProtected(network.HandlerParams{Pattern: os.Getenv("engine_route") + "/cancelStockTransaction", Handler: cancelStockTransactionHandler})
 	http.HandleFunc("/health", healthHandler)
 }
 
 func healthHandler(w http.ResponseWriter, r *http.Request) {
 	// Simple check: you might expand this to test database connectivity, etc.
 	w.WriteHeader(http.StatusOK)
-	fmt.Fprintln(w, "OK")
+	//fmt.Println(w, "OK")
 }
 
 func placeStockOrderHandler(responseWriter http.ResponseWriter, data []byte, queryParams url.Values, requestType string) {
+	println("Placing stock order")
 	stockOrder, err := order.Parse(data)
 	if err != nil {
+		println("Error: ", err.Error())
 		responseWriter.WriteHeader(http.StatusBadRequest)
 		return
 	}
+	stockOrder.SetUserID(queryParams.Get("userID"))
 	err = placeStockOrder(stockOrder)
 	if err != nil {
+		println("Error: ", err.Error())
 		responseWriter.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -59,6 +63,7 @@ func placeStockOrder(stockOrder order.StockOrderInterface) error {
 
 	createdTransaction, err := _databaseAccess.StockTransaction().Create(transaction)
 	if err != nil {
+		println("Error: ", err.Error())
 		return err
 	}
 	stockOrder.SetId(createdTransaction.GetId())
@@ -68,9 +73,11 @@ func placeStockOrder(stockOrder order.StockOrderInterface) error {
 }
 
 func cancelStockTransactionHandler(responseWriter http.ResponseWriter, data []byte, queryParams url.Values, requestType string) {
+	println("Cancelling stock transaction")
 	var stockID network.StockTransactionID
 	err := json.Unmarshal(data, &stockID)
 	if err != nil {
+		println("Error: ", err.Error())
 		responseWriter.WriteHeader(http.StatusBadRequest)
 		return
 	}
@@ -80,6 +87,7 @@ func cancelStockTransactionHandler(responseWriter http.ResponseWriter, data []by
 		return
 	}
 	if err != nil {
+		println("Error: ", err.Error())
 		responseWriter.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -90,11 +98,13 @@ func cancelStockTransaction(id string) error {
 	//pass to matching engine
 	_, err := _networkManager.Transactions().Put("cancelStockTransaction/"+id, nil)
 	if err != nil {
+		println("Error: ", err.Error())
 		return err
 	}
 
 	_, err = _networkManager.MatchingEngine().Delete("deleteOrder/" + id)
 	if err != nil {
+		println("Error: ", err.Error())
 		return err
 	}
 	return nil
