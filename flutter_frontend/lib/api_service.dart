@@ -9,7 +9,7 @@ class APIService {
   );
 
   final AuthController _authController;
-  final bool DEBUG_MODE = true;
+  final bool DEBUG_MODE = false;
 
   Future<Response> mockResponse(Map responseData) {
     Response<dynamic> response = Response<dynamic>(

@@ -108,17 +108,6 @@ class AuthController extends ChangeNotifier {
         data: jsonEncode(reqData),
       );
 
-      // I now realize this is functionally USELESS until I create some unique
-      //    behaviour that I control into the api service. TODO: do that
-      // final response = await _apiService.post(
-      //   '/login',
-      //   data: {
-      //     'username': username,
-      //     'password': pwd,
-      //   },
-      // );
-      // if (response == null) return false;
-
       print("STATUS CODE RESPONSE:");
       print(response.statusCode);
 
@@ -194,19 +183,4 @@ class AuthController extends ChangeNotifier {
     authdio.options.headers.remove('Authorization');
     notifyListeners();
   }
-
-  // This is just an example method
-  // Future<dynamic> fetchData() async {
-  //   try {
-  //     final response = await authdio.get('/protected');
-  //     return response.data;
-  //   }
-  //   on DioException catch (e) {
-  //     print('>> Exception: could not fetch data: $e');
-  //     if (e.response?.statusCode == 401) {
-  //       print('>> Token expired, which should be handled by the interceptor.');
-  //     }
-  //     rethrow;
-  //   }
-  // }
 }
