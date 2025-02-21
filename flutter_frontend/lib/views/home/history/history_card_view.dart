@@ -16,7 +16,7 @@ class HistoryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final APIService apiService = APIService(
-      Provider.of<AuthController>(context),
+      Provider.of<AuthController>(context, listen: false),
     );
 
     List<Widget> historyItemList = [];

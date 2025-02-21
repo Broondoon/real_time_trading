@@ -21,7 +21,7 @@ class PortfolioCard extends StatelessWidget {
     // TODO: the future return type may need to be 
     // late Future<Response> portfolioFuture;
     final APIService apiService = APIService(
-      Provider.of<AuthController>(context),
+      Provider.of<AuthController>(context, listen: false),
     );
 
     List<Widget> portfolioItemList = [];
