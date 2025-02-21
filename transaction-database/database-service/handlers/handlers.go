@@ -46,7 +46,7 @@ func GetStockTransactions(responseWriter http.ResponseWriter, data []byte, query
 	}
 	for _, transaction := range *transactions {
 		//making sure the stock_tx_id is set
-		transaction.GetId()
+		transaction.SetStockTXID()
 	}
 	//sort transactions by timestamp. Oldest to newest
 	sort.SliceStable((*transactions), func(i, j int) bool {
@@ -71,7 +71,7 @@ func getWalletTransactions(responseWriter http.ResponseWriter, data []byte, quer
 	}
 	for _, transaction := range *transactions {
 		//making sure the wallet_tx_id is set
-		transaction.GetId()
+		transaction.SetWalletTXID()
 	}
 	//sort transactions by timestamp. Oldest to newest
 	sort.SliceStable((*transactions), func(i, j int) bool {

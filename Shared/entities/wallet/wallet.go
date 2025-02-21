@@ -46,10 +46,10 @@ func (w *Wallet) SetUserID(userID string) {
 }
 
 type NewWalletParams struct {
-	entity.NewEntityParams
-	UserID  string             `json:"user_id" gorm:"not null"`
-	Balance float64            `json:"balance" gorm:"not null"`
-	User    user.UserInterface // use this or UserId
+	entity.NewEntityParams `json:"Entity"`
+	UserID                 string             `json:"user_id" gorm:"not null"`
+	Balance                float64            `json:"balance" gorm:"not null"`
+	User                   user.UserInterface // use this or UserId
 }
 
 func New(params NewWalletParams) *Wallet {

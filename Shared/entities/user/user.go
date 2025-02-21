@@ -55,10 +55,10 @@ func (u *User) SetPassword(password string) {
 }
 
 type NewUserParams struct {
-	entity.NewEntityParams
-	Name     string `json:"name"`
-	Username string `json:"user_name"`
-	Password string `json:"password"`
+	entity.NewEntityParams `json:"Entity"`
+	Name                   string `json:"name"`
+	Username               string `json:"user_name"`
+	Password               string `json:"password"`
 }
 
 func New(params NewUserParams) *User {

@@ -75,13 +75,13 @@ func (us *UserStock) SetStockName(stockName string) {
 }
 
 type NewUserStockParams struct {
-	entity.NewEntityParams
-	UserID    string               `json:"user_id"`
-	StockID   string               `json:"stock_id"`
-	StockName string               `json:"stock_name"`
-	Quantity  int                  `json:"quantity_owned"`
-	User      user.UserInterface   // use this or UserID
-	Stock     stock.StockInterface // use this or StockID and StockName
+	entity.NewEntityParams `json:"Entity"`
+	UserID                 string               `json:"user_id"`
+	StockID                string               `json:"stock_id"`
+	StockName              string               `json:"stock_name"`
+	Quantity               int                  `json:"quantity_owned"`
+	User                   user.UserInterface   // use this or UserID
+	Stock                  stock.StockInterface // use this or StockID and StockName
 }
 
 func New(params NewUserStockParams) *UserStock {

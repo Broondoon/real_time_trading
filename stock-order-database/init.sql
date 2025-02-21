@@ -8,5 +8,6 @@ CREATE TABLE stockOrder (
     OrderType TEXT NOT NULL,
     Price DECIMAL NOT NULL,
     Quantity INT NOT NULL,
+    UserID SERIAL NOT NULL,
     FOREIGN KEY (ParentStockOrderID) REFERENCES stockOrder(ID)
 );

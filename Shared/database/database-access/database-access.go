@@ -174,6 +174,7 @@ func NewEntityDataAccessHTTP[TEntity entity.EntityInterface, TInterface entity.E
 		DeleteRoute:                 params.DeleteRoute,
 		DefaultRoute:                params.DefaultRoute,
 		Parser:                      params.Parser,
+		ParserList:                  params.ParserList,
 	}
 }
 
@@ -192,7 +193,6 @@ func (d *EntityDataAccessHTTP[TEntity, TInterface]) GetByID(id string) (TInterfa
 	jsonBytes, err := d._client.Get(d.GetRoute+"/"+id, nil)
 	if err != nil {
 		var zero TInterface
-		fmt.Println("Failed to get entity by ID: ", err)
 		return zero, err
 		log.Fatal("Failed to get entity by ID: ", err)
 	}

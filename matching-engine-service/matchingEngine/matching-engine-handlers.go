@@ -192,6 +192,8 @@ func SendToOrderExection(buyOrder order.StockOrderInterface, sellOrder order.Sto
 		quantity = sellQty
 	}
 	transferEntity := network.MatchingEngineToExecutionJSON{
+		BuyerID:       buyOrder.GetUserID(),
+		SellerID:      sellOrder.GetUserID(),
 		StockID:       buyOrder.GetStockID(),
 		BuyOrderID:    buyOrder.GetId(),
 		SellOrderID:   sellOrder.GetId(),
@@ -201,9 +203,7 @@ func SendToOrderExection(buyOrder order.StockOrderInterface, sellOrder order.Sto
 		Quantity:      quantity,
 	}
 
-	//need to figure out how to get the user IDs from the orders
-
-	data, err := _networkManager.OrderExecutor().Post("orderexecutor", transferEntity)
+	data, err := _networkManager.OrderExecutor().Post("/orderexecutor", transferEntity)
 	if err != nil {
 		return nil
 	}

@@ -26,6 +26,10 @@ func CreateNetworkEntityHandlers[T entity.EntityInterface](network NetworkInterf
 			if queryParams.Get("id") != "" {
 				if queryParams.Get("foreignKey") != "" {
 					entities, err := databaseManager.GetByForeignID(queryParams.Get("foreignKey"), queryParams.Get("id"))
+					if errors.Is(err, gorm.ErrRecordNotFound) {
+						responseWriter.WriteHeader(http.StatusNotFound)
+						return
+					}
 					if err != nil {
 						fmt.Println("error: ", err.Error())
 						responseWriter.WriteHeader(http.StatusInternalServerError)
@@ -60,10 +64,14 @@ func CreateNetworkEntityHandlers[T entity.EntityInterface](network NetworkInterf
 			} else {
 				var entities *[]T
 				var err error
-				if len(queryParams) == 0 {
-					entities, err = databaseManager.GetAll()
-				} else if queryParams.Get("ids") != "" {
+				if queryParams.Get("ids") != "" {
 					entities, err = databaseManager.GetByIDs(strings.Split(queryParams.Get("ids"), ","))
+				} else {
+					entities, err = databaseManager.GetAll()
+				}
+				if errors.Is(err, gorm.ErrRecordNotFound) {
+					responseWriter.WriteHeader(http.StatusNotFound)
+					return
 				}
 				if err != nil {
 					fmt.Println("error: ", err.Error())
@@ -107,6 +115,10 @@ func CreateNetworkEntityHandlers[T entity.EntityInterface](network NetworkInterf
 				return
 			}
 			err = databaseManager.Update(entity)
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				responseWriter.WriteHeader(http.StatusNotFound)
+				return
+			}
 			if err != nil {
 				fmt.Println("error: ", err.Error())
 				responseWriter.WriteHeader(http.StatusInternalServerError)
@@ -121,6 +133,10 @@ func CreateNetworkEntityHandlers[T entity.EntityInterface](network NetworkInterf
 			responseWriter.Write(entityJSON)
 		} else if requestType == "DELETE" {
 			err := databaseManager.Delete(queryParams.Get("id"))
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				responseWriter.WriteHeader(http.StatusNotFound)
+				return
+			}
 			if err != nil {
 				fmt.Println("error: ", err.Error())
 				responseWriter.WriteHeader(http.StatusInternalServerError)

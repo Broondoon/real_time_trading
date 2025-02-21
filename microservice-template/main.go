@@ -27,15 +27,15 @@ func main() {
 		IsBuy:     true,
 	})
 	// fmt.Println the Stock Order
-	fmt.Println("Stock Order: ")
-	fmt.Println(so.GetId())
-	fmt.Println(so.GetDateCreated())
-	fmt.Println(so.GetDateModified())
-	fmt.Println(so.GetStockID())
-	fmt.Println(so.GetQuantity())
-	fmt.Println(so.GetPrice())
-	fmt.Println(so.GetOrderType())
-	fmt.Println(so.GetIsBuy())
+	// fmt.Println("Stock Order: ")
+	// fmt.Println(so.GetId())
+	// fmt.Println(so.GetDateCreated())
+	// fmt.Println(so.GetDateModified())
+	// fmt.Println(so.GetStockID())
+	// fmt.Println(so.GetQuantity())
+	// fmt.Println(so.GetPrice())
+	// fmt.Println(so.GetOrderType())
+	// fmt.Println(so.GetIsBuy())
 
 	// //testing database.
 	// _databaseManager := databaseAccessStockOrder.NewDatabaseAccess(&databaseAccessStockOrder.NewDatabaseAccessParams{})
@@ -102,19 +102,19 @@ func main() {
 	})
 
 	// fmt.Println the Stock Transaction
-	fmt.Println("Stock Transaction: ")
-	fmt.Println(st1.GetId())
-	fmt.Println(st1.GetDateCreated())
-	fmt.Println(st1.GetDateModified())
-	fmt.Println(st1.GetOrderStatus())
-	fmt.Println(st1.GetStockID())
-	fmt.Println(st1.GetParentStockTransactionID())
-	fmt.Println(st1.GetWalletTransactionID())
-	fmt.Println(st1.GetIsBuy())
-	fmt.Println(st1.GetOrderType())
-	fmt.Println(st1.GetStockPrice())
-	fmt.Println(st1.GetQuantity())
-	fmt.Println(st1.GetTimestamp())
+	//fmt.Println("Stock Transaction: ")
+	// fmt.Println(st1.GetId())
+	// fmt.Println(st1.GetDateCreated())
+	// fmt.Println(st1.GetDateModified())
+	// fmt.Println(st1.GetOrderStatus())
+	// fmt.Println(st1.GetStockID())
+	// fmt.Println(st1.GetParentStockTransactionID())
+	// fmt.Println(st1.GetWalletTransactionID())
+	// fmt.Println(st1.GetIsBuy())
+	// fmt.Println(st1.GetOrderType())
+	// fmt.Println(st1.GetStockPrice())
+	// fmt.Println(st1.GetQuantity())
+	// fmt.Println(st1.GetTimestamp())
 
 	//testing database.
 	network := network.NewNetwork()
@@ -131,45 +131,45 @@ func main() {
 	}
 	fmt.Println("Stock Transaction Created with ID: ", st23.GetId())
 	fmt.Println("-----------------")
-	fmt.Println("Testing get Stock Order: ")
-	st2, err := _databaseManagerStockTransactions.GetByID(st23.GetId())
-	if err != nil {
-		fmt.Println(err)
-	}
-	fmt.Println(st2.GetId())
-	fmt.Println(st2.GetDateCreated())
-	fmt.Println(st2.GetDateModified())
-	fmt.Println(st2.GetOrderStatus())
-	fmt.Println(st2.GetStockID())
-	fmt.Println(st2.GetParentStockTransactionID())
-	fmt.Println(st2.GetWalletTransactionID())
-	fmt.Println(st2.GetIsBuy())
-	fmt.Println(st2.GetOrderType())
-	fmt.Println(st2.GetStockPrice())
-	fmt.Println(st2.GetQuantity())
-	fmt.Println(st2.GetTimestamp())
-	fmt.Println("-----------------")
-	fmt.Println("Testing group get Stock Transaction: ")
-	idList := []string{"st1", st23.GetId()}
-	st3, err := _databaseManagerStockTransactions.GetByIDs(idList)
-	if err != nil {
-		fmt.Println(err)
-	}
-	for _, st4 := range *st3 {
-		fmt.Println(st4.GetId())
-		fmt.Println(st4.GetDateCreated())
-		fmt.Println(st4.GetDateModified())
-		fmt.Println(st4.GetOrderStatus())
-		fmt.Println(st4.GetStockID())
-		fmt.Println(st4.GetParentStockTransactionID())
-		fmt.Println(st4.GetWalletTransactionID())
-		fmt.Println(st4.GetIsBuy())
-		fmt.Println(st4.GetOrderType())
-		fmt.Println(st4.GetStockPrice())
-		fmt.Println(st4.GetQuantity())
-		fmt.Println(st4.GetTimestamp())
-	}
-	fmt.Println("-----------------")
+	// fmt.Println("Testing get Stock Transactions: ")
+	// st2, err := _databaseManagerStockTransactions.GetByID(st23.GetId())
+	// if err != nil {
+	// 	fmt.Println(err)
+	// }
+	// fmt.Println(st2.GetId())
+	// fmt.Println(st2.GetDateCreated())
+	// fmt.Println(st2.GetDateModified())
+	// fmt.Println(st2.GetOrderStatus())
+	// fmt.Println(st2.GetStockID())
+	// fmt.Println(st2.GetParentStockTransactionID())
+	// fmt.Println(st2.GetWalletTransactionID())
+	// fmt.Println(st2.GetIsBuy())
+	// fmt.Println(st2.GetOrderType())
+	// fmt.Println(st2.GetStockPrice())
+	// fmt.Println(st2.GetQuantity())
+	// fmt.Println(st2.GetTimestamp())
+	// fmt.Println("-----------------")
+	// fmt.Println("Testing group get Stock Transaction: ")
+	// idList := []string{"st1", st23.GetId()}
+	// st3, err := _databaseManagerStockTransactions.GetByIDs(idList)
+	// if err != nil {
+	// 	fmt.Println(err)
+	// }
+	// for _, st4 := range *st3 {
+	// 	fmt.Println(st4.GetId())
+	// 	fmt.Println(st4.GetDateCreated())
+	// 	fmt.Println(st4.GetDateModified())
+	// 	fmt.Println(st4.GetOrderStatus())
+	// 	fmt.Println(st4.GetStockID())
+	// 	fmt.Println(st4.GetParentStockTransactionID())
+	// 	fmt.Println(st4.GetWalletTransactionID())
+	// 	fmt.Println(st4.GetIsBuy())
+	// 	fmt.Println(st4.GetOrderType())
+	// 	fmt.Println(st4.GetStockPrice())
+	// 	fmt.Println(st4.GetQuantity())
+	// 	fmt.Println(st4.GetTimestamp())
+	// }
+	// fmt.Println("-----------------")
 	fmt.Println("Testing update Stock Transaction: ")
 	st23.SetOrderStatus("COMPLETE")
 	_databaseManagerStockTransactions.Update(st23)
@@ -193,7 +193,7 @@ func main() {
 	fmt.Println("-----------------")
 
 	fmt.Println("Testing group get Stock Transaction by foreign key: ", st23.GetStockID())
-	st6, err := _databaseManagerStockTransactions.GetByForeignID("StockID", st23.GetStockID())
+	st6, err := _databaseManagerStockTransactions.GetByForeignID("stock_id", st23.GetStockID())
 	if err != nil {
 		fmt.Println(err)
 	}

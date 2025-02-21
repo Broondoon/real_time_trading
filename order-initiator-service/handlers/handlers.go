@@ -44,6 +44,7 @@ func placeStockOrderHandler(responseWriter http.ResponseWriter, data []byte, que
 		responseWriter.WriteHeader(http.StatusBadRequest)
 		return
 	}
+	stockOrder.SetUserID(queryParams.Get("userID"))
 	err = placeStockOrder(stockOrder)
 	if err != nil {
 		responseWriter.WriteHeader(http.StatusInternalServerError)

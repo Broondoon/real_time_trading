@@ -33,8 +33,8 @@ func (s *Stock) SetName(name string) {
 }
 
 type NewStockParams struct {
-	entity.NewEntityParams
-	Name string `json:"stock_name"`
+	entity.NewEntityParams `json:"Entity"`
+	Name                   string `json:"stock_name"`
 }
 
 func New(params NewStockParams) *Stock {

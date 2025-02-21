@@ -104,7 +104,7 @@ type HandlerParams struct {
 }
 
 func handleFunc(params HandlerParams, w http.ResponseWriter, r *http.Request) {
-	fmt.Println("Handling request for: ", r.URL.Path)
+	// fmt.Println("Handling request for: ", r.URL.Path)
 	var body []byte
 	var err error
 	var queryParams url.Values
