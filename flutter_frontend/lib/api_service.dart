@@ -4,14 +4,12 @@ import 'package:dio/dio.dart';
 import 'package:flutter_frontend/views/auth/auth_controller.dart';
 
 class APIService {
-  // TODO: IDEA! Rather than an expensive refactor, why not just ask for
-  //    access to auth_controller's _authDio? 
-  final AuthController _authController;
-  final bool DEBUG_MODE = true;
-
   APIService(
     this._authController,
   );
+
+  final AuthController _authController;
+  final bool DEBUG_MODE = true;
 
   Future<Response> mockResponse(Map responseData) {
     Response<dynamic> response = Response<dynamic>(
@@ -129,8 +127,19 @@ class APIService {
       final responseData = {
         "success": true,
         "data": [
-          {"stock_tx_id":"62738363a50350b1fbb243a6","stock_id":1,"wallet_tx_id":"628ba23df2210df6c3764823","order_status":"COMPLETED","is_buy":true,"order_type":"LIMIT","stock_price":50,"quantity":2,"parent_tx_id":null,"time_stamp":"2025-0112T15:03:25.019+00:00"}, 
-          {"stock_tx_id":"62738363a50350b1fbb243a6","stock_id":1,"wallet_tx_id":"628ba36cf2210df6c3764824","order_status":"COMPLETED","is_buy":false,"order_type":"MARKET","parent_tx_id":null, "stock_price":100,"quantity":2,"time_stamp":"2025-0112T14:13:25.019+00:00"}
+          {
+            "stock_tx_id":"62738363a50350b1fbb243a6","stock_id":1,
+            "wallet_tx_id":"628ba23df2210df6c3764823","order_status":"COMPLETED",
+            "is_buy":true,"order_type":"LIMIT","stock_price":50,"quantity":2,
+            "parent_tx_id":null,"time_stamp":"2025-0112T15:03:25.019+00:00"
+          }, 
+          
+          {
+            "stock_tx_id":"62738363a50350b1fbb243a6","stock_id":1,
+            "wallet_tx_id":"628ba36cf2210df6c3764824","order_status":"COMPLETED",
+            "is_buy":false,"order_type":"MARKET","parent_tx_id":null, "stock_price":100,"quantity":2,
+            "time_stamp":"2025-0112T14:13:25.019+00:00"
+          }
         ]
       };
 

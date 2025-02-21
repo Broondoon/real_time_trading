@@ -11,20 +11,15 @@ import 'package:flutter_frontend/views/home/portfolio/port_stock_item_view.dart'
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
-class PortfolioCard extends StatefulWidget {
+class PortfolioCard extends StatelessWidget {
   const PortfolioCard({
     super.key,
   });
 
   @override
-  State<PortfolioCard> createState() => _PortfolioCardState();
-}
-
-class _PortfolioCardState extends State<PortfolioCard> {
-  @override
   Widget build(BuildContext context) {    
     // TODO: the future return type may need to be 
-    late Future<Response> portfolioFuture;
+    // late Future<Response> portfolioFuture;
     final APIService apiService = APIService(
       Provider.of<AuthController>(context),
     );
