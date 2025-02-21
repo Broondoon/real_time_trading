@@ -13,10 +13,9 @@ services:
     networks:
        - go-network
     depends_on:
-      # stock-order-db:
-      #   condition: service_healthy
-      transaction-database-service:
+      order-initiator-service:
         condition: service_healthy
+      
       
 
   matching-engine-service:
@@ -39,9 +38,9 @@ services:
        - go-network
     healthcheck:
       test: ["CMD", "curl", "-f", "http://${MATCHING_ENGINE_HOST}:${MATCHING_ENGINE_PORT}/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+      interval: ${HEALTHCHECK_INTERVAL}
+      timeout: ${HEALTHCHECK_TIMEOUT}
+      retries: ${HEALTHCHECK_RETRIES}
       
   order-initiator-service:
     build: 
@@ -62,9 +61,9 @@ services:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://${ORDER_INITIATOR_HOST}:${ORDER_INITIATOR_PORT}/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+      interval: ${HEALTHCHECK_INTERVAL}
+      timeout: ${HEALTHCHECK_TIMEOUT}
+      retries: ${HEALTHCHECK_RETRIES}
 
   auth-service:
     build: ./auth-service
@@ -119,9 +118,9 @@ services:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://stock-database-service:${STOCK_DATABASE_SERVICE_PORT}/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+      interval: ${HEALTHCHECK_INTERVAL}
+      timeout: ${HEALTHCHECK_TIMEOUT}
+      retries: ${HEALTHCHECK_RETRIES}
 
   transaction-database-service:
     build: 
@@ -141,9 +140,9 @@ services:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://transaction-database-service:${TRANSACTION_DATABASE_SERVICE_PORT}/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+      interval: ${HEALTHCHECK_INTERVAL}
+      timeout: ${HEALTHCHECK_TIMEOUT}
+      retries: ${HEALTHCHECK_RETRIES}
 
   user-management-database-service:
     build: 
@@ -163,9 +162,9 @@ services:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://user-management-database-service:${USER_MANAGEMENT_DATABASE_SERVICE_PORT}/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+      interval: ${HEALTHCHECK_INTERVAL}
+      timeout: ${HEALTHCHECK_TIMEOUT}
+      retries: ${HEALTHCHECK_RETRIES}
 
   auth-db:
     image: postgres:latest
@@ -182,9 +181,9 @@ services:
     healthcheck:
       test:
         ["CMD-SHELL", "pg_isready -U $AUTH_POSTGRES_USER -d $AUTH_POSTGRES_DB"]
-      interval: 5s
-      timeout: 5s
-      retries: 3
+      interval: ${HEALTHCHECK_INTERVAL}
+      timeout: ${HEALTHCHECK_TIMEOUT}
+      retries: ${HEALTHCHECK_RETRIES}
     networks:
       - go-network
 
@@ -202,9 +201,9 @@ services:
       - ./stock-order-database/init.sql:/docker-entrypoint-initdb.d/init.sql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $STOCK_ORDER_POSTGRES_USER -d $STOCK_ORDER_POSTGRES_DB"]
-      interval: 5s
-      timeout: 5s
-      retries: 3
+      interval: ${HEALTHCHECK_INTERVAL}
+      timeout: ${HEALTHCHECK_TIMEOUT}
+      retries: ${HEALTHCHECK_RETRIES}
     networks:
       - go-network
 
@@ -222,9 +221,9 @@ services:
       - ./transaction-database/init.sql:/docker-entrypoint-initdb.d/init.sql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $TRANSACTION_POSTGRES_USER -d $TRANSACTION_POSTGRES_DB"]
-      interval: 5s
-      timeout: 5s
-      retries: 3
+      interval: ${HEALTHCHECK_INTERVAL}
+      timeout: ${HEALTHCHECK_TIMEOUT}
+      retries: ${HEALTHCHECK_RETRIES}
     networks:
       - go-network
 
@@ -242,9 +241,9 @@ services:
       - ./stock-database/init.sql:/docker-entrypoint-initdb.d/init.sql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $STOCK_POSTGRES_USER -d $STOCK_POSTGRES_DB"]
-      interval: 5s
-      timeout: 5s
-      retries: 3
+      interval: ${HEALTHCHECK_INTERVAL}
+      timeout: ${HEALTHCHECK_TIMEOUT}
+      retries: ${HEALTHCHECK_RETRIES}
     networks:
       - go-network
 
@@ -262,9 +261,9 @@ services:
       - ./user-management-database/init.sql:/docker-entrypoint-initdb.d/init.sql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $USER_MANAGEMENT_POSTGRES_USER -d $USER_MANAGEMENT_POSTGRES_DB"]
-      interval: 5s
-      timeout: 5s
-      retries: 3
+      interval: ${HEALTHCHECK_INTERVAL}
+      timeout: ${HEALTHCHECK_TIMEOUT}
+      retries: ${HEALTHCHECK_RETRIES}
     networks:
       - go-network
 

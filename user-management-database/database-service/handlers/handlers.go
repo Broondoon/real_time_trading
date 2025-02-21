@@ -5,7 +5,6 @@ import (
 	"Shared/entities/wallet"
 	"Shared/network"
 	databaseServiceUserManagement "databaseServiceUserManagement/database-connection"
-	"fmt"
 	"net/http"
 	"os"
 )
@@ -27,5 +26,5 @@ func InitalizeHandlers(
 func healthHandler(w http.ResponseWriter, r *http.Request) {
 	// Simple check: you might expand this to test database connectivity, etc.
 	w.WriteHeader(http.StatusOK)
-	fmt.Println(w, "OK")
+	//fmt.Println(w, "OK")
 }

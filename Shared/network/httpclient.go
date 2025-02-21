@@ -92,7 +92,7 @@ func NewNetwork() NetworkInterface {
 		AuthenticationService:         newHttpClient(baseURL + os.Getenv("AUTH_HOST") + ":" + os.Getenv("AUTH_PORT") + baseURLPostfix),
 		OrderInitiatorService:         newHttpClient(baseURL + os.Getenv("ORDER_INITIATOR_HOST") + ":" + os.Getenv("ORDER_INITIATOR_PORT") + baseURLPostfix),
 		OrderExecutorService:          newHttpClient(baseURL + os.Getenv("ORDER_EXECUTOR_HOST") + ":" + os.Getenv("ORDER_EXECUTOR_PORT") + baseURLPostfix),
-		StocksService:                 newHttpClient(baseURL + os.Getenv("STOCKS_HOST") + ":" + os.Getenv("STOCKS_PORT") + baseURLPostfix),
+		StocksService:                 newHttpClient(baseURL + os.Getenv("STOCK_DATABASE_SERVICE_HOST") + ":" + os.Getenv("STOCK_DATABASE_SERVICE_PORT") + baseURLPostfix),
 		TransactionsService:           newHttpClient(baseURL + os.Getenv("TRANSACTION_DATABASE_SERVICE_HOST") + ":" + os.Getenv("TRANSACTION_DATABASE_SERVICE_PORT") + baseURLPostfix),
 		UserManagementDatabaseService: newHttpClient(baseURL + os.Getenv("USER_MANAGEMENT_DATABASE_SERVICE_HOST") + ":" + os.Getenv("USER_MANAGEMENT_DATABASE_SERVICE_PORT") + baseURLPostfix),
 	}

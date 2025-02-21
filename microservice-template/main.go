@@ -2,11 +2,8 @@ package main
 
 import (
 	"Shared/entities/entity"
-	"Shared/entities/order"
-	"Shared/entities/transaction"
+	"Shared/entities/stock"
 	"Shared/network"
-	"databaseAccessTransaction"
-	"fmt"
 	"time"
 	//"Shared/network"
 )
@@ -16,8 +13,35 @@ func main() {
 
 	networkManager := network.NewNetwork()
 
-	networkManager.MatchingEngine().
+	//Create a new Stock
+	newStock1 := stock.New(stock.NewStockParams{
+		NewEntityParams: entity.NewEntityParams{
+			ID:           "",
+			DateCreated:  time.Now(),
+			DateModified: time.Now(),
+		},
+		Name: "Apple",
+	})
+	newStock2 := stock.New(stock.NewStockParams{
+		NewEntityParams: entity.NewEntityParams{
+			ID:           "",
+			DateCreated:  time.Now(),
+			DateModified: time.Now(),
+		},
+		Name: "google",
+	})
 
+	val, err := networkManager.Stocks().Post("setup/createStock", newStock1)
+	if err != nil {
+		panic(err)
+	}
+	println(string(val))
+	val, err = networkManager.Stocks().Post("setup/createStock", newStock2)
+	if err != nil {
+		panic(err)
+	}
+	println(string(val))
+	println("Stock Created")
 
 	// //Create a new Stock Order
 	// so := order.New(order.NewStockOrderParams{
