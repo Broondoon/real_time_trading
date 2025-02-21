@@ -4,6 +4,7 @@ use (
 	./Shared
 	./microservice-template
 	./matching-engine-service
+	./order-executor-service
 	./stock-order-database/database-service
 	./stock-order-database/database-access
 	./Test_base
