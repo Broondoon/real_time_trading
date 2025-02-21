@@ -1,20 +1,25 @@
 package main
 
-
 import (
-	//"order-executor-service/orderExecutor"
-	//"MatchingEngineService/matchingEngine"  Need to figure out how to "connect" to the matching engine
-	//"Shared/entities"
-	//"Shared/network"
-	"fmt"
+    OrderExecutorService "OrderExecutorService/orderExecutor"
+    "Shared/network"
+    "databaseAccessTransaction"
+    "databaseAccessUserManagement"
 )
 
 func main() {
+    networkManager := network.NewNetwork()
+    databaseAccessTransaction := databaseAccessTransaction.NewDatabaseAccess(&databaseAccessTransaction.NewDatabaseAccessParams{
+        Network: networkManager,
+    })
+    databaseAccessUserManagement := databaseAccessUserManagement.NewDatabaseAccess(&databaseAccessUserManagement.NewDatabaseAccessParams{
+        Network: networkManager,
+    })
 
+    go OrderExecutorService.InitalizeExecutorHandlers(networkManager, databaseAccessTransaction, databaseAccessUserManagement)
+    println("Order Executor Service Started")
 
-	fmt.Println("Hello, I am the work-in-progress order executor.")
-
-
-
-	
+    networkManager.Listen(network.ListenerParams{
+        Handler: nil,
+    })
 }
