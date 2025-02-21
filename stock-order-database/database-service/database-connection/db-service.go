@@ -43,8 +43,5 @@ func (d *DatabaseService) Disconnect() {
 func (d *DatabaseService) GetInitialStockOrdersForStock(stockID string) (*[]order.StockOrder, error) {
 	var orders []order.StockOrder
 	d.GetDatabaseSession().Find(&orders, "StockID = ? ", stockID)
-	for _, o := range orders {
-		o.SetDefaults()
-	}
 	return &orders, nil
 }

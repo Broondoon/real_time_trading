@@ -1,31 +1,87 @@
 package handlers
 
 import (
+	"Shared/entities/user-stock"
+	"Shared/network"
 	"databaseAccessUserManagement"
 	"encoding/json"
 	"net/http"
+	"net/url"
 )
 
-var _userStockAccess databaseAccessUserManagement.UserStockDataAccessInterface
-
-func InitializeUserStock(userStockAccess databaseAccessUserManagement.UserStockDataAccessInterface) {
-	_userStockAccess = userStockAccess
-
-	http.HandleFunc("/getStockPortfolio", getStockPortfolioHandler)
+type AddStock struct {
+	StockID  string `json:"stock_id"`
+	Quantity int    `json:"quantity"`
 }
 
-func getStockPortfolioHandler(w http.ResponseWriter, r *http.Request) {
-	userID := r.URL.Query().Get("userID")
+var _userStockAccess databaseAccessUserManagement.UserStocksDataAccessInterface
+
+func InitializeUserStock(userStockAccess databaseAccessUserManagement.UserStocksDataAccessInterface, networkManager network.NetworkInterface) {
+	_userStockAccess = userStockAccess
+	networkManager.AddHandleFuncProtected(network.HandlerParams{Pattern: "transaction/getStockPortfolio", Handler: getStockPortfolioHandler})
+	networkManager.AddHandleFuncProtected(network.HandlerParams{Pattern: "setup/addStockToUser", Handler: addStockToUser})
+}
+
+func getStockPortfolioHandler(responseWriter http.ResponseWriter, data []byte, queryParams url.Values, requestType string) {
+	userID := queryParams.Get("userID")
 	if userID == "" {
-		http.Error(w, "Missing userID", http.StatusBadRequest)
+		responseWriter.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
 	stocks, err := _userStockAccess.GetUserStocks(userID)
 	if err != nil {
-		http.Error(w, "Failed to get stock portfolio", http.StatusInternalServerError)
+		responseWriter.WriteHeader(http.StatusNotFound)
 		return
 	}
 
-	json.NewEncoder(w).Encode(stocks)
+	stocksJSON, err := json.Marshal(stocks)
+	if err != nil {
+		responseWriter.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	responseWriter.Write(stocksJSON)
+}
+
+func addStockToUser(responseWriter http.ResponseWriter, data []byte, queryParams url.Values, requestType string) {
+	userID := queryParams.Get("userID")
+	if userID == "" {
+		responseWriter.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	var stockRequest AddStock
+	err := json.Unmarshal(data, &stockRequest)
+	if err != nil {
+		responseWriter.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	if stockRequest.StockID == "" || stockRequest.Quantity <= 0 {
+		responseWriter.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	newUserStock := userStock.New(userStock.NewUserStockParams{
+		UserID:    userID,
+		StockID:   stockRequest.StockID,
+		Quantity:  stockRequest.Quantity,
+		StockName: "Unknown",
+	})
+
+	createdUserStock, err := _userStockAccess.Create(newUserStock)
+	if err != nil {
+		responseWriter.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	responseJSON, err := json.Marshal(createdUserStock)
+	if err != nil {
+		responseWriter.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	responseWriter.Header().Set("Content-Type", "application/json")
+	responseWriter.WriteHeader(http.StatusCreated)
+	responseWriter.Write(responseJSON)
 }

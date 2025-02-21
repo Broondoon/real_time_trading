@@ -1,52 +1,82 @@
 package handlers
 
 import (
+	"Shared/network"
 	"databaseAccessUserManagement"
 	"encoding/json"
 	"net/http"
+	"net/url"
 )
+
+type WalletBalance struct {
+	Balance float64 `json:"balance"`
+}
 
 var _walletAccess databaseAccessUserManagement.WalletDataAccessInterface
 
-func InitializeWallet(walletAccess databaseAccessUserManagement.WalletDataAccessInterface) {
+func InitializeWallet(walletAccess databaseAccessUserManagement.WalletDataAccessInterface, networkManager network.NetworkInterface) {
 	_walletAccess = walletAccess
 
-	http.HandleFunc("/getWalletBalance", getWalletBalanceHandler)
-	http.HandleFunc("/addMoneyToWallet", addMoneyToWalletHandler)
+	networkManager.AddHandleFuncProtected(network.HandlerParams{Pattern: "transaction/getWalletBalance", Handler: getWalletBalanceHandler})
+	networkManager.AddHandleFuncProtected(network.HandlerParams{Pattern: "transaction/addMoneyToWallet", Handler: getWalletBalanceHandler})
 }
 
-func getWalletBalanceHandler(w http.ResponseWriter, r *http.Request) {
-	userID := r.URL.Query().Get("userID")
+func getWalletBalanceHandler(responseWriter http.ResponseWriter, data []byte, queryParams url.Values, requestType string) {
+	userID := queryParams.Get("userID")
+
 	if userID == "" {
-		http.Error(w, "Missing userID", http.StatusBadRequest)
+		responseWriter.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
 	balance, err := _walletAccess.GetWalletBalance(userID)
 	if err != nil {
-		http.Error(w, "Failed to get wallet balance", http.StatusInternalServerError)
+		responseWriter.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
-	json.NewEncoder(w).Encode(map[string]float64{"balance": balance})
+	walletBalance := WalletBalance{Balance: balance}
+
+	walletJSON, err := json.Marshal(walletBalance)
+	if err != nil {
+		http.Error(responseWriter, "Failed to marshal wallet balance: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	responseWriter.Header().Set("Content-Type", "application/json")
+	responseWriter.WriteHeader(http.StatusOK)
+	responseWriter.Write(walletJSON)
 }
 
-func addMoneyToWalletHandler(w http.ResponseWriter, r *http.Request) {
+func addMoneyToWalletHandler(responseWriter http.ResponseWriter, data []byte, queryParams url.Values, requestType string) {
+	userID := queryParams.Get("userID")
+	if userID == "" {
+		responseWriter.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
 	var request struct {
-		UserID string  `json:"userID"`
 		Amount float64 `json:"amount"`
 	}
 
-	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+	if err := json.Unmarshal(data, &request); err != nil {
+		responseWriter.WriteHeader(http.StatusBadRequest)
+		responseWriter.Write([]byte("Invalid request body"))
 		return
 	}
 
-	err := _walletAccess.AddMoneyToWallet(request.UserID, request.Amount)
-	if err != nil {
-		http.Error(w, "Failed to add money to wallet", http.StatusInternalServerError)
+	if request.Amount <= 0 {
+		responseWriter.WriteHeader(http.StatusBadRequest)
+		responseWriter.Write([]byte("Amount must be greater than zero"))
 		return
 	}
 
-	w.WriteHeader(http.StatusOK)
+	if err := _walletAccess.AddMoneyToWallet(userID, request.Amount); err != nil {
+		responseWriter.WriteHeader(http.StatusInternalServerError)
+		responseWriter.Write([]byte("Failed to add money to wallet"))
+		return
+	}
+
+	responseWriter.WriteHeader(http.StatusOK)
+	responseWriter.Write([]byte("Money added successfully"))
 }

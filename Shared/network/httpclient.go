@@ -31,17 +31,19 @@ type NetworkInterface interface {
 	OrderExecutor() HttpClientInterface
 	Stocks() HttpClientInterface
 	Transactions() HttpClientInterface
+	UserManagementDatabase() HttpClientInterface
 }
 
 type Network struct {
-	MatchingEngineService       HttpClientInterface
-	MicroserviceTemplateService HttpClientInterface
-	UserManagementService       HttpClientInterface
-	AuthenticationService       HttpClientInterface
-	OrderInitiatorService       HttpClientInterface
-	OrderExecutorService        HttpClientInterface
-	StocksService               HttpClientInterface
-	TransactionsService         HttpClientInterface
+	MatchingEngineService         HttpClientInterface
+	MicroserviceTemplateService   HttpClientInterface
+	UserManagementService         HttpClientInterface
+	AuthenticationService         HttpClientInterface
+	OrderInitiatorService         HttpClientInterface
+	OrderExecutorService          HttpClientInterface
+	StocksService                 HttpClientInterface
+	TransactionsService           HttpClientInterface
+	UserManagementDatabaseService HttpClientInterface
 }
 
 func (n *Network) MatchingEngine() HttpClientInterface {
@@ -76,18 +78,23 @@ func (n *Network) Transactions() HttpClientInterface {
 	return n.TransactionsService
 }
 
+func (n *Network) UserManagementDatabase() HttpClientInterface {
+	return n.UserManagementDatabaseService
+}
+
 func NewNetwork() NetworkInterface {
 	baseURL := os.Getenv("BASE_URL_PREFIX")
 	baseURLPostfix := "/"
 	return &Network{
-		MatchingEngineService:       newHttpClient(baseURL + os.Getenv("MATCHING_ENGINE_HOST") + ":" + os.Getenv("MATCHING_ENGINE_PORT") + baseURLPostfix),
-		MicroserviceTemplateService: newHttpClient(baseURL + os.Getenv("MICROSERVICE_TEMPLATE_HOST") + ":" + os.Getenv("MICROSERVICE_TEMPLATE_PORT") + baseURLPostfix),
-		UserManagementService:       newHttpClient(baseURL + os.Getenv("USER_MANAGEMENT_HOST") + ":" + os.Getenv("USER_MANAGEMENT_PORT") + baseURLPostfix),
-		AuthenticationService:       newHttpClient(baseURL + os.Getenv("AUTH_HOST") + ":" + os.Getenv("AUTH_PORT") + baseURLPostfix),
-		OrderInitiatorService:       newHttpClient(baseURL + os.Getenv("ORDER_INITIATOR_HOST") + ":" + os.Getenv("ORDER_INITIATOR_PORT") + baseURLPostfix),
-		OrderExecutorService:        newHttpClient(baseURL + os.Getenv("ORDER_EXECUTOR_HOST") + ":" + os.Getenv("ORDER_EXECUTOR_PORT") + baseURLPostfix),
-		StocksService:               newHttpClient(baseURL + os.Getenv("STOCKS_HOST") + ":" + os.Getenv("STOCKS_PORT") + baseURLPostfix),
-		TransactionsService:         newHttpClient(baseURL + os.Getenv("TRANSACTION_DATABASE_SERVICE_HOST") + ":" + os.Getenv("TRANSACTION_DATABASE_SERVICE_PORT") + baseURLPostfix),
+		MatchingEngineService:         newHttpClient(baseURL + os.Getenv("MATCHING_ENGINE_HOST") + ":" + os.Getenv("MATCHING_ENGINE_PORT") + baseURLPostfix),
+		MicroserviceTemplateService:   newHttpClient(baseURL + os.Getenv("MICROSERVICE_TEMPLATE_HOST") + ":" + os.Getenv("MICROSERVICE_TEMPLATE_PORT") + baseURLPostfix),
+		UserManagementService:         newHttpClient(baseURL + os.Getenv("USER_MANAGEMENT_HOST") + ":" + os.Getenv("USER_MANAGEMENT_PORT") + baseURLPostfix),
+		AuthenticationService:         newHttpClient(baseURL + os.Getenv("AUTH_HOST") + ":" + os.Getenv("AUTH_PORT") + baseURLPostfix),
+		OrderInitiatorService:         newHttpClient(baseURL + os.Getenv("ORDER_INITIATOR_HOST") + ":" + os.Getenv("ORDER_INITIATOR_PORT") + baseURLPostfix),
+		OrderExecutorService:          newHttpClient(baseURL + os.Getenv("ORDER_EXECUTOR_HOST") + ":" + os.Getenv("ORDER_EXECUTOR_PORT") + baseURLPostfix),
+		StocksService:                 newHttpClient(baseURL + os.Getenv("STOCKS_HOST") + ":" + os.Getenv("STOCKS_PORT") + baseURLPostfix),
+		TransactionsService:           newHttpClient(baseURL + os.Getenv("TRANSACTION_DATABASE_SERVICE_HOST") + ":" + os.Getenv("TRANSACTION_DATABASE_SERVICE_PORT") + baseURLPostfix),
+		UserManagementDatabaseService: newHttpClient(baseURL + os.Getenv("USER_MANAGEMENT_DATABASE_SERVICE_HOST") + ":" + os.Getenv("USER_MANAGEMENT_DATABASE_SERVICE_PORT") + baseURLPostfix),
 	}
 }
 

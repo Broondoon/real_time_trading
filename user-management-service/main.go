@@ -3,32 +3,27 @@ package main
 import (
 	"Shared/network"
 	"databaseAccessUserManagement"
-	databaseServiceUserManagement "databaseServiceUserManagement/database-connection"
 	"log"
 	"os"
-
-	"gorm.io/driver/sqlite"
-	"gorm.io/gorm"
 
 	"UserManagementService/handlers"
 )
 
 func main() {
-	db, err := gorm.Open(sqlite.Open("user_management.db"), &gorm.Config{})
-	if err != nil {
-		log.Fatalf("Failed to connect to database: %v", err)
-	}
 
-	dbService := databaseServiceUserManagement.NewDatabaseService(db)
+	networkManager := network.NewNetwork()
+	databaseAccess := databaseAccessUserManagement.NewDatabaseAccess(&databaseAccessUserManagement.NewDatabaseAccessParams{
+		Network: networkManager,
+	})
 
-	walletAccess := databaseAccessUserManagement.NewWalletDatabaseAccess(dbService)
-	userStockAccess := databaseAccessUserManagement.NewUserStockDatabaseAccess(dbService)
+	walletAccess := databaseAccess.Wallet()
+	userStockAccess := databaseAccess.UserStock()
 
-	handlers.InitializeWallet(walletAccess)
-	handlers.InitializeUserStock(userStockAccess)
+	handlers.InitializeWallet(walletAccess, networkManager)
+	handlers.InitializeUserStock(userStockAccess, networkManager)
 	handlers.InitializeHealth()
 
 	log.Println("User Management Service started on port", os.Getenv("USER_MANAGEMENT_PORT"))
 
-	network.NewNetwork().Listen(network.ListenerParams{Handler: nil})
+	networkManager.Listen(network.ListenerParams{Handler: nil})
 }

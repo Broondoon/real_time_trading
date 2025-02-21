@@ -12,7 +12,9 @@ func main() {
 	//Need to upgrade to use my entity class stuff and the new services.
 
 	networkManager := network.NewNetwork()
-	databaseAccess := databaseAccessTransaction.NewDatabaseAccess(&databaseAccessTransaction.NewDatabaseAccessParams{})
+	databaseAccess := databaseAccessTransaction.NewDatabaseAccess(&databaseAccessTransaction.NewDatabaseAccessParams{
+		Network: networkManager,
+	})
 
 	go OrderInitiatorService.InitalizeHandlers(networkManager, databaseAccess)
 	println("Matching Engine Service Started")

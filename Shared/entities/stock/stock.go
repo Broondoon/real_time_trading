@@ -43,13 +43,7 @@ func New(params NewStockParams) *Stock {
 		Name:   params.Name,
 		Entity: *e,
 	}
-	s.SetDefaults()
 	return s
-}
-
-func (s *Stock) SetDefaults() {
-	// s.GetNameInternal = func() string { return s.Name }
-	// s.SetNameInternal = func(name string) { s.Name = name }
 }
 
 func Parse(jsonBytes []byte) (*Stock, error) {

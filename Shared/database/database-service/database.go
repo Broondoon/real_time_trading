@@ -129,6 +129,7 @@ type EntityDataInterface[T entity.EntityInterface] interface {
 	PostGresDatabaseInterface
 	GetByID(ID string) (T, error)
 	GetByIDs(IDs []string) (*[]T, error)
+	GetByForeignID(foreignIDColumn string, foreignID string) (*[]T, error)
 	GetAll() (*[]T, error)
 	Create(entity T) error
 	Update(entity T) error
@@ -182,7 +183,6 @@ func (d *EntityData[T]) GetByID(id string) (T, error) {
 		var zero T
 		return zero, fmt.Errorf("error getting: %s", result.Error.Error())
 	}
-	ent.SetDefaults()
 	return ent, nil
 }
 
@@ -192,8 +192,14 @@ func (d *EntityData[T]) GetByIDs(ids []string) (*[]T, error) {
 	if results.Error != nil {
 		return nil, fmt.Errorf("error getting by ids: %s", results.Error.Error())
 	}
-	for _, o := range entities {
-		o.SetDefaults()
+	return &entities, nil
+}
+
+func (d *EntityData[T]) GetByForeignID(foreignIDColumn string, foreignID string) (*[]T, error) {
+	var entities []T
+	results := d.GetDatabaseSession().Find(&entities, "? = ?", foreignIDColumn, foreignID)
+	if results.Error != nil {
+		return nil, fmt.Errorf("error getting by foreignKey: %s", results.Error.Error())
 	}
 	return &entities, nil
 }
@@ -201,9 +207,6 @@ func (d *EntityData[T]) GetByIDs(ids []string) (*[]T, error) {
 func (d *EntityData[T]) GetAll() (*[]T, error) {
 	var entities []T
 	d.GetDatabaseSession().Find(&entities)
-	for _, o := range entities {
-		o.SetDefaults()
-	}
 	return &entities, nil
 }
 
@@ -231,7 +234,6 @@ func (d *EntityData[T]) Create(entity T) error {
 	if createResult.Error != nil {
 		return fmt.Errorf("error creating: %w", createResult.Error)
 	}
-	entity.SetDefaults()
 	return nil
 }
 
@@ -249,7 +251,7 @@ func (d *EntityData[T]) Update(entity T) error {
 }
 
 func (d *EntityData[T]) Delete(id string) error {
-	ent, err := d.GetByID(id)
+	_, err := d.GetByID(id)
 	if err != nil {
 		return fmt.Errorf("error getting %s: %s", id, err.Error())
 	}
@@ -258,6 +260,5 @@ func (d *EntityData[T]) Delete(id string) error {
 	if deleteResult.Error != nil {
 		return fmt.Errorf("error deleting %s: %s", id, deleteResult.Error.Error())
 	}
-	ent.SetDefaults()
 	return nil
 }

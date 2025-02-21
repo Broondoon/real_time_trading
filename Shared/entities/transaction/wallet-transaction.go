@@ -112,15 +112,7 @@ func NewWalletTransaction(params NewWalletTransactionParams) *WalletTransaction 
 		wt.StockTransactionID = params.StockTransactionID
 	}
 
-	wt.SetDefaults()
-
 	return wt
-}
-
-func (wt *WalletTransaction) SetDefaults() {
-	// Internal function setters and getters were removed,
-	// so this function is kept for compatibility or future use.
-	// It is now empty.
 }
 
 func ParseWalletTransaction(jsonBytes []byte) (*WalletTransaction, error) {

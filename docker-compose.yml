@@ -22,27 +22,6 @@ services:
       timeout: 10s
       retries: 3
 
-  # ---------------------- User Management Database ----------------------
-  user-management-db:
-    image: postgres:latest
-    restart: always
-    env_file:
-      - .env
-    environment:
-      POSTGRES_USER: ${USER_MANAGEMENT_POSTGRES_USER}
-      POSTGRES_PASSWORD: ${USER_MANAGEMENT_POSTGRES_PASSWORD}
-      POSTGRES_DB: ${USER_MANAGEMENT_POSTGRES_DB}
-    volumes:
-      - user-management-db-data:/var/lib/postgresql/data
-      - ./user-management-database/init.sql:/docker-entrypoint-initdb.d/init.sql
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U $USER_MANAGEMENT_POSTGRES_USER -d $USER_MANAGEMENT_POSTGRES_DB"]
-      interval: 5s
-      timeout: 5s
-      retries: 3
-    networks:
-      - go-network
-
   # ---------------------- Existing Services ----------------------
   microservice-template:
     build:
@@ -186,6 +165,28 @@ services:
       timeout: 10s
       retries: 3
 
+  user-management-database-service:
+    build: 
+          context: .
+          dockerfile: ./user-management-database/database-service/Dockerfile
+    ports:
+      - "${USER_MANAGEMENT_DATABASE_SERVICE_PORT}:${USER_MANAGEMENT_DATABASE_SERVICE_PORT}"
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: ${USER_MANAGEMENT_DATABASE_URL}
+      PORT: ${USER_MANAGEMENT_DATABASE_SERVICE_PORT}
+    networks:
+       - go-network
+    depends_on:
+      user-management-db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://user-management-database-service:${USER_MANAGEMENT_DATABASE_SERVICE_PORT}/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
   auth-db:
     image: postgres:latest
     restart: always
@@ -267,7 +268,28 @@ services:
     networks:
       - go-network
 
-# ---------------------- Volumes ----------------------
+  user-management-db:
+    image: postgres:latest
+    restart: always
+    env_file:
+      - .env
+    environment:
+      POSTGRES_USER: ${USER_MANAGEMENT_POSTGRES_USER}
+      POSTGRES_PASSWORD: ${USER_MANAGEMENT_POSTGRES_PASSWORD}
+      POSTGRES_DB: ${USER_MANAGEMENT_POSTGRES_DB}
+    volumes:
+      - user-management-db-data:/var/lib/postgresql/data
+      - ./user-management-database/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $USER_MANAGEMENT_POSTGRES_USER -d $USER_MANAGEMENT_POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 3
+    networks:
+      - go-network
+
+
+
 volumes:
   user-management-db-data:
   stock-db-data:
