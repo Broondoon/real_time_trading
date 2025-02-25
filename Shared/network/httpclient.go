@@ -133,8 +133,15 @@ func handleFunc(params HandlerParams, w http.ResponseWriter, r *http.Request) {
 		defer r.Body.Close()
 	}
 
+	// The type assertion here is failing; r.Context().Value(userIDKey) returns a uint.
+	// So we need to change that.
 	if r.Context().Value(userIDKey) != nil {
-		queryParams.Add("userID", r.Context().Value(userIDKey).(string))
+		// queryParams.Add("userID", r.Context().Value(userIDKey).(string))
+		if userID, ok := r.Context().Value(userIDKey).(uint); ok {
+			queryParams.Add("userID", fmt.Sprintf("%d", userID)) // Convert to string
+		} else if userID, ok := r.Context().Value(userIDKey).(string); ok {
+			queryParams.Add("userID", userID)
+		}
 	}
 
 	params.Handler(w, body, queryParams, r.Method)
@@ -217,7 +224,7 @@ func (hc *HttpClient) authenticate(req *http.Request) error {
 	if hc.AuthToken == "" {
 		return errors.New("no token found, authentication required")
 	}
-	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", hc.AuthToken))
+	req.Header.Set("token", fmt.Sprintf("Bearer %s", hc.AuthToken))
 	return nil
 }
 
@@ -397,7 +404,7 @@ var userIDKey = contextKey("userID")
 
 func TokenAuthMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		tokenString := r.Header.Get("Authorization")
+		tokenString := r.Header.Get("token")
 		if tokenString == "" {
 			http.Error(w, "Unauthorized: missing token", http.StatusUnauthorized)
 			return
