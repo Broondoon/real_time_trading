@@ -1,4 +1,40 @@
+  # ---------------------- User Management Tests ----------------------
 services:
+  user-management-tests:
+    build:
+      context: .
+      dockerfile: ./user-management-tests/Dockerfile
+    env_file:
+      - .env
+    networks:
+      - go-network
+    depends_on:
+      user-management-service:
+        condition: service_healthy
+  # ---------------------- User Management Service ----------------------
+  user-management-service:
+    build:
+      context: .
+      dockerfile: ./user-management-service/Dockerfile
+    ports:
+      - "${USER_MANAGEMENT_PORT}:${USER_MANAGEMENT_PORT}"
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: ${USER_MANAGEMENT_DATABASE_URL}
+      PORT: ${USER_MANAGEMENT_PORT}
+    networks:
+      - go-network
+    depends_on:
+      user-management-db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://user-management-service:${USER_MANAGEMENT_PORT}/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ---------------------- Existing Services ----------------------
   microservice-template:
     build:
       context: .
@@ -11,18 +47,16 @@ services:
       DATABASE_URL: ${STOCK_ORDER_DATABASE_URL}
       PORT: ${MICROSERVICE_TEMPLATE_PORT}
     networks:
-       - go-network
+      - go-network
     depends_on:
-      # stock-order-db:
-      #   condition: service_healthy
-      transaction-database-service:
+      order-initiator-service:
         condition: service_healthy
       
 
   matching-engine-service:
     build: 
-          context: .
-          dockerfile: ./${MATCHING_ENGINE_HOST}/Dockerfile
+      context: .
+      dockerfile: ./${MATCHING_ENGINE_HOST}/Dockerfile
     ports:
       - "${MATCHING_ENGINE_PORT}:${MATCHING_ENGINE_PORT}"
     env_file:
@@ -35,14 +69,39 @@ services:
         condition: service_healthy
       stock-database-service:
         condition: service_healthy
+      order-executor-service:
+        condition: service_healthy
     networks:
-       - go-network
+      - go-network
     healthcheck:
       test: ["CMD", "curl", "-f", "http://${MATCHING_ENGINE_HOST}:${MATCHING_ENGINE_PORT}/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+      interval: ${HEALTHCHECK_INTERVAL}
+      timeout: ${HEALTHCHECK_TIMEOUT}
+      retries: ${HEALTHCHECK_RETRIES}
       
+  order-initiator-service:
+    build: 
+      context: .
+      dockerfile: ./${ORDER_INITIATOR_HOST}/Dockerfile
+    ports:
+      - "${ORDER_INITIATOR_PORT}:${ORDER_INITIATOR_PORT}"
+    env_file:
+      - .env
+    environment:
+      PORT: ${ORDER_INITIATOR_PORT}
+    networks:
+      - go-network
+    depends_on:
+      transaction-database-service:
+        condition: service_healthy
+      matching-engine-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://${ORDER_INITIATOR_HOST}:${ORDER_INITIATOR_PORT}/health"]
+      interval: ${HEALTHCHECK_INTERVAL}
+      timeout: ${HEALTHCHECK_TIMEOUT}
+      retries: ${HEALTHCHECK_RETRIES}
+
 
   order-executor-service:
     build:
@@ -54,6 +113,8 @@ services:
       - .env
     environment:
       PORT: ${ORDER_EXECUTOR_PORT}
+    networks:
+       - go-network
     depends_on:
       transaction-database-service:
         condition: service_healthy
@@ -61,33 +122,12 @@ services:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://${ORDER_EXECUTOR_HOST}:${ORDER_EXECUTOR_PORT}/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+      interval: ${HEALTHCHECK_INTERVAL}
+      timeout: ${HEALTHCHECK_TIMEOUT}
+      retries: ${HEALTHCHECK_RETRIES}
 
 
-  order-initiator-service:
-    build: 
-          context: .
-          dockerfile: ./${ORDER_INITIATOR_HOST}/Dockerfile
-    ports:
-      - "${ORDER_INITIATOR_PORT}:${ORDER_INITIATOR_PORT}"
-    env_file:
-      - .env
-    environment:
-      PORT: ${ORDER_INITIATOR_PORT}
-    networks:
-       - go-network
-    depends_on:
-      transaction-database-service:
-        condition: service_healthy
-      matching-engine-service:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://${ORDER_INITIATOR_HOST}:${ORDER_INITIATOR_PORT}/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+
 
   auth-service:
     build: ./auth-service
@@ -100,7 +140,6 @@ services:
       - go-network
 
   frontend:
-    # image: ubuntu:latest # large, could use a more lightweight image
     image: flutter-trading-app
     build:
       dockerfile: ./Dockerfile
@@ -112,7 +151,7 @@ services:
     image: nginx:latest
     container_name: nginx_lb
     ports:
-      - "${NGINX_HOST_PORT}:${NGINX_CONTAINER_PORT}" # Maps host port 3001 to Nginx container port 80
+      - "${NGINX_HOST_PORT}:${NGINX_CONTAINER_PORT}"
     env_file:
       - .env
     volumes:
@@ -121,13 +160,15 @@ services:
       - auth-service
       - auth-db
       - frontend
+      - user-management-service
+      - order-initiator-service
     networks:
       - go-network
 
   stock-database-service:
     build: 
-          context: .
-          dockerfile: ./stock-database/database-service/Dockerfile
+      context: .
+      dockerfile: ./stock-database/database-service/Dockerfile
     ports:
       - "${STOCK_DATABASE_SERVICE_PORT}:${STOCK_DATABASE_SERVICE_PORT}"
     env_file:
@@ -136,20 +177,20 @@ services:
       DATABASE_URL: ${STOCK_DATABASE_URL}
       PORT: ${STOCK_DATABASE_SERVICE_PORT}
     networks:
-       - go-network
+      - go-network
     depends_on:
       stock-db:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://stock-database-service:${STOCK_DATABASE_SERVICE_PORT}/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+      interval: ${HEALTHCHECK_INTERVAL}
+      timeout: ${HEALTHCHECK_TIMEOUT}
+      retries: ${HEALTHCHECK_RETRIES}
 
   transaction-database-service:
     build: 
-          context: .
-          dockerfile: ./transaction-database/database-service/Dockerfile
+      context: .
+      dockerfile: ./transaction-database/database-service/Dockerfile
     ports:
       - "${TRANSACTION_DATABASE_SERVICE_PORT}:${TRANSACTION_DATABASE_SERVICE_PORT}"
     env_file:
@@ -158,15 +199,15 @@ services:
       DATABASE_URL: ${TRANSACTION_DATABASE_URL}
       PORT: ${TRANSACTION_DATABASE_SERVICE_PORT}
     networks:
-       - go-network
+      - go-network
     depends_on:
       transaction-db:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://transaction-database-service:${TRANSACTION_DATABASE_SERVICE_PORT}/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+      interval: ${HEALTHCHECK_INTERVAL}
+      timeout: ${HEALTHCHECK_TIMEOUT}
+      retries: ${HEALTHCHECK_RETRIES}
 
   user-management-database-service:
     build: 
@@ -186,9 +227,9 @@ services:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://user-management-database-service:${USER_MANAGEMENT_DATABASE_SERVICE_PORT}/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+      interval: ${HEALTHCHECK_INTERVAL}
+      timeout: ${HEALTHCHECK_TIMEOUT}
+      retries: ${HEALTHCHECK_RETRIES}
 
   auth-db:
     image: postgres:latest
@@ -205,9 +246,9 @@ services:
     healthcheck:
       test:
         ["CMD-SHELL", "pg_isready -U $AUTH_POSTGRES_USER -d $AUTH_POSTGRES_DB"]
-      interval: 5s
-      timeout: 5s
-      retries: 3
+      interval: ${HEALTHCHECK_INTERVAL}
+      timeout: ${HEALTHCHECK_TIMEOUT}
+      retries: ${HEALTHCHECK_RETRIES}
     networks:
       - go-network
 
@@ -225,9 +266,9 @@ services:
       - ./stock-order-database/init.sql:/docker-entrypoint-initdb.d/init.sql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $STOCK_ORDER_POSTGRES_USER -d $STOCK_ORDER_POSTGRES_DB"]
-      interval: 5s
-      timeout: 5s
-      retries: 3
+      interval: ${HEALTHCHECK_INTERVAL}
+      timeout: ${HEALTHCHECK_TIMEOUT}
+      retries: ${HEALTHCHECK_RETRIES}
     networks:
       - go-network
 
@@ -245,9 +286,9 @@ services:
       - ./transaction-database/init.sql:/docker-entrypoint-initdb.d/init.sql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $TRANSACTION_POSTGRES_USER -d $TRANSACTION_POSTGRES_DB"]
-      interval: 5s
-      timeout: 5s
-      retries: 3
+      interval: ${HEALTHCHECK_INTERVAL}
+      timeout: ${HEALTHCHECK_TIMEOUT}
+      retries: ${HEALTHCHECK_RETRIES}
     networks:
       - go-network
 
@@ -265,9 +306,9 @@ services:
       - ./stock-database/init.sql:/docker-entrypoint-initdb.d/init.sql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $STOCK_POSTGRES_USER -d $STOCK_POSTGRES_DB"]
-      interval: 5s
-      timeout: 5s
-      retries: 3
+      interval: ${HEALTHCHECK_INTERVAL}
+      timeout: ${HEALTHCHECK_TIMEOUT}
+      retries: ${HEALTHCHECK_RETRIES}
     networks:
       - go-network
 
@@ -285,22 +326,22 @@ services:
       - ./user-management-database/init.sql:/docker-entrypoint-initdb.d/init.sql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $USER_MANAGEMENT_POSTGRES_USER -d $USER_MANAGEMENT_POSTGRES_DB"]
-      interval: 5s
-      timeout: 5s
-      retries: 3
+      interval: ${HEALTHCHECK_INTERVAL}
+      timeout: ${HEALTHCHECK_TIMEOUT}
+      retries: ${HEALTHCHECK_RETRIES}
     networks:
       - go-network
 
 
 
 volumes:
+  user-management-db-data:
   stock-db-data:
   auth-db-data:
   stock-order-db-data:
   transaction-db-data:
-  user-management-db-data:
 
-
+# ---------------------- Networks ----------------------
 networks:
   go-network:
-    driver: bridge # Use a bridge network to enable container communication
+    driver: bridge

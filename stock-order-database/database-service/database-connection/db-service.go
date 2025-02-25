@@ -16,12 +16,15 @@ type DatabaseService struct {
 }
 
 type NewDatabaseServiceParams struct {
-	*databaseService.NewPostGresDatabaseParams
+	*databaseService.NewEntityDataParams
 }
 
 func NewDatabaseService(params NewDatabaseServiceParams) DatabaseServiceInterface {
+	if params.NewEntityDataParams == nil {
+		params.NewEntityDataParams = &databaseService.NewEntityDataParams{}
+	}
 	db := &DatabaseService{
-		EntityDataInterface: databaseService.NewEntityData[*order.StockOrder](params.NewPostGresDatabaseParams),
+		EntityDataInterface: databaseService.NewEntityData[*order.StockOrder](params.NewEntityDataParams),
 	}
 	db.Connect()
 	db.GetDatabaseSession().AutoMigrate(&order.StockOrder{})
@@ -39,9 +42,6 @@ func (d *DatabaseService) Disconnect() {
 // Right now, we're just gonna get all stocksOrders for a given stock. Later, we need to limit this to a specific subset of orders.
 func (d *DatabaseService) GetInitialStockOrdersForStock(stockID string) (*[]order.StockOrder, error) {
 	var orders []order.StockOrder
-	d.GetDatabaseSession().Find(&orders, "StockID = ? ", stockID)
-	for _, o := range orders {
-		o.SetDefaults()
-	}
+	d.GetDatabaseSession().Find(&orders, "stock_id = ? ", stockID)
 	return &orders, nil
 }

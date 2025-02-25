@@ -3,8 +3,8 @@ package matchingEngine
 import (
 	"MatchingEngineService/matchingEngineStructures"
 	"Shared/entities/order"
-	"Shared/entities/transaction"
 	"databaseAccessStockOrder"
+	"fmt"
 )
 
 // https://gobyexample.com/channels
@@ -14,6 +14,7 @@ type MatchingEngineInterface interface {
 	RemoveOrder(orderID string, priceKey float64)
 	RunMatchingEngineOrders()
 	RunMatchingEngineUpdates()
+	GetPrice() float64
 }
 
 type MatchingEngine struct {
@@ -22,7 +23,7 @@ type MatchingEngine struct {
 	SellOrderBook       matchingEngineStructures.SellOrderBookInterface
 	orderChannel        chan order.StockOrderInterface
 	updateChannel       chan *UpdateParams
-	SendToOrderExection func(buyOrder order.StockOrderInterface, sellOrder order.StockOrderInterface) transaction.StockTransactionInterface
+	SendToOrderExection func(buyOrder order.StockOrderInterface, sellOrder order.StockOrderInterface) string
 	//dirty fix
 	DatabaseManager databaseAccessStockOrder.DatabaseAccessInterface
 }
@@ -30,7 +31,7 @@ type MatchingEngine struct {
 type NewMatchingEngineParams struct {
 	StockID                  string
 	InitalOrders             *[]order.StockOrderInterface
-	SendToOrderExecutionFunc func(buyOrder order.StockOrderInterface, sellOrder order.StockOrderInterface) transaction.StockTransactionInterface
+	SendToOrderExecutionFunc func(buyOrder order.StockOrderInterface, sellOrder order.StockOrderInterface) string
 	DatabaseManager          databaseAccessStockOrder.DatabaseAccessInterface
 }
 
@@ -60,7 +61,7 @@ func (me *MatchingEngine) RunMatchingEngineOrders() {
 	for {
 
 		stockOrder := <-me.orderChannel
-		println("Order received")
+		fmt.Println("Order received")
 		if stockOrder.GetOrderType() == order.OrderTypeMarket {
 			me.BuyOrderBook.AddOrder(stockOrder)
 		} else {
@@ -80,11 +81,11 @@ func (me *MatchingEngine) RunMatchingEngineOrders() {
 					if buyOrderQuantity == sellOrder.GetQuantity() {
 						//create a transaction
 						result := me.SendToOrderExection(buyOrder, sellOrder)
-						if result == nil {
+						if result == "ERROR" {
 							me.SellOrderBook.AddOrder(sellOrder)
 							buyOrderQuantity = 0
 						}
-						switch result.GetOrderStatus() {
+						switch result {
 						case "COMPLETED":
 							buyOrderQuantity = 0
 						default:
@@ -94,11 +95,11 @@ func (me *MatchingEngine) RunMatchingEngineOrders() {
 					} else if buyOrderQuantity < sellOrder.GetQuantity() {
 						childOrder := sellOrder.CreateChildOrder(sellOrder, buyOrder)
 						result := me.SendToOrderExection(buyOrder, childOrder)
-						if result == nil {
+						if result == "ERROR" {
 							me.SellOrderBook.AddOrder(sellOrder)
 							buyOrderQuantity = 0
 						}
-						switch result.GetOrderStatus() {
+						switch result {
 						case "COMPLETED":
 							sellOrder.SetQuantity(sellOrder.GetQuantity() - buyOrderQuantity)
 							_databaseManager.Update(sellOrder)
@@ -110,11 +111,11 @@ func (me *MatchingEngine) RunMatchingEngineOrders() {
 					} else {
 						childOrder := buyOrder.CreateChildOrder(buyOrder, sellOrder)
 						result := me.SendToOrderExection(childOrder, sellOrder)
-						if result == nil {
+						if result == "ERROR" {
 							me.SellOrderBook.AddOrder(sellOrder)
 							buyOrderQuantity = 0
 						}
-						switch result.GetOrderStatus() {
+						switch result {
 						case "COMPLETED":
 							buyOrder.SetQuantity(buyOrder.GetQuantity() - sellOrder.GetQuantity())
 							buyOrderQuantity -= sellOrder.GetQuantity()
@@ -131,6 +132,7 @@ func (me *MatchingEngine) RunMatchingEngineOrders() {
 					}
 				}
 				if buyOrderQuantity <= 0 {
+					println("finishing Order: ", buyOrder.GetId())
 					_databaseManager.Delete(buyOrder.GetId())
 				}
 			}
@@ -148,7 +150,7 @@ type UpdateParams struct {
 func (me *MatchingEngine) RunMatchingEngineUpdates() {
 	for {
 		updateParams := <-me.updateChannel
-		println("Removing Order")
+		fmt.Println("Removing Order")
 		me.SellOrderBook.RemoveOrder(&matchingEngineStructures.RemoveParams{
 			OrderID:  updateParams.OrderID,
 			PriceKey: updateParams.PriceKey,
@@ -165,6 +167,10 @@ func (me *MatchingEngine) RemoveOrder(orderID string, priceKey float64) {
 		OrderID:  orderID,
 		PriceKey: priceKey,
 	}
+}
+
+func (me *MatchingEngine) GetPrice() float64 {
+	return me.SellOrderBook.GetBestPrice()
 }
 
 //fake matching engine mock for testing
@@ -187,6 +193,3 @@ func (fme *FakeMatchingEngine) RunMatchingEngineUpdates() {
 	fme.updatesCalled = true
 	close(fme.updatesCh)
 }
-
-//hmmm, when we get partial matches and need to reinsert orders, taht might cause race conditions if we need to undo or reinsert orders...
-//we might need to pair pops with locking and then later unlocking on this side.

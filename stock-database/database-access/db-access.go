@@ -4,13 +4,15 @@ import (
 	databaseAccess "Shared/database/database-access"
 	"Shared/entities/stock"
 	"Shared/network"
+	"os"
 )
 
 type EntityDataAccessInterface = databaseAccess.EntityDataAccessInterface[*stock.Stock, stock.StockInterface]
 
 type DatabaseAccessInterface interface {
 	databaseAccess.DatabaseAccessInterface
-	GetStockIDs() *[]string
+	EntityDataAccessInterface
+	GetStockIDs() (*[]string, error)
 }
 
 type DatabaseAccess struct {
@@ -19,31 +21,44 @@ type DatabaseAccess struct {
 }
 
 type NewDatabaseAccessParams struct {
-	*databaseAccess.NewDatabaseAccessParams
-	network network.NetworkInterface
+	*databaseAccess.NewEntityDataAccessHTTPParams[*stock.Stock]
+	Network network.NetworkInterface
 }
 
 func NewDatabaseAccess(params *NewDatabaseAccessParams) DatabaseAccessInterface {
-	//This is our dirty temporary implementation of this. Ideallily, this access has no idea what sort of database setup there is. It just knows "SEND HERE TO GET DATA"
+	if params.NewEntityDataAccessHTTPParams == nil {
+		params.NewEntityDataAccessHTTPParams = &databaseAccess.NewEntityDataAccessHTTPParams[*stock.Stock]{}
+	}
+
+	if params.Network == nil {
+		panic("No network provided")
+	}
+	if params.NewEntityDataAccessHTTPParams.Client == nil {
+		params.NewEntityDataAccessHTTPParams.Client = params.Network.Stocks()
+	}
+	if params.NewEntityDataAccessHTTPParams.DefaultRoute == "" {
+		params.NewEntityDataAccessHTTPParams.DefaultRoute = os.Getenv("STOCK_DATABASE_SERVICE_ROUTE")
+	}
+	if params.NewEntityDataAccessHTTPParams.Parser == nil {
+		params.NewEntityDataAccessHTTPParams.Parser = stock.Parse
+	}
+	if params.NewEntityDataAccessHTTPParams.ParserList == nil {
+		params.NewEntityDataAccessHTTPParams.ParserList = stock.ParseList
+	}
 
 	dba := &DatabaseAccess{
-		EntityDataAccessInterface: databaseAccess.NewEntityDataAccessHTTP[*stock.Stock, stock.StockInterface](
-			&databaseAccess.NewEntityDataAccessHTTPParams[*stock.Stock]{
-				NewDatabaseAccessParams: params.NewDatabaseAccessParams,
-				Client:                  params.network.Stocks(),
-				PostRoute:               "/createStock",
-			}),
-		_networkManager: params.network,
+		EntityDataAccessInterface: databaseAccess.NewEntityDataAccessHTTP[*stock.Stock, stock.StockInterface](params.NewEntityDataAccessHTTPParams),
+		_networkManager:           params.Network,
 	}
 	dba.Connect()
 	return dba
 }
 
-func (d *DatabaseAccess) GetStockIDs() *[]string {
-	stocks := d.GetAll()
+func (d *DatabaseAccess) GetStockIDs() (*[]string, error) {
+	stocks, err := d.GetAll()
 	stockIDs := make([]string, len(*stocks))
 	for i, stock := range *stocks {
 		stockIDs[i] = stock.GetId()
 	}
-	return &stockIDs
+	return &stockIDs, err
 }

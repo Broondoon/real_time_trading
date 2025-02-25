@@ -1,4 +1,4 @@
-module databaseServiceStockTransaction
+module databaseServiceTransaction
 
 go 1.23.5
 

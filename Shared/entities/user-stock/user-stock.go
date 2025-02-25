@@ -23,10 +23,10 @@ type UserStockInterface interface {
 }
 
 type UserStock struct {
-	UserID    string `json:"UserID" gorm:"not null"`
-	StockID   string `json:"StockID" gorm:"not null"`
-	StockName string `json:"StockName" gorm:"not null"`
-	Quantity  int    `json:"Quantity" gorm:"not null"`
+	UserID    string `json:"user_id" gorm:"not null"`
+	StockID   string `json:"stock_id" gorm:"not null"`
+	StockName string `json:"stock_name" gorm:"not null"`
+	Quantity  int    `json:"quantity_owned" gorm:"not null"`
 	// The following internal functions have been commented out.
 	// Instead, we use the fields directly in the getters and setters.
 	/*
@@ -39,7 +39,7 @@ type UserStock struct {
 		GetQuantityInternal  func() int             `gorm:"-"`
 		SetQuantityInternal  func(quantity int)     `gorm:"-"`
 	*/
-	entity.Entity `gorm:"embedded"`
+	entity.Entity `json:"Entity" gorm:"embedded"`
 }
 
 func (us *UserStock) GetQuantity() int {
@@ -75,13 +75,13 @@ func (us *UserStock) SetStockName(stockName string) {
 }
 
 type NewUserStockParams struct {
-	entity.NewEntityParams
-	UserID    string               `json:"UserID"`
-	StockID   string               `json:"StockID"`
-	StockName string               `json:"StockName"`
-	Quantity  int                  `json:"Quantity"`
-	User      user.UserInterface   // use this or UserID
-	Stock     stock.StockInterface // use this or StockID and StockName
+	entity.NewEntityParams `json:"Entity"`
+	UserID                 string               `json:"user_id"`
+	StockID                string               `json:"stock_id"`
+	StockName              string               `json:"stock_name"`
+	Quantity               int                  `json:"quantity_owned"`
+	User                   user.UserInterface   // use this or UserID
+	Stock                  stock.StockInterface // use this or StockID and StockName
 }
 
 func New(params NewUserStockParams) *UserStock {
@@ -122,6 +122,18 @@ func Parse(jsonBytes []byte) (*UserStock, error) {
 	return New(us), nil
 }
 
+func ParseList(jsonBytes []byte) (*[]*UserStock, error) {
+	var so []NewUserStockParams
+	if err := json.Unmarshal(jsonBytes, &so); err != nil {
+		return nil, err
+	}
+	soList := make([]*UserStock, len(so))
+	for i, s := range so {
+		soList[i] = New(s)
+	}
+	return &soList, nil
+}
+
 func (us *UserStock) ToParams() NewUserStockParams {
 	return NewUserStockParams{
 		NewEntityParams: us.EntityToParams(),
@@ -154,3 +166,12 @@ func (fus *FakeUserStock) GetQuantity() int              { return fus.Quantity }
 func (fus *FakeUserStock) SetQuantity(quantity int)      { fus.Quantity = quantity }
 func (fus *FakeUserStock) ToParams() NewUserStockParams  { return NewUserStockParams{} }
 func (fus *FakeUserStock) ToJSON() ([]byte, error)       { return []byte{}, nil }
+
+func (us *UserStock) SetDefaults() {
+	if us.Quantity == 0 {
+		us.Quantity = 0
+	}
+	if us.StockName == "" {
+		us.StockName = "Unknown"
+	}
+}

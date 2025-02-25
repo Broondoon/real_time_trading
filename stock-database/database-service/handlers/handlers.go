@@ -3,9 +3,11 @@ package stockDatabaseHandlers
 import (
 	"Shared/entities/stock"
 	"Shared/network"
-	"databaseServiceStock/database-connection"
+	databaseServiceStock "databaseServiceStock/database-connection"
 	"encoding/json"
 	"net/http"
+	"net/url"
+	"os"
 )
 
 var _databaseManager databaseServiceStock.DatabaseServiceInterface
@@ -17,14 +19,23 @@ func InitalizeHandlers(
 	_networkManager = networkManager
 
 	//Add handlers
-	networkManager.AddHandleFunc(network.HandlerParams{Pattern: "/createStock", Handler: AddNewStockHandler})
-	networkManager.AddHandleFunc(network.HandlerParams{Pattern: "/getStockIDs", Handler: GetStockIDsHandler})
+	_networkManager.AddHandleFuncProtected(network.HandlerParams{Pattern: os.Getenv("setup_route") + "/createStock", Handler: AddNewStockHandler})
+	_networkManager.AddHandleFuncUnprotected(network.HandlerParams{Pattern: "getStockIDs", Handler: GetStockIDsHandler})
+	network.CreateNetworkEntityHandlers[*stock.Stock](_networkManager, os.Getenv("STOCK_DATABASE_SERVICE_ROUTE"), _databaseManager, stock.Parse)
+	http.HandleFunc("/health", healthHandler)
 
 }
 
-func GetStockIDsHandler(responseWriter http.ResponseWriter, data []byte) {
+func healthHandler(w http.ResponseWriter, r *http.Request) {
+	// Simple check: you might expand this to test database connectivity, etc.
+	w.WriteHeader(http.StatusOK)
+	////fmt.Println(w, "OK")
+}
+
+func GetStockIDsHandler(responseWriter http.ResponseWriter, data []byte, queryParams url.Values, requestType string) {
 	stocks, err := _databaseManager.GetAll()
 	if err != nil {
+		println("Error: ", err.Error())
 		responseWriter.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -41,27 +52,28 @@ func GetStockIDsHandler(responseWriter http.ResponseWriter, data []byte) {
 }
 
 // Expected input is a stock ID in the body of the request
-// we're expecting {"StockID":"{id value}"}
-func AddNewStockHandler(responseWriter http.ResponseWriter, data []byte) {
+func AddNewStockHandler(responseWriter http.ResponseWriter, data []byte, queryParams url.Values, requestType string) {
 	newStock, err := stock.Parse(data)
+
+	println("Parsed Stock: ", newStock.GetId())
 	if err != nil {
+		println("Error: ", err.Error())
 		responseWriter.WriteHeader(http.StatusBadRequest)
 		return
 	}
 	err = _databaseManager.Create(newStock)
+	println("Created Stock: ", newStock.GetId())
 	if err != nil {
+		println("Error: ", err.Error())
 		responseWriter.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	jsonData, err := newStock.EntityToJSON()
+	stockIdObject := network.StockID{StockID: newStock.GetId()}
+	_, err = _networkManager.MatchingEngine().Post("createStock", stockIdObject)
 	if err != nil {
+		println("Error: ", err.Error())
 		responseWriter.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	jsonData, err = _networkManager.MatchingEngine().Post("/createStock", jsonData)
-	if err != nil {
-		responseWriter.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-	_, err = responseWriter.Write(jsonData)
+	responseWriter.WriteHeader(http.StatusOK)
 }

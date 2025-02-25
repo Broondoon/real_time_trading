@@ -5,6 +5,7 @@ import (
 	"Shared/entities/order"
 	"Shared/entities/stock"
 	"encoding/json"
+	"time"
 )
 
 type StockTransactionInterface interface {
@@ -23,19 +24,24 @@ type StockTransactionInterface interface {
 	SetStockPrice(stockPrice float64)
 	GetQuantity() int
 	SetQuantity(quantity int)
+	GetTimestamp() time.Time
+	SetTimestamp(timestamp time.Time)
+	SetStockTXID()
 	ToParams() NewStockTransactionParams
 	entity.EntityInterface
 }
 
 type StockTransaction struct {
-	StockID                  string  `json:"StockID" gorm:"not null"`
-	ParentStockTransactionID string  `json:"ParentStockTransactionID"`
-	WalletTransactionID      string  `json:"WalletTransactionID"`
-	OrderStatus              string  `json:"OrderStatus" gorm:"not null"`
-	IsBuy                    bool    `json:"IsBuy" gorm:"not null"`
-	OrderType                string  `json:"OrderType" gorm:"not null"`
-	StockPrice               float64 `json:"StockPrice" gorm:"not null"`
-	Quantity                 int     `json:"Quantity" gorm:"not null"`
+	StockTXID                string    `json:"stock_tx_id" gorm:"-"` // Stock Transaction ID
+	StockID                  string    `json:"stock_id" gorm:"not null"`
+	ParentStockTransactionID string    `json:"parent_stock_tx_id"`
+	WalletTransactionID      string    `json:"wallet_tx_id"`
+	OrderStatus              string    `json:"order_status" gorm:"not null"`
+	IsBuy                    bool      `json:"is_buy" gorm:"not null"`
+	OrderType                string    `json:"order_type" gorm:"not null"`
+	StockPrice               float64   `json:"stock_price" gorm:"not null"`
+	Quantity                 int       `json:"quantity" gorm:"not null"`
+	Timestamp                time.Time `json:"time_stamp"`
 	// Internal Functions (commented out)
 	// GetStockIDInternal                  func() string                         `gorm:"-"`
 	// SetStockIDInternal                  func(stockID string)                  `gorm:"-"`
@@ -52,7 +58,7 @@ type StockTransaction struct {
 	// SetStockPriceInternal               func(stockPrice float64)              `gorm:"-"`
 	// GetQuantityInternal                 func() int                            `gorm:"-"`
 	// SetQuantityInternal                 func(quantity int)                    `gorm:"-"`
-	entity.Entity `gorm:"embedded"`
+	entity.Entity `json:"entity" gorm:"embedded"`
 }
 
 func (st *StockTransaction) GetStockID() string {
@@ -130,16 +136,29 @@ func (st *StockTransaction) SetQuantity(quantity int) {
 	st.Quantity = quantity
 }
 
+func (st *StockTransaction) GetTimestamp() time.Time {
+	return st.Timestamp
+}
+
+func (st *StockTransaction) SetTimestamp(timestamp time.Time) {
+	st.Timestamp = timestamp
+}
+
+func (st *StockTransaction) SetStockTXID() {
+	st.StockTXID = st.GetId()
+}
+
 type NewStockTransactionParams struct {
-	entity.NewEntityParams
-	StockID                  string  `json:"StockID"`
-	ParentStockTransactionID string  `json:"ParentStockTransactionID"`
-	WalletTransactionID      string  `json:"WalletTransactionID"`
-	OrderStatus              string  `json:"OrderStatus"`
-	IsBuy                    bool    `json:"IsBuy"`
-	OrderType                string  `json:"OrderType"`
-	StockPrice               float64 `json:"StockPrice"`
-	Quantity                 int     `json:"Quantity"`
+	entity.NewEntityParams   `json:"entity"`
+	StockID                  string    `json:"stock_id"`
+	ParentStockTransactionID string    `json:"parent_stock_tx_id"`
+	WalletTransactionID      string    `json:"wallet_tx_id"`
+	OrderStatus              string    `json:"order_status"`
+	IsBuy                    bool      `json:"is_buy"`
+	OrderType                string    `json:"order_type"`
+	StockPrice               float64   `json:"stock_price"`
+	Quantity                 int       `json:"quantity"`
+	TimeStamp                time.Time `json:"time_stamp"`
 
 	WalletTransaction WalletTransactionInterface // use this or WalletTransactionID or ParentStockTransaction
 	//use one of the following
@@ -204,28 +223,10 @@ func NewStockTransaction(params NewStockTransactionParams) *StockTransaction {
 		OrderType:                orderType,
 		StockPrice:               stockPrice,
 		Quantity:                 quantity,
+		Timestamp:                params.TimeStamp,
 		Entity:                   *e,
 	}
-	st.SetDefaults()
 	return st
-}
-
-func (st *StockTransaction) SetDefaults() {
-	// st.GetStockIDInternal = func() string { return st.StockID }
-	// st.SetStockIDInternal = func(stockID string) { st.StockID = stockID }
-	// st.GetParentStockTransactionIDInternal = func() string { return st.ParentStockTransactionID }
-	// st.SetParentStockTransactionIDInternal = func(parentStockTransactionID string) { st.ParentStockTransactionID = parentStockTransactionID }
-	// st.GetWalletTransactionIDInternal = func() string { return st.WalletTransactionID }
-	// st.SetWalletTransactionIDInternal = func(walletTransactionID string) { st.WalletTransactionID = walletTransactionID }
-	// st.GetOrderStatusInternal = func() string { return st.OrderStatus }
-	// st.SetOrderStatusInternal = func(orderStatus string) { st.OrderStatus = orderStatus }
-	// st.GetIsBuyInternal = func() bool { return st.IsBuy }
-	// st.SetIsBuyInternal = func(isBuy bool) { st.IsBuy = isBuy }
-	// st.GetOrderTypeInternal = func() string { return st.OrderType }
-	// st.GetStockPriceInternal = func() float64 { return st.StockPrice }
-	// st.SetStockPriceInternal = func(stockPrice float64) { st.StockPrice = stockPrice }
-	// st.GetQuantityInternal = func() int { return st.Quantity }
-	// st.SetQuantityInternal = func(quantity int) { st.Quantity = quantity }
 }
 
 func ParseStockTransaction(jsonBytes []byte) (*StockTransaction, error) {
@@ -234,6 +235,18 @@ func ParseStockTransaction(jsonBytes []byte) (*StockTransaction, error) {
 		return nil, err
 	}
 	return NewStockTransaction(st), nil
+}
+
+func ParseStockTransactionList(jsonBytes []byte) (*[]*StockTransaction, error) {
+	var so []NewStockTransactionParams
+	if err := json.Unmarshal(jsonBytes, &so); err != nil {
+		return nil, err
+	}
+	soList := make([]*StockTransaction, len(so))
+	for i, s := range so {
+		soList[i] = NewStockTransaction(s)
+	}
+	return &soList, nil
 }
 
 func (st *StockTransaction) ToParams() NewStockTransactionParams {
@@ -247,10 +260,7 @@ func (st *StockTransaction) ToParams() NewStockTransactionParams {
 		OrderType:                st.GetOrderType(),
 		StockPrice:               st.GetStockPrice(),
 		Quantity:                 st.GetQuantity(),
-		WalletTransaction:        nil,
-		ParentStockTransaction:   nil,
-		StockOrder:               nil,
-		Stock:                    nil,
+		TimeStamp:                st.GetTimestamp(),
 	}
 }
 

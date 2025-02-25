@@ -15,12 +15,15 @@ type DatabaseService struct {
 }
 
 type NewDatabaseServiceParams struct {
-	*databaseService.NewPostGresDatabaseParams
+	*databaseService.NewEntityDataParams //leave nil for default
 }
 
 func NewDatabaseService(params *NewDatabaseServiceParams) DatabaseServiceInterface {
+	if params.NewEntityDataParams == nil {
+		params.NewEntityDataParams = &databaseService.NewEntityDataParams{}
+	}
 	db := &DatabaseService{
-		EntityDataInterface: databaseService.NewEntityData[*stock.Stock](params.NewPostGresDatabaseParams),
+		EntityDataInterface: databaseService.NewEntityData[*stock.Stock](params.NewEntityDataParams),
 	}
 	db.Connect()
 	db.GetDatabaseSession().AutoMigrate(&stock.Stock{})

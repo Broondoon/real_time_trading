@@ -13,13 +13,13 @@ type StockInterface interface {
 }
 
 type Stock struct {
-	Name string `json:"Name" gorm:"not null"`
+	Name string `json:"stock_name" gorm:"not null"`
 	// If you need to access a property, please use the Get and Set functions, not the property itself. It is only exposed in case you need to interact with it when altering internal functions.
 	// Internal Functions should not be interacted with directly. if you need to change functionality, set a new function to the existing internal function.
 	// Instead, interact with the functions through the Stock Interface.
 	// GetNameInternal func() string     `gorm:"-"`
 	// SetNameInternal func(name string) `gorm:"-"`
-	entity.Entity `gorm:"embedded"`
+	entity.Entity `json:"Entity" gorm:"embedded"`
 }
 
 func (s *Stock) GetName() string {
@@ -33,8 +33,8 @@ func (s *Stock) SetName(name string) {
 }
 
 type NewStockParams struct {
-	entity.NewEntityParams
-	Name string `json:"Name"`
+	entity.NewEntityParams `json:"Entity"`
+	Name                   string `json:"stock_name"`
 }
 
 func New(params NewStockParams) *Stock {
@@ -43,13 +43,7 @@ func New(params NewStockParams) *Stock {
 		Name:   params.Name,
 		Entity: *e,
 	}
-	s.SetDefaults()
 	return s
-}
-
-func (s *Stock) SetDefaults() {
-	// s.GetNameInternal = func() string { return s.Name }
-	// s.SetNameInternal = func(name string) { s.Name = name }
 }
 
 func Parse(jsonBytes []byte) (*Stock, error) {
@@ -58,6 +52,18 @@ func Parse(jsonBytes []byte) (*Stock, error) {
 		return nil, err
 	}
 	return New(s), nil
+}
+
+func ParseList(jsonBytes []byte) (*[]*Stock, error) {
+	var so []NewStockParams
+	if err := json.Unmarshal(jsonBytes, &so); err != nil {
+		return nil, err
+	}
+	soList := make([]*Stock, len(so))
+	for i, s := range so {
+		soList[i] = New(s)
+	}
+	return &soList, nil
 }
 
 func (s *Stock) ToParams() NewStockParams {
