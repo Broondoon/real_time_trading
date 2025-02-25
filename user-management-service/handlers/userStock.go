@@ -1,18 +1,14 @@
 package handlers
 
 import (
-	"Shared/entities/entity"
 	userStock "Shared/entities/user-stock"
 	"Shared/network"
 	"databaseAccessUserManagement"
 	"encoding/json"
-	"fmt"
 	"log"
 	"net/http"
 	"net/url"
 	"sort"
-
-	"github.com/google/uuid"
 )
 
 type AddStock struct {
@@ -27,11 +23,11 @@ func InitializeUserStock(userStockAccess databaseAccessUserManagement.UserStocks
 	networkManager.AddHandleFuncProtected(network.HandlerParams{Pattern: "transaction/getStockPortfolio", Handler: getStockPortfolioHandler})
 	networkManager.AddHandleFuncProtected(network.HandlerParams{Pattern: "setup/addStockToUser", Handler: addStockToUser})
 	//TODO:
-	testFuncInsertUserStock("6fd2fc6b-9142-4777-8b30-575ff6fa2460")
+	//testFuncInsertUserStock("6fd2fc6b-9142-4777-8b30-575ff6fa2460")
 }
 
 // TODO: delete this is for testing
-
+/*
 func testFuncInsertUserStock(userID string) {
 	stockID1 := uuid.New().String()
 	stockID2 := uuid.New().String()
@@ -66,6 +62,7 @@ func testFuncInsertUserStock(userID string) {
 	fmt.Printf("Created user stock for user %s with stockID %s and quantity %d\n",
 		createdUserStock2.GetUserID(), stockID2, createdUserStock2.GetQuantity())
 }
+*/
 
 func getStockPortfolioHandler(responseWriter http.ResponseWriter, data []byte, queryParams url.Values, requestType string) {
 	userID := queryParams.Get("userID")
