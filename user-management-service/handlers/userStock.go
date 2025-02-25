@@ -1,14 +1,18 @@
 package handlers
 
 import (
+	"Shared/entities/entity"
 	userStock "Shared/entities/user-stock"
 	"Shared/network"
 	"databaseAccessUserManagement"
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"net/url"
 	"sort"
+
+	"github.com/google/uuid"
 )
 
 type AddStock struct {
@@ -23,11 +27,11 @@ func InitializeUserStock(userStockAccess databaseAccessUserManagement.UserStocks
 	networkManager.AddHandleFuncProtected(network.HandlerParams{Pattern: "transaction/getStockPortfolio", Handler: getStockPortfolioHandler})
 	networkManager.AddHandleFuncProtected(network.HandlerParams{Pattern: "setup/addStockToUser", Handler: addStockToUser})
 	//TODO:
-	//testFuncInsertUserStock("6fd2fc6b-9142-4777-8b30-575ff6fa2460")
+	testFuncInsertUserStock("6fd2fc6b-9142-4777-8b30-575ff6fa2460")
 }
 
 // TODO: delete this is for testing
-/*
+
 func testFuncInsertUserStock(userID string) {
 	stockID1 := uuid.New().String()
 	stockID2 := uuid.New().String()
@@ -62,7 +66,6 @@ func testFuncInsertUserStock(userID string) {
 	fmt.Printf("Created user stock for user %s with stockID %s and quantity %d\n",
 		createdUserStock2.GetUserID(), stockID2, createdUserStock2.GetQuantity())
 }
-*/
 
 func getStockPortfolioHandler(responseWriter http.ResponseWriter, data []byte, queryParams url.Values, requestType string) {
 	userID := queryParams.Get("userID")
@@ -94,47 +97,64 @@ func getStockPortfolioHandler(responseWriter http.ResponseWriter, data []byte, q
 }
 
 func addStockToUser(responseWriter http.ResponseWriter, data []byte, queryParams url.Values, requestType string) {
+	log.Printf("DEBUG: addStockToUser invoked. Request Type: %s, Query Params: %v, Request Body: %s", requestType, queryParams, string(data))
+
 	userID := queryParams.Get("userID")
 	if userID == "" {
-		log.Println("Error: missing userID in addStockToUser")
+		log.Println("ERROR: Missing userID in addStockToUser")
 		responseWriter.WriteHeader(http.StatusBadRequest)
 		return
 	}
+	log.Printf("DEBUG: Extracted userID: %s", userID)
+
 	var stockRequest AddStock
 	err := json.Unmarshal(data, &stockRequest)
 	if err != nil {
-		log.Printf("Error unmarshalling request data in addStockToUser: %v", err)
+		log.Printf("ERROR: Failed to unmarshal request data in addStockToUser: %v", err)
 		responseWriter.WriteHeader(http.StatusBadRequest)
 		return
 	}
+	log.Printf("DEBUG: Parsed AddStock request: %+v", stockRequest)
+
 	if stockRequest.StockID == "" || stockRequest.Quantity <= 0 {
-		log.Println("Error: invalid stockRequest values in addStockToUser")
+		log.Println("ERROR: Invalid stockRequest values in addStockToUser. StockID is empty or Quantity is non-positive.")
 		responseWriter.WriteHeader(http.StatusBadRequest)
 		return
 	}
+
 	newUserStock := userStock.New(userStock.NewUserStockParams{
 		UserID:    userID,
 		StockID:   stockRequest.StockID,
 		Quantity:  stockRequest.Quantity,
 		StockName: "Unknown",
 	})
+	log.Printf("DEBUG: Created newUserStock object: %+v", newUserStock)
+
 	createdUserStock, err := _userStockAccess.Create(newUserStock)
 	if err != nil {
-		log.Printf("Error creating user stock for userID %s: %v", userID, err)
+		log.Printf("ERROR: Failed to create user stock for userID %s: %v", userID, err)
 		responseWriter.WriteHeader(http.StatusInternalServerError)
 		return
 	}
+	log.Printf("DEBUG: Successfully created user stock: %+v", createdUserStock)
+
 	returnVal := network.ReturnJSON{
 		Success: true,
-		Data:    createdUserStock,
+		Data:    nil,
 	}
 	responseJSON, err := json.Marshal(returnVal)
 	if err != nil {
-		log.Printf("Error marshalling response JSON in addStockToUser for userID %s: %v", userID, err)
+		log.Printf("ERROR: Failed to marshal response JSON in addStockToUser for userID %s: %v", userID, err)
 		responseWriter.WriteHeader(http.StatusInternalServerError)
 		return
 	}
+	log.Printf("DEBUG: Marshalled response JSON: %s", string(responseJSON))
+
 	responseWriter.Header().Set("Content-Type", "application/json")
 	responseWriter.WriteHeader(http.StatusCreated)
-	responseWriter.Write(responseJSON)
+	_, err = responseWriter.Write(responseJSON)
+	if err != nil {
+		log.Printf("ERROR: Failed to write response for userID %s: %v", userID, err)
+	}
+	log.Println("DEBUG: addStockToUser completed successfully.")
 }

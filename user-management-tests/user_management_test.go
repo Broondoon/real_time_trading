@@ -7,6 +7,7 @@ import (
 )
 
 var userID = "6fd2fc6b-9142-4777-8b30-575ff6fa2460"
+var stockId = "69e81793-1cc7-476f-a8ba-714fafcb3e5c"
 var client = network.NewNetwork().UserManagement()
 
 func TestGetWalletBalance(t *testing.T) {
@@ -60,30 +61,37 @@ func TestAddMoneyToWallet(t *testing.T) {
 func TestGetStockPortfolio(t *testing.T) {
 	queryParams := map[string]string{"userID": userID}
 	response, err := client.Get("transaction/getStockPortfolio", queryParams)
-
 	if err != nil {
 		t.Fatalf("Failed to get stock portfolio: %v", err)
 	}
 
 	t.Logf("Response: %s", string(response))
 
-	var stockResponse []struct {
-		StockID   string `json:"stock_id"`
-		StockName string `json:"stock_name"`
-		Quantity  int    `json:"quantity_owned"`
+	var portfolioResponse struct {
+		Success bool `json:"success"`
+		Data    []struct {
+			StockID   string `json:"stock_id"`
+			StockName string `json:"stock_name"`
+			Quantity  int    `json:"quantity_owned"`
+		} `json:"data"`
 	}
-	if err := json.Unmarshal(response, &stockResponse); err != nil {
+
+	if err := json.Unmarshal(response, &portfolioResponse); err != nil {
 		t.Fatalf("Failed to parse stock portfolio response: %v", err)
 	}
 
-	if len(stockResponse) == 0 {
+	if !portfolioResponse.Success {
+		t.Errorf("Expected success to be true, got false")
+	}
+
+	if len(portfolioResponse.Data) == 0 {
 		t.Errorf("Expected at least one stock in portfolio, got none.")
 	}
 }
 
 func TestAddStockToUser(t *testing.T) {
 	requestBody := map[string]interface{}{
-		"stockID":  "AAPL",
+		"stock_id": stockId,
 		"quantity": 10,
 	}
 
