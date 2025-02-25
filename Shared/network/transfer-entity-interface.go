@@ -43,3 +43,8 @@ type ExecutorToMatchingEngineJSON struct {
 	IsBuyFailure  bool `json:"is_buy_failed"`
 	IsSellFailure bool `json:"is_sell_failed"`
 }
+
+type ReturnJSON struct {
+	Success bool `json:"success"`
+	Data    any  `json:"data"`
+}

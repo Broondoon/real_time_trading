@@ -157,12 +157,17 @@ func GetStockPricesHandler(responseWriter http.ResponseWriter, data []byte, quer
 		responseWriter.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	pricesJSON, err := json.Marshal(prices)
+	returnVal := network.ReturnJSON{
+		Success: true,
+		Data:    prices,
+	}
+	pricesJSON, err := json.Marshal(returnVal)
 	if err != nil {
 		println("Error: ", err.Error())
 		responseWriter.WriteHeader(http.StatusInternalServerError)
 		return
 	}
+
 	responseWriter.Write(pricesJSON)
 }
 
