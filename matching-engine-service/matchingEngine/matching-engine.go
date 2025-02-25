@@ -109,9 +109,9 @@ func (me *MatchingEngine) RunMatchingEngineOrders() {
 			var parentOrder order.StockOrderInterface
 			if buyOrder.GetQuantity() < sellOrder.GetQuantity() {
 				println("Creating sell child order for: ", sellOrder.GetId())
-				parentOrder := sellOrder
+				parentOrder = sellOrder
 				sellIsChild = true
-				sellOrder := sellOrder.CreateChildOrder(sellOrder, buyOrder)
+				sellOrder = sellOrder.CreateChildOrder(sellOrder, buyOrder)
 				println("Parent Order Quantity: ", parentOrder.GetQuantity())
 				println("Child Order Quantity: ", sellOrder.GetQuantity())
 				if sellOrder.GetQuantity() == parentOrder.GetQuantity() {
@@ -120,11 +120,11 @@ func (me *MatchingEngine) RunMatchingEngineOrders() {
 					panic("Child order quantity is equal to parent order quantity. This should not happen")
 				}
 			}
-			if buyOrder.GetPrice() > sellOrder.GetPrice() {
+			if buyOrder.GetQuantity() > sellOrder.GetQuantity() {
 				println("Creating buy child order for: ", buyOrder.GetId())
-				parentOrder := buyOrder
+				parentOrder = buyOrder
 				buyIsChild = true
-				buyOrder := buyOrder.CreateChildOrder(buyOrder, sellOrder)
+				buyOrder = buyOrder.CreateChildOrder(buyOrder, sellOrder)
 				println("Parent Order Quantity: ", parentOrder.GetQuantity())
 				println("Child Order Quantity: ", buyOrder.GetQuantity())
 				if sellOrder.GetQuantity() == parentOrder.GetQuantity() {

@@ -15,7 +15,7 @@ import (
 
 // ProcessTrade
 func ProcessTrade(orderData network.MatchingEngineToExecutionJSON, databaseAccessTransact databaseAccessTransaction.DatabaseAccessInterface, databaseAccessUser databaseAccessUserManagement.DatabaseAccessInterface) (bool, bool, error) {
-
+	//return true, true, nil
 	// Transfer Entity received from the Matching Engine //
 	buyerID := orderData.BuyerID
 	sellerID := orderData.SellerID
@@ -27,12 +27,24 @@ func ProcessTrade(orderData network.MatchingEngineToExecutionJSON, databaseAcces
 	stockPrice := orderData.StockPrice
 	quantity := orderData.Quantity
 
+	println("Buyer ID: ", buyerID)
+	println("Seller ID: ", sellerID)
+	println("Stock ID: ", stockID)
+	println("Buy Order ID: ", buyOrderID)
+	println("Sell Order ID: ", sellOrderID)
+	println("Is Buy Partial: ", isBuyPartial)
+	println("Is Sell Partial: ", isSellPartial)
+	println("Stock Price: ", stockPrice)
+	println("Quantity: ", quantity)
+
 	totalCost := calculateTotalTransactionCost(quantity, stockPrice)
+	println("Total Cost: ", totalCost)
 
 	// 1. Go to the Transaction DB, get any stock transaction with the ID Equal to the buy order ID or the sell order ID
 	transactionList, err := databaseAccessTransact.StockTransaction().GetByIDs([]string{buyOrderID, sellOrderID})
 
 	if err != nil {
+		println("Error: ", err.Error())
 		return false, false, fmt.Errorf("failed to get transactions: %v", err)
 	}
 
@@ -41,21 +53,25 @@ func ProcessTrade(orderData network.MatchingEngineToExecutionJSON, databaseAcces
 	// 2. Go to User-Managment DB, get wallet of userID present on  Buy order transaction
 	walletList, err := databaseAccessUser.Wallet().GetByIDs([]string{buyerID, sellerID})
 	if err != nil {
+		println("Error: ", err.Error())
 		return false, false, fmt.Errorf("failed to get wallets: %v", err)
 	}
 
 	// 3. Check if buyer has enough funds to afford the quantity*stockprice
 	buyerHasFunds, err := validateBuyerWalletBalance((*walletList)[0], totalCost)
 	if err != nil {
+		println("Error: ", err.Error())
 		return false, false, err
 	}
 	if !buyerHasFunds {
+		println("Error: ", err.Error())
 		return false, true, nil
 	}
 
 	// 4. Update buyer and seller wallet balances and create wallet transactions for these changes
-	err = updateWalletBalances((*walletList)[0], (*walletList)[1], totalCost, stockTx, databaseAccessUser, databaseAccessTransact)
+	err = updateWalletBalances((*walletList)[0], (*walletList)[0], totalCost, stockTx, databaseAccessUser, databaseAccessTransact)
 	if err != nil {
+		println("Error: ", err.Error())
 		return false, false, fmt.Errorf("failed to update wallet balances: %v", err)
 	}
 
@@ -63,6 +79,7 @@ func ProcessTrade(orderData network.MatchingEngineToExecutionJSON, databaseAcces
 	//    Add the stock quantity to the buyer's portfolio.
 	err = updateUserStocks(buyerID, sellerID, stockID, quantity, stockTx, databaseAccessUser, databaseAccessTransact, isBuyPartial, isSellPartial)
 	if err != nil {
+		println("Error: ", err.Error())
 		if err.Error() == "seller does not have enough shares of stock "+stockID {
 			return true, false, nil // Buy succeeds, sell fails
 		}
@@ -72,11 +89,6 @@ func ProcessTrade(orderData network.MatchingEngineToExecutionJSON, databaseAcces
 	// 6. Return true to the matching engine to indicate that the trade was successful.
 	return true, true, nil
 }
-
-
-
-
-
 
 // Updates buyer and seller wallet balances and create wallet transactions for these changes
 func updateWalletBalances(
@@ -91,12 +103,14 @@ func updateWalletBalances(
 	buyerWallet.SetBalance(buyerWallet.GetBalance() - totalCost)
 	err := databaseAccessUser.Wallet().Update(buyerWallet)
 	if err != nil {
+		println("Error: ", err.Error())
 		return fmt.Errorf("failed to update buyer wallet balance: %v", err)
 	}
 
 	sellerWallet.SetBalance(sellerWallet.GetBalance() + totalCost)
 	err = databaseAccessUser.Wallet().Update(sellerWallet)
 	if err != nil {
+		println("Error: ", err.Error())
 		// Rollback buyer's wallet change if seller update fails
 		buyerWallet.SetBalance(buyerWallet.GetBalance() + totalCost)
 
@@ -122,6 +136,7 @@ func updateWalletBalances(
 
 	_, err = databaseAccessTransact.WalletTransaction().Create(buyerWT)
 	if err != nil {
+		println("Error: ", err.Error())
 		return fmt.Errorf("failed to create buyer wallet transaction: %v", err)
 	}
 
@@ -140,16 +155,12 @@ func updateWalletBalances(
 
 	_, err = databaseAccessTransact.WalletTransaction().Create(sellerWT)
 	if err != nil {
+		println("Error: ", err.Error())
 		return fmt.Errorf("failed to create seller wallet transaction: %v", err)
 	}
 
 	return nil
 }
-
-
-
-
-
 
 // Updates buyer and seller stock portfolios following a successful trade
 func updateUserStocks(
@@ -163,21 +174,24 @@ func updateUserStocks(
 	isBuyPartial bool,
 	isSellPartial bool) error {
 
-
 	// Get buyer's current stock holdings
 	buyerStocks, err := databaseAccessUser.UserStock().GetUserStocks(buyerID)
 	if err != nil {
-		return fmt.Errorf("failed to get buyer stocks: %v", err)
-	}
+		if err.Error() == "server returned error: 404 404 Not Found" {
+			buyerStocks = &[]userStock.UserStockInterface{}
 
+		} else {
+			println("Error: ", err.Error())
+			return fmt.Errorf("failed to get buyer stocks: %v", err)
+		}
+	}
 
 	// Get seller's current stock holdings
 	sellerStocks, err := databaseAccessUser.UserStock().GetUserStocks(sellerID)
 	if err != nil {
+		println("Error: ", err.Error())
 		return fmt.Errorf("failed to get seller stocks: %v", err)
 	}
-
-
 
 	// Find the stock in the seller's portfolio
 	var sellerStock userStock.UserStockInterface
@@ -195,8 +209,6 @@ func updateUserStocks(
 	if sellerStock.GetQuantity() < quantity {
 		return fmt.Errorf("seller does not have enough shares of stock %s", stockID)
 	}
-
-
 
 	// Find the stock in the buyer's portfolio
 	var buyerStock userStock.UserStockInterface
@@ -222,31 +234,28 @@ func updateUserStocks(
 		// Create in database first
 		createdStock, err := databaseAccessUser.UserStock().Create(buyerStock)
 		if err != nil {
+			println("Error: ", err.Error())
 			return fmt.Errorf("failed to create buyer stock holding: %v", err)
 		}
 		buyerStock = createdStock
 	}
 
-
-
 	// Update Stock quantities in buyer and seller portfolios
 	sellerStock.SetQuantity(sellerStock.GetQuantity() - quantity)
 	buyerStock.SetQuantity(buyerStock.GetQuantity() + quantity)
 
-
-
 	// Update in database
 	err = databaseAccessUser.UserStock().Update(sellerStock)
 	if err != nil {
+		println("Error: ", err.Error())
 		return fmt.Errorf("failed to update seller stock: %v", err)
 	}
 
 	err = databaseAccessUser.UserStock().Update(buyerStock)
 	if err != nil {
+		println("Error: ", err.Error())
 		return fmt.Errorf("failed to update buyer stock: %v", err)
 	}
-
-
 
 	// Check if this is a complete or partial fill using flags from matching engine
 	if !isBuyPartial && !isSellPartial {
@@ -254,6 +263,7 @@ func updateUserStocks(
 		stockTx.SetOrderStatus("COMPLETED")
 		err = databaseAccessTransact.StockTransaction().Update(stockTx)
 		if err != nil {
+			println("Error: ", err.Error())
 			return fmt.Errorf("failed to update stock transaction status: %v", err)
 		}
 
@@ -262,11 +272,9 @@ func updateUserStocks(
 		stockTx.SetOrderStatus("PARTIALLY_COMPLETE")
 		err = databaseAccessTransact.StockTransaction().Update(stockTx)
 		if err != nil {
+			println("Error: ", err.Error())
 			return fmt.Errorf("failed to update original stock transaction status: %v", err)
 		}
-
-
-
 
 		// Create new transaction for the filled portion
 		filledTx := transaction.NewStockTransaction(transaction.NewStockTransactionParams{
@@ -281,25 +289,18 @@ func updateUserStocks(
 
 		_, err = databaseAccessTransact.StockTransaction().Create(filledTx)
 		if err != nil {
+			println("Error: ", err.Error())
 			return fmt.Errorf("failed to create filled stock transaction: %v", err)
 		}
 	}
 
-
 	return nil
 }
-
-
-
-
 
 // Calculates the total cost of a transaction given the quantity and stock price.
 func calculateTotalTransactionCost(quantity int, stockPrice float64) float64 {
 	return float64(quantity) * stockPrice
 }
-
-
-
 
 // Check if buyer has enough funds to afford the quantity*stockprice
 // If they dont, return to matching engine that the match was unsuccessful.

@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/url"
+	"sort"
 )
 
 type AddStock struct {
@@ -34,6 +35,14 @@ func getStockPortfolioHandler(responseWriter http.ResponseWriter, data []byte, q
 		responseWriter.WriteHeader(http.StatusNotFound)
 		return
 	}
+	returnVal := network.ReturnJSON{
+		Success: true,
+		Data:    stocks,
+	}
+
+	sort.SliceStable(*stocks, func(i, j int) bool {
+		return (*stocks)[i].GetStockName() > (*stocks)[j].GetStockName()
+	})
 	returnVal := network.ReturnJSON{
 		Success: true,
 		Data:    stocks,
