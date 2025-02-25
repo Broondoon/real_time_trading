@@ -23,7 +23,7 @@ func InitializeWallet(walletAccess databaseAccessUserManagement.WalletDataAccess
 
 	networkManager.AddHandleFuncProtected(network.HandlerParams{Pattern: "transaction/getWalletBalance", Handler: getWalletBalanceHandler})
 	networkManager.AddHandleFuncProtected(network.HandlerParams{Pattern: "transaction/addMoneyToWallet", Handler: addMoneyToWalletHandler})
-	networkManager.AddHandleFuncProtected(network.HandlerParams{Pattern: "transaction/createWallet", Handler: addMoneyToWalletHandler})
+	networkManager.AddHandleFuncProtected(network.HandlerParams{Pattern: "transaction/createWallet", Handler: createWalletHandler})
 
 	//TODO: Comment out below line when not testing:
 	testFuncInsertIntoDb("6fd2fc6b-9142-4777-8b30-575ff6fa2460")
@@ -148,11 +148,15 @@ func addMoneyToWalletHandler(responseWriter http.ResponseWriter, data []byte, qu
 }
 
 func createWalletHandler(responseWriter http.ResponseWriter, data []byte, queryParams url.Values, requestType string) {
+	fmt.Printf("DEBUG: createWalletHandler invoked. Request Type: %s, Query Params: %v, Request Body: %s\n", requestType, queryParams, string(data))
+
 	userID := queryParams.Get("userID")
 	if userID == "" {
+		fmt.Println("DEBUG: Missing userID in query parameters.")
 		responseWriter.WriteHeader(http.StatusBadRequest)
 		return
 	}
+	fmt.Printf("DEBUG: Extracted userID: %s\n", userID)
 
 	params := wallet.NewWalletParams{
 		NewEntityParams: entity.NewEntityParams{},
@@ -160,12 +164,16 @@ func createWalletHandler(responseWriter http.ResponseWriter, data []byte, queryP
 		Balance:         0.0,
 	}
 	newWallet := wallet.New(params)
+	fmt.Printf("DEBUG: Created wallet object for userID: %s\n", userID)
 
-	_, err := _walletAccess.Create(newWallet)
+	createdWallet, err := _walletAccess.Create(newWallet)
 	if err != nil {
+		fmt.Printf("DEBUG: Failed to create wallet for userID: %s, error: %v\n", userID, err)
 		responseWriter.WriteHeader(http.StatusInternalServerError)
 		return
 	}
+	fmt.Printf("DEBUG: Successfully created wallet for userID: %s. Wallet details: %+v\n", userID, createdWallet)
 
 	responseWriter.WriteHeader(http.StatusOK)
+	fmt.Println("DEBUG: createWalletHandler completed successfully.")
 }
