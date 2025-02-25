@@ -1,16 +1,16 @@
   # ---------------------- User Management Tests ----------------------
 services:
-  user-management-tests:
-    build:
-      context: .
-      dockerfile: ./user-management-tests/Dockerfile
-    env_file:
-      - .env
-    networks:
-      - go-network
-    depends_on:
-      user-management-service:
-        condition: service_healthy
+#  user-management-tests:
+#   build:
+#     context: .
+#      dockerfile: ./user-management-tests/Dockerfile
+#   env_file:
+#      - .env
+#   networks:
+#    - go-network
+#   depends_on:
+ #     user-management-service:
+  #      condition: service_healthy
   # ---------------------- User Management Service ----------------------
   user-management-service:
     build:
