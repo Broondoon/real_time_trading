@@ -26,7 +26,7 @@ services:
     networks:
       - go-network
     depends_on:
-      user-management-db:
+      user-management-database-service:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://user-management-service:${USER_MANAGEMENT_PORT}/health"]
@@ -50,6 +50,10 @@ services:
       - go-network
     depends_on:
       order-initiator-service:
+        condition: service_healthy
+      stock-database-service:
+        condition: service_healthy
+      user-management-database-service:
         condition: service_healthy
       
 

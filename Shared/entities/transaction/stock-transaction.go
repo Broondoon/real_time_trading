@@ -190,6 +190,7 @@ func NewStockTransaction(params NewStockTransactionParams) *StockTransaction {
 	} else {
 		parentStockTransactionID = params.ParentStockTransactionID
 		if params.StockOrder != nil {
+			e.ID = params.StockOrder.GetId()
 			stockID = params.StockOrder.GetStockID()
 			isBuy = params.StockOrder.GetIsBuy()
 			orderType = params.StockOrder.GetOrderType()

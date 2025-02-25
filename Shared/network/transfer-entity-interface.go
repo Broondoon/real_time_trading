@@ -34,3 +34,17 @@ type AddStock struct {
 	StockID  string `json:"stock_id"`
 	Quantity int    `json:"quantity"`
 }
+
+// Transfer Entity to send back to Matching Engine
+
+// If the buy order failed, then the is_buy_failed field = true
+// If the sell order failed, then the is_sell_failed field =true
+type ExecutorToMatchingEngineJSON struct {
+	IsBuyFailure  bool `json:"is_buy_failed"`
+	IsSellFailure bool `json:"is_sell_failed"`
+}
+
+type ReturnJSON struct {
+	Success bool `json:"success"`
+	Data    any  `json:"data"`
+}

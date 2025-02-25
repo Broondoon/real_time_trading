@@ -64,7 +64,7 @@ func NewDatabaseAccess(params *NewDatabaseAccessParams) DatabaseAccessInterface 
 		params.UserStockParams.Client = params.Network.UserManagementDatabase()
 	}
 	if params.UserStockParams.DefaultRoute == "" {
-		params.UserStockParams.DefaultRoute = os.Getenv("USER_MANAGEMENT_DATABASE_SERVICE_USER_STOCK_ROUTE")
+		params.UserStockParams.DefaultRoute = os.Getenv("USER_MANAGEMENT_SERVICE_USER_STOCK_ROUTE")
 	}
 	if params.WalletParams.Client == nil {
 		params.WalletParams.Client = params.Network.UserManagementDatabase()
@@ -119,19 +119,33 @@ func (d *UserStocksDataAccess) GetUserStocks(userID string) (*[]userStock.UserSt
 }
 
 func (d *WalletDataAccess) AddMoneyToWallet(userID string, amount float64) error {
+	fmt.Printf("DEBUG: AddMoneyToWallet called for userID=%s with amount=%f\n", userID, amount)
+
 	walletList, err := d.GetByForeignID("user_id", userID)
 	if err != nil {
+		fmt.Printf("DEBUG: Error retrieving wallet for userID=%s: %v\n", userID, err)
 		return err
 	}
+	fmt.Printf("DEBUG: Retrieved %d wallet(s) for userID=%s\n", len(*walletList), userID)
+
 	if len(*walletList) == 0 {
+		fmt.Printf("DEBUG: No wallet found for userID=%s\n", userID)
 		return errors.New("no wallet found for user")
 	}
+
 	wallet := (*walletList)[0]
-	wallet.SetBalance(wallet.GetBalance() + amount)
+	oldBalance := wallet.GetBalance()
+	newBalance := oldBalance + amount
+	fmt.Printf("DEBUG: Updating wallet for userID=%s: old balance=%f, new balance=%f\n", userID, oldBalance, newBalance)
+
+	wallet.SetBalance(newBalance)
 	err = d.Update(wallet)
 	if err != nil {
+		fmt.Printf("DEBUG: Error updating wallet for userID=%s: %v\n", userID, err)
 		return err
 	}
+
+	fmt.Printf("DEBUG: Successfully updated wallet for userID=%s\n", userID)
 	return nil
 }
 
