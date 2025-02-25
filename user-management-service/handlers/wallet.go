@@ -22,7 +22,7 @@ func InitializeWallet(walletAccess databaseAccessUserManagement.WalletDataAccess
 
 	networkManager.AddHandleFuncProtected(network.HandlerParams{Pattern: "transaction/getWalletBalance", Handler: getWalletBalanceHandler})
 	networkManager.AddHandleFuncProtected(network.HandlerParams{Pattern: "transaction/addMoneyToWallet", Handler: addMoneyToWalletHandler})
-	networkManager.AddHandleFuncProtected(network.HandlerParams{Pattern: "transaction/createWallet", Handler: createWalletHandler})
+	networkManager.AddHandleFuncUnprotected(network.HandlerParams{Pattern: "transaction/createWallet", Handler: createWalletHandler})
 
 	//TODO: Comment out below line when not testing:
 	//testFuncInsertIntoDb("6fd2fc6b-9142-4777-8b30-575ff6fa2460")
