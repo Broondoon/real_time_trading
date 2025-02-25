@@ -69,7 +69,8 @@ type NewOrderBookParams struct {
 
 func NewOrderBook(params *NewOrderBookParams) OrderBookInterface {
 	ob := &OrderBook{
-		data: params.dataStructure,
+		data:  params.dataStructure,
+		mutex: &sync.Mutex{},
 	}
 	for _, order := range *params.InitalOrders {
 		ob.AddOrder(order)

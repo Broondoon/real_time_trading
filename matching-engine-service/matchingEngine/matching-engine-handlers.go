@@ -101,19 +101,17 @@ func PlaceStockOrderHandler(responseWriter http.ResponseWriter, data []byte, que
 
 func PlaceStockOrder(stockOrder order.StockOrderInterface) bool {
 	println("Placing stock order")
-	me, ok := _matchingEngineMap[stockOrder.GetStockID()]
-	if !ok {
-		println("Error: Matching engine not found")
-		return false
+	if me, ok := _matchingEngineMap[stockOrder.GetStockID()]; ok {
+		createdOrder, err := _databaseManager.Create(stockOrder)
+		if err != nil {
+			println("Error: ", err.Error())
+			return false
+		}
+		me.AddOrder(createdOrder)
+		return true
 	}
-
-	createdOrder, err := _databaseManager.Create(stockOrder)
-	if err != nil {
-		println("Error: ", err.Error())
-		return false
-	}
-	me.AddOrder(createdOrder)
-	return true
+	println("Error: Matching engine not found for ID: ", stockOrder.GetStockID())
+	return false
 }
 
 func DeleteStockOrderHandler(responseWriter http.ResponseWriter, data []byte, queryParams url.Values, requestType string) {
@@ -203,33 +201,41 @@ func GetStockPrices() (*[]network.StockPrice, error) {
 	return &stockPrices, nil
 }
 
-func SendToOrderExection(buyOrder order.StockOrderInterface, sellOrder order.StockOrderInterface) string {
-	buyQty := buyOrder.GetQuantity()
-	sellQty := sellOrder.GetQuantity()
-	quantity := buyQty
-	if sellQty < buyQty {
-		quantity = sellQty
-	}
-	transferEntity := network.MatchingEngineToExecutionJSON{
-		BuyerID:       buyOrder.GetUserID(),
-		SellerID:      sellOrder.GetUserID(),
-		StockID:       buyOrder.GetStockID(),
-		BuyOrderID:    buyOrder.GetId(),
-		SellOrderID:   sellOrder.GetId(),
-		IsBuyPartial:  buyQty > sellQty,
-		IsSellPartial: buyQty < sellQty,
-		StockPrice:    sellOrder.GetPrice(),
-		Quantity:      quantity,
-	}
+func SendToOrderExection(buyOrder order.StockOrderInterface, sellOrder order.StockOrderInterface) (network.ExecutorToMatchingEngineJSON, error) {
+	// buyQty := buyOrder.GetQuantity()
+	// sellQty := sellOrder.GetQuantity()
+	// quantity := buyQty
+	// if sellQty < buyQty {
+	// 	quantity = sellQty
+	// }
+	// transferEntity := network.MatchingEngineToExecutionJSON{
+	// 	BuyerID:       buyOrder.GetUserID(),
+	// 	SellerID:      sellOrder.GetUserID(),
+	// 	StockID:       buyOrder.GetStockID(),
+	// 	BuyOrderID:    buyOrder.GetId(),
+	// 	SellOrderID:   sellOrder.GetId(),
+	// 	IsBuyPartial:  buyQty > sellQty,
+	// 	IsSellPartial: buyQty < sellQty,
+	// 	StockPrice:    sellOrder.GetPrice(),
+	// 	Quantity:      quantity,
+	// }
 
-	data, err := _networkManager.OrderExecutor().Post("orderexecutor", transferEntity)
-	if err.Error() == "204 No Content" {
-		return "NOT COMPLETED"
-	} else if err != nil {
-		println("Error: ", err.Error())
-		return "ERROR"
+	// data, err := _networkManager.OrderExecutor().Post("orderexecutor", transferEntity)
+
+	// if err != nil {
+	// 	println("Error: ", err.Error())
+	// 	return network.ExecutorToMatchingEngineJSON{}, err
+	// }
+	// print("Matched Data: ", string(data))
+	var matchedData network.ExecutorToMatchingEngineJSON
+	matchedData = network.ExecutorToMatchingEngineJSON{
+		IsBuyFailure:  false,
+		IsSellFailure: false,
 	}
-	print("Matched Data: ", string(data))
-	//send to order execution
-	return "COMPLETED"
+	// err = json.Unmarshal(data, &matchedData)
+	// if err != nil {
+	// 	println("Error: ", err.Error())
+	// 	return network.ExecutorToMatchingEngineJSON{}, err
+	// }
+	return matchedData, nil
 }
