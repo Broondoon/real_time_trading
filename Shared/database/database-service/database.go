@@ -207,6 +207,11 @@ func (d *EntityData[T]) GetByForeignID(foreignIDColumn string, foreignID string)
 		fmt.Printf("error getting by foreignKey: %s", results.Error.Error())
 		return nil, results.Error
 	}
+	println("Printing ENtities")
+	for _, entity := range entities {
+		jso, _ := entity.ToJSON()
+		println("Entity: ", string(jso))
+	}
 	return &entities, nil
 }
 

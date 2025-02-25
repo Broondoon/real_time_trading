@@ -12,6 +12,8 @@ type MatchingEngineToExecutionJSON struct {
 	Quantity      int     `json:"quantity"`
 }
 
+
+
 type StockPrice struct {
 	StockID   string  `json:"stock_id"`
 	StockName string  `json:"stock_name"`
