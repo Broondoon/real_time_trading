@@ -397,7 +397,7 @@ var userIDKey = contextKey("userID")
 
 func TokenAuthMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		tokenString := r.Header.Get("Authorization")
+		tokenString := r.Header.Get("token")
 		if tokenString == "" {
 			http.Error(w, "Unauthorized: missing token", http.StatusUnauthorized)
 			return
