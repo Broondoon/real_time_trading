@@ -75,13 +75,13 @@ func Login(c *gin.Context) {
 	database.DB.Where("username = ?", input.Username).First(&user)
 
 	if user.ID == 0 || !CheckPasswordHash(input.Password, user.Password) {
-		RespondError(c, http.StatusUnauthorized, "Invalid Credentials.")
+		RespondError(c, http.StatusBadRequest, "Invalid Credentials.")
 		return
 	}
 
 	token, err := GenerateToken(user.ID)
 	if err != nil {
-		RespondError(c, http.StatusInternalServerError, "Token gneration failed.")
+		RespondError(c, http.StatusInternalServerError, "Token generation failed.")
 		return
 	}
 
@@ -111,7 +111,7 @@ func Test(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "You have successfull queried a " +
+	c.JSON(http.StatusOK, gin.H{"message": "You have successfully queried a " +
 		"protected endpoint with your JWT token. Excellent!",
 		"userID": userID,
 	})
