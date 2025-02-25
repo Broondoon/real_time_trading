@@ -59,18 +59,14 @@ func AddNewStockHandler(responseWriter http.ResponseWriter, data []byte, queryPa
 		responseWriter.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	println("Stock ID: ", stockID.StockID)
-
 	AddNewStock(stockID.StockID)
 	responseWriter.WriteHeader(http.StatusOK)
 }
 
 func AddNewStock(stockID string) {
-	println("Parsed Stock ID: ", stockID)
 	_, ok := _matchingEngineMap[stockID]
 	//if we don't have a matching engine for this stock, create one
 	if !ok {
-		println("creating matching engine for stock: ", stockID)
 		stockOrders := _databaseManager.GetInitialStockOrdersForStock(stockID)
 		ordersInterface := make([]order.StockOrderInterface, len(*stockOrders))
 		copy(ordersInterface, *stockOrders)
@@ -80,20 +76,19 @@ func AddNewStock(stockID string) {
 			SendToOrderExecutionFunc: SendToOrderExection,
 			DatabaseManager:          _databaseManager,
 		})
-		println("created matching engine for stock: ", stockID)
 		_matchingEngineMap[stockID] = me
 		go me.RunMatchingEngineOrders()
 		go me.RunMatchingEngineUpdates()
-		println("running matching engine for stock: ", stockID)
 	}
 }
 
 func PlaceStockOrderHandler(responseWriter http.ResponseWriter, data []byte, queryParams url.Values, requestType string) {
+	println("Received stock order")
+	println("Data: ", string(data))
 	//parse the stock order
 	stockOrder, err := order.Parse(data)
 	if err != nil {
 		println("Error: ", err.Error())
-
 		responseWriter.WriteHeader(http.StatusBadRequest)
 		return
 	}
@@ -105,13 +100,19 @@ func PlaceStockOrderHandler(responseWriter http.ResponseWriter, data []byte, que
 }
 
 func PlaceStockOrder(stockOrder order.StockOrderInterface) bool {
+	println("Placing stock order")
 	me, ok := _matchingEngineMap[stockOrder.GetStockID()]
 	if !ok {
+		println("Error: Matching engine not found")
 		return false
 	}
 
-	_databaseManager.Create(stockOrder)
-	me.AddOrder(stockOrder)
+	createdOrder, err := _databaseManager.Create(stockOrder)
+	if err != nil {
+		println("Error: ", err.Error())
+		return false
+	}
+	me.AddOrder(createdOrder)
 	return true
 }
 
