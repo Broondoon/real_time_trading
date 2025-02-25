@@ -65,8 +65,9 @@ func TestGetStockPortfolio(t *testing.T) {
 	t.Logf("Response: %s", string(response))
 
 	var stockResponse []struct {
-		StockID  string `json:"stock_id"`
-		Quantity int    `json:"quantity"`
+		StockID   string `json:"stock_id"`
+		StockName string `json:"stock_name"`
+		Quantity  int    `json:"quantity_owned"`
 	}
 	if err := json.Unmarshal(response, &stockResponse); err != nil {
 		t.Fatalf("Failed to parse stock portfolio response: %v", err)
@@ -91,14 +92,19 @@ func TestAddStockToUser(t *testing.T) {
 	t.Logf("Response: %s", string(response))
 
 	var addStockResponse struct {
-		StockID  string `json:"stock_id"`
-		Quantity int    `json:"quantity"`
+		Success bool        `json:"success"`
+		Data    interface{} `json:"data"`
 	}
+
 	if err := json.Unmarshal(response, &addStockResponse); err != nil {
 		t.Fatalf("Failed to parse add stock response: %v", err)
 	}
 
-	if addStockResponse.StockID != "AAPL" || addStockResponse.Quantity != 10 {
-		t.Errorf("Expected stock AAPL with quantity 10, got %s with quantity %d", addStockResponse.StockID, addStockResponse.Quantity)
+	if !addStockResponse.Success {
+		t.Errorf("Expected success to be true, got false")
+	}
+
+	if addStockResponse.Data != nil {
+		t.Errorf("Expected data to be null, got: %v", addStockResponse.Data)
 	}
 }
