@@ -1,7 +1,7 @@
 package handlers
 
 import (
-	"Shared/entities/user-stock"
+	userStock "Shared/entities/user-stock"
 	"Shared/network"
 	"databaseAccessUserManagement"
 	"encoding/json"
@@ -34,8 +34,12 @@ func getStockPortfolioHandler(responseWriter http.ResponseWriter, data []byte, q
 		responseWriter.WriteHeader(http.StatusNotFound)
 		return
 	}
+	returnVal := network.ReturnJSON{
+		Success: true,
+		Data:    stocks,
+	}
 
-	stocksJSON, err := json.Marshal(stocks)
+	stocksJSON, err := json.Marshal(returnVal)
 	if err != nil {
 		responseWriter.WriteHeader(http.StatusInternalServerError)
 		return
@@ -74,8 +78,12 @@ func addStockToUser(responseWriter http.ResponseWriter, data []byte, queryParams
 		responseWriter.WriteHeader(http.StatusInternalServerError)
 		return
 	}
+	returnVal := network.ReturnJSON{
+		Success: true,
+		Data:    createdUserStock,
+	}
 
-	responseJSON, err := json.Marshal(createdUserStock)
+	responseJSON, err := json.Marshal(returnVal)
 	if err != nil {
 		responseWriter.WriteHeader(http.StatusInternalServerError)
 		return

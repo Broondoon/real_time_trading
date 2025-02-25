@@ -37,11 +37,16 @@ type AddStock struct {
 	Quantity int    `json:"quantity"`
 }
 
+// Transfer Entity to send back to Matching Engine
 
-
-// Transfer Entity to send back to Matching Engine once the steps
-// in order-executor.go's "ProcessTrade" are complete, along with the HTTP status code
+// If the buy order failed, then the is_buy_failed field = true
+// If the sell order failed, then the is_sell_failed field =true
 type ExecutorToMatchingEngineJSON struct {
-	IsBuyFailure  bool    `json:"is_buy_failed"` // If the buy order failed, then is_buy_failed = true
-	IsSellFailure bool    `json:"is_sell_failed"`// If the sell order failed, then is_sell_failed = true
+	IsBuyFailure  bool `json:"is_buy_failed"`
+	IsSellFailure bool `json:"is_sell_failed"`
+}
+
+type ReturnJSON struct {
+	Success bool `json:"success"`
+	Data    any  `json:"data"`
 }
