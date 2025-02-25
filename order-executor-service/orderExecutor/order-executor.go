@@ -15,7 +15,7 @@ import (
 
 // ProcessTrade
 func ProcessTrade(orderData network.MatchingEngineToExecutionJSON, databaseAccessTransact databaseAccessTransaction.DatabaseAccessInterface, databaseAccessUser databaseAccessUserManagement.DatabaseAccessInterface) (bool, bool, error) {
-
+	//return true, true, nil
 	// Transfer Entity received from the Matching Engine //
 	buyerID := orderData.BuyerID
 	sellerID := orderData.SellerID

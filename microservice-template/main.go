@@ -122,19 +122,6 @@ func main() {
 			DateCreated:  time.Now(),
 			DateModified: time.Now(),
 		},
-		StockID:   newStock2.GetId(),
-		Quantity:  5,
-		Price:     7.5,
-		OrderType: "LIMIT",
-		IsBuy:     false,
-	})
-
-	so2 := order.New(order.NewStockOrderParams{
-		NewEntityParams: entity.NewEntityParams{
-			ID:           "so2",
-			DateCreated:  time.Now(),
-			DateModified: time.Now(),
-		},
 		StockID:   newStock1.GetId(),
 		Quantity:  5,
 		Price:     7.5,
@@ -142,32 +129,45 @@ func main() {
 		IsBuy:     false,
 	})
 
-	so3 := order.New(order.NewStockOrderParams{
+	// so2 := order.New(order.NewStockOrderParams{
+	// 	NewEntityParams: entity.NewEntityParams{
+	// 		ID:           "so2",
+	// 		DateCreated:  time.Now(),
+	// 		DateModified: time.Now(),
+	// 	},
+	// 	StockID:   newStock1.GetId(),
+	// 	Quantity:  5,
+	// 	Price:     7.5,
+	// 	OrderType: "LIMIT",
+	// 	IsBuy:     false,
+	// })
 
-		NewEntityParams: entity.NewEntityParams{
-			ID:           "so3",
-			DateCreated:  time.Now(),
-			DateModified: time.Now(),
-		},
-		StockID:   newStock1.GetId(),
-		Quantity:  5,
-		Price:     8.5,
-		OrderType: "LIMIT",
-		IsBuy:     false,
-	})
+	// so3 := order.New(order.NewStockOrderParams{
 
-	so4 := order.New(order.NewStockOrderParams{
-		NewEntityParams: entity.NewEntityParams{
-			ID:           "so4",
-			DateCreated:  time.Now(),
-			DateModified: time.Now(),
-		},
-		StockID:   newStock1.GetId(),
-		Quantity:  5,
-		Price:     6.5,
-		OrderType: "LIMIT",
-		IsBuy:     false,
-	})
+	// 	NewEntityParams: entity.NewEntityParams{
+	// 		ID:           "so3",
+	// 		DateCreated:  time.Now(),
+	// 		DateModified: time.Now(),
+	// 	},
+	// 	StockID:   newStock1.GetId(),
+	// 	Quantity:  5,
+	// 	Price:     8.5,
+	// 	OrderType: "LIMIT",
+	// 	IsBuy:     false,
+	// })
+
+	// so4 := order.New(order.NewStockOrderParams{
+	// 	NewEntityParams: entity.NewEntityParams{
+	// 		ID:           "so4",
+	// 		DateCreated:  time.Now(),
+	// 		DateModified: time.Now(),
+	// 	},
+	// 	StockID:   newStock1.GetId(),
+	// 	Quantity:  5,
+	// 	Price:     6.5,
+	// 	OrderType: "LIMIT",
+	// 	IsBuy:     false,
+	// })
 
 	so5 := order.New(order.NewStockOrderParams{
 		NewEntityParams: entity.NewEntityParams{
@@ -181,19 +181,19 @@ func main() {
 		IsBuy:     true,
 	})
 
-	so6 := order.New(order.NewStockOrderParams{
-		NewEntityParams: entity.NewEntityParams{
-			ID:           "so6",
-			DateCreated:  time.Now(),
-			DateModified: time.Now(),
-		},
-		StockID:   newStock1.GetId(),
-		Quantity:  10,
-		OrderType: "MARKET",
-		IsBuy:     true,
-	})
-
-	stockOrders := []order.StockOrderInterface{so1, so2, so3, so4, so5, so6}
+	// so6 := order.New(order.NewStockOrderParams{
+	// 	NewEntityParams: entity.NewEntityParams{
+	// 		ID:           "so6",
+	// 		DateCreated:  time.Now(),
+	// 		DateModified: time.Now(),
+	// 	},
+	// 	StockID:   newStock1.GetId(),
+	// 	Quantity:  10,
+	// 	OrderType: "MARKET",
+	// 	IsBuy:     true,
+	// })
+	//so2, so3, so4,, so6
+	stockOrders := []order.StockOrderInterface{so1, so5}
 
 	for _, so := range stockOrders {
 		val, err = networkManager.OrderInitiator().Post("engine/placeStockOrder", so)
