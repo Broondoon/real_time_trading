@@ -4,6 +4,7 @@ import (
 	"Shared/entities/entity"
 	"Shared/entities/order"
 	"Shared/entities/stock"
+	userStock "Shared/entities/user-stock"
 	"Shared/entities/wallet"
 	"Shared/network"
 	"databaseAccessUserManagement"
@@ -53,8 +54,6 @@ func main() {
 	println(testArray)
 	println("Wallet gotten")
 
-	
-
 	//Create a new Stock
 	newStock1 := stock.New(stock.NewStockParams{
 		NewEntityParams: entity.NewEntityParams{
@@ -83,6 +82,38 @@ func main() {
 		panic(err)
 	}
 	println("Stock Created")
+
+	ea.UserStock().Create(userStock.New(userStock.NewUserStockParams{
+		NewEntityParams: entity.NewEntityParams{
+			ID: uuid.New().String(),
+		},
+		UserID:   "6fd2fc6b-9142-4777-8b30-575ff6fa2460",
+		StockID:  newStock1.GetId(),
+		Quantity: 100,
+	}))
+
+	ea.UserStock().Create(userStock.New(userStock.NewUserStockParams{
+		NewEntityParams: entity.NewEntityParams{
+			ID: uuid.New().String(),
+		},
+		UserID:   "6fd2fc6b-9142-4777-8b30-575ff6fa2460",
+		StockID:  newStock2.GetId(),
+		Quantity: 100,
+	}))
+
+	d, err := ea.UserStock().GetByForeignID("user_id", "6fd2fc6b-9142-4777-8b30-575ff6fa2460")
+	if err != nil {
+		println("Error getting user stock: ", err)
+		panic(err)
+	}
+	for _, us := range *d {
+		da, err := us.ToJSON()
+		if err != nil {
+			println("Error converting user stock to json: ", err)
+			panic(err)
+		}
+		println("User Stock gotten: ", string(da))
+	}
 
 	//Create a new Stock Order
 	so1 := order.New(order.NewStockOrderParams{

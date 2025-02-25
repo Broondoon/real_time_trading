@@ -258,6 +258,7 @@ func (d *EntityDataAccessHTTP[TEntity, TInterface]) GetByIDs(ids []string) (*[]T
 }
 
 func (d *EntityDataAccessHTTP[TEntity, TInterface]) GetByForeignID(foreignIDColumn string, foreignID string) (*[]TInterface, error) {
+	println("Getting by foreign ID")
 	if d.GetRoute == "" {
 		d.GetRoute = d.DefaultRoute
 		fmt.Printf("[DEBUG] GetRoute was empty, set to DefaultRoute: %s\n", d.DefaultRoute)
