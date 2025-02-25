@@ -1,10 +1,13 @@
 package handlers
 
 import (
+	"Shared/entities/entity"
+	"Shared/entities/wallet"
 	"Shared/network"
 	"databaseAccessUserManagement"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"net/url"
 )
@@ -20,6 +23,9 @@ func InitializeWallet(walletAccess databaseAccessUserManagement.WalletDataAccess
 
 	networkManager.AddHandleFuncProtected(network.HandlerParams{Pattern: "transaction/getWalletBalance", Handler: getWalletBalanceHandler})
 	networkManager.AddHandleFuncProtected(network.HandlerParams{Pattern: "transaction/addMoneyToWallet", Handler: addMoneyToWalletHandler})
+	//TODO: Comment out below line when not testing:
+	testFuncInsertIntoDb("6fd2fc6b-9142-4777-8b30-575ff6fa2460")
+
 }
 
 func getWalletBalanceHandler(responseWriter http.ResponseWriter, data []byte, queryParams url.Values, requestType string) {
@@ -62,6 +68,22 @@ func getWalletBalanceHandler(responseWriter http.ResponseWriter, data []byte, qu
 	responseWriter.Header().Set("Content-Type", "application/json")
 	responseWriter.WriteHeader(http.StatusOK)
 	responseWriter.Write(walletJSON)
+}
+
+// TODO: comment this out later
+func testFuncInsertIntoDb(userID string) {
+	params := wallet.NewWalletParams{
+		NewEntityParams: entity.NewEntityParams{},
+		UserID:          userID,
+		Balance:         100.0,
+	}
+	newWallet := wallet.New(params)
+
+	createdWallet, err := _walletAccess.Create(newWallet)
+	if err != nil {
+		log.Fatalf("Failed to create wallet: %v", err)
+	}
+	fmt.Printf("Created wallet for user %s with balance: %.2f\n", createdWallet.GetUserID(), createdWallet.GetBalance())
 }
 
 func addMoneyToWalletHandler(responseWriter http.ResponseWriter, data []byte, queryParams url.Values, requestType string) {

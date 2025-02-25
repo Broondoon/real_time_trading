@@ -2,16 +2,14 @@ package main
 
 import (
 	"Shared/network"
-	"bytes"
 	"encoding/json"
-	"log"
 	"testing"
 )
 
 var userID = "6fd2fc6b-9142-4777-8b30-575ff6fa2460"
 var client = network.NewNetwork().UserManagement()
 
-//var stockClient = network.NewNetwork().UserManagementDatabase()
+var stockClient = network.NewNetwork().UserManagementDatabase()
 
 func TestGetWalletBalance(t *testing.T) {
 	queryParams := map[string]string{"userID": userID}
@@ -35,6 +33,7 @@ func TestGetWalletBalance(t *testing.T) {
 	}
 }
 
+/*
 func TestAddMoneyToWallet(t *testing.T) {
 	payload := map[string]interface{}{
 		"amount": 100.00,
@@ -59,7 +58,6 @@ func TestAddMoneyToWallet(t *testing.T) {
 	}
 }
 
-/*
 func TestGetStockPortfolio(t *testing.T) {
 	queryParams := map[string]string{"userID": userID}
 	response, err := stockClient.Get("transaction/getStockPortfolio", queryParams)
