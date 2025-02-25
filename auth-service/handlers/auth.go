@@ -34,21 +34,21 @@ func GenerateToken(userID uint) (string, error) {
 func Register(c *gin.Context) {
 	var input models.User
 	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		RespondError(c, http.StatusBadRequest, err.Error())
 		return
 	}
 
 	// Check if the username already exists.
 	var existingUser models.User
 	if err := database.DB.Where("Username = ?", input.Username).First(&existingUser).Error; err == nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "User already exists"})
+		RespondError(c, http.StatusBadRequest, "User already exists.")
 		return
 	}
 
 	// Hash the password.
 	hashedPassword, err := HashPassword(input.Password)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error hashing password"})
+		RespondError(c, http.StatusInternalServerError, "Error hasning password.")
 		return
 	}
 	user := models.User{
@@ -58,16 +58,16 @@ func Register(c *gin.Context) {
 	}
 
 	if err := database.DB.Create(&user).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		RespondError(c, http.StatusInternalServerError, err.Error())
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"message": "User registered"})
+	RespondSuccess(c, nil)
 }
 
 func Login(c *gin.Context) {
 	var input models.User
 	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		RespondError(c, http.StatusBadRequest, err.Error())
 		return
 	}
 
@@ -75,21 +75,32 @@ func Login(c *gin.Context) {
 	database.DB.Where("username = ?", input.Username).First(&user)
 
 	if user.ID == 0 || !CheckPasswordHash(input.Password, user.Password) {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid Credentials"})
+		RespondError(c, http.StatusBadRequest, "Invalid Credentials.")
 		return
 	}
 
 	token, err := GenerateToken(user.ID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Token generation failed"})
+		RespondError(c, http.StatusInternalServerError, "Token generation failed.")
 		return
 	}
 
+	RespondSuccess(c, gin.H{
+		"token": token,
+	})
+}
+
+func RespondSuccess(c *gin.Context, data interface{}) {
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
-		"data": gin.H{
-			"token": token,
-		},
+		"data":    data,
+	})
+}
+
+func RespondError(c *gin.Context, statusCode int, errorMsg string) {
+	c.JSON(statusCode, gin.H{
+		"success": false,
+		"error":   errorMsg,
 	})
 }
 
@@ -100,7 +111,7 @@ func Test(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "You have successfull queried a " +
+	c.JSON(http.StatusOK, gin.H{"message": "You have successfully queried a " +
 		"protected endpoint with your JWT token. Excellent!",
 		"userID": userID,
 	})

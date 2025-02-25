@@ -60,13 +60,13 @@ func New(params NewWalletParams) *Wallet {
 	} else {
 		UserID = params.UserID
 	}
+	e.SetId(UserID)
 
 	wb := &Wallet{
 		UserID:  UserID,
 		Balance: params.Balance,
 		Entity:  *e,
 	}
-	wb.SetId(e.GetId())
 	// Using direct field access; no need to set internal function defaults.
 	return wb
 }

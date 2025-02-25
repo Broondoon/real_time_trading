@@ -77,6 +77,7 @@ type NewQueueParams struct {
 func NewQueue(params *NewQueueParams) OrderBookDataStructureInterface {
 	return &Queue{
 		BaseOrderBookDataStructureInterface: NewBaseOrderBookDataStructure(params.NewOrderBookDataStructureParams),
+		data:                                list.New(),
 	}
 }
 
@@ -103,7 +104,7 @@ func (p *PriceNodeMap) ensureNodeExists(key float64) {
 			}),
 			priceValue: key,
 		}
-		if key > p.currentBestPrice {
+		if key < p.currentBestPrice || p.currentBestPrice == 0 {
 			p.currentBestPrice = key
 		}
 	}
@@ -113,15 +114,16 @@ func (p *PriceNodeMap) validateNode(node *PriceNode) {
 	if node.priceList.Length() == 0 {
 		p.currentBestPrice = 0
 		for key := range p.data {
-			if key > p.currentBestPrice {
+			if key < p.currentBestPrice || p.currentBestPrice == 0 {
 				p.currentBestPrice = key
 			}
 		}
+		delete(p.data, node.priceValue)
 	}
 }
 
 func (p *PriceNodeMap) Push(stockOrder order.StockOrderInterface) {
-	price := float64(stockOrder.GetPrice())
+	price := stockOrder.GetPrice()
 	p.ensureNodeExists(price)
 	p.data[price].priceList.Push(stockOrder)
 
@@ -134,10 +136,12 @@ func (p *PriceNodeMap) PushFront(stockOrder order.StockOrderInterface) {
 }
 
 func (p *PriceNodeMap) PopNext() order.StockOrderInterface {
-	node := p.data[p.currentBestPrice]
-	order := node.priceList.PopNext()
-	p.validateNode(node)
-	return order
+	if node, ok := p.data[p.currentBestPrice]; ok {
+		order := node.priceList.PopNext()
+		p.validateNode(node)
+		return order
+	}
+	return nil
 }
 
 func (p *PriceNodeMap) Remove(params *RemoveParams) order.StockOrderInterface {
@@ -162,6 +166,7 @@ func NewPriceNodeMap(params *NewPriceNodeMapParams) OrderBookDataStructureInterf
 	return &PriceNodeMap{
 		BaseOrderBookDataStructureInterface: NewBaseOrderBookDataStructure(params.NewOrderBookDataStructureParams),
 		data:                                make(map[float64]*PriceNode),
+		currentBestPrice:                    0,
 	}
 }
 

@@ -107,7 +107,13 @@ func handleFunc(params HandlerParams, w http.ResponseWriter, r *http.Request) {
 	// fmt.Println("Handling request for: ", r.URL.Path)
 	var body []byte
 	var err error
-	var queryParams url.Values
+	queryParams := make(url.Values)
+	queryParams, err = url.ParseQuery(r.URL.RawQuery)
+	if err != nil {
+		fmt.Println("Error, there was an issue with reading the message:", err)
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
 	if r.Method == http.MethodGet || r.Method == http.MethodDelete || r.Method == http.MethodPut {
 		//decode params
 		queryParams = r.URL.Query()
@@ -126,8 +132,9 @@ func handleFunc(params HandlerParams, w http.ResponseWriter, r *http.Request) {
 		}
 		defer r.Body.Close()
 	}
-	if r.Context().Value("userID") != nil {
-		queryParams.Add("userID", r.Context().Value("userID").(string))
+
+	if r.Context().Value(userIDKey) != nil {
+		queryParams.Add("userID", r.Context().Value(userIDKey).(string))
 	}
 
 	params.Handler(w, body, queryParams, r.Method)
@@ -264,25 +271,31 @@ func (hc *HttpClient) Get(endpoint string, queryParams map[string]string) ([]byt
 func (hc *HttpClient) Post(endpoint string, payload interface{}) ([]byte, error) {
 	jsonData, err := json.Marshal(payload)
 	if err != nil {
-		fmt.Println("Error: ", err.Error())
+		fmt.Println("DEBUG: Error marshalling payload:", err.Error())
 		return nil, err
 	}
+	fmt.Printf("DEBUG: Payload marshalled successfully: %s\n", string(jsonData))
 
-	req, err := http.NewRequest(http.MethodPost, hc.BaseURL+endpoint, bytes.NewBuffer(jsonData))
+	fullURL := hc.BaseURL + endpoint
+	req, err := http.NewRequest(http.MethodPost, fullURL, bytes.NewBuffer(jsonData))
 	if err != nil {
-		fmt.Println("Error: ", err.Error())
+		fmt.Println("DEBUG: Error creating POST request:", err.Error())
 		return nil, err
 	}
+	fmt.Printf("DEBUG: Created POST request for URL: %s\n", fullURL)
 
 	req.Header.Set("Content-Type", "application/json")
 	// if err := hc.authenticate(req); err != nil {
 	// 	return nil, err
 	// }
 
+	fmt.Println("DEBUG: Sending POST request...")
 	resp, err := hc.Client.Do(req)
 	if err != nil {
+		fmt.Println("DEBUG: Error sending POST request:", err.Error())
 		return nil, err
 	}
+	fmt.Printf("DEBUG: Received response with status: %s\n", resp.Status)
 
 	return hc.handleResponse(resp)
 }
@@ -376,6 +389,12 @@ func ExtractUserIDFromToken(tokenString string) (uint, error) {
 	return uint(userID), nil
 }
 
+// contextKey is a type for context keys to avoid key collisions.
+type contextKey string
+
+// userIDKey is the key used for storing user ID in the context.
+var userIDKey = contextKey("userID")
+
 func TokenAuthMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		tokenString := r.Header.Get("Authorization")
@@ -383,15 +402,16 @@ func TokenAuthMiddleware(next http.Handler) http.Handler {
 			http.Error(w, "Unauthorized: missing token", http.StatusUnauthorized)
 			return
 		}
-		// Validate token and extract user ID
+		//Validate token and extract user ID
 		userID, err := ExtractUserIDFromToken(tokenString)
 		if err != nil {
 			http.Error(w, "Unauthorized: invalid token", http.StatusUnauthorized)
 			return
 		}
-		// Optionally, you can add the userID to the context:
+		//Optionally, you can add the userID to the context:
+		//userID := "6fd2fc6b-9142-4777-8b30-575ff6fa2460"
 		ctx := r.Context()
-		ctx = context.WithValue(ctx, "userID", userID)
+		ctx = context.WithValue(ctx, userIDKey, userID)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }

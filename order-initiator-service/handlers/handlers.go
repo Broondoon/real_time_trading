@@ -52,7 +52,16 @@ func placeStockOrderHandler(responseWriter http.ResponseWriter, data []byte, que
 		responseWriter.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	responseWriter.WriteHeader(http.StatusOK)
+	returnVal := network.ReturnJSON{
+		Success: true,
+		Data:    nil,
+	}
+	returnValJSON, err := json.Marshal(returnVal)
+	if err != nil {
+		responseWriter.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	responseWriter.Write(returnValJSON)
 }
 
 func placeStockOrder(stockOrder order.StockOrderInterface) error {
@@ -91,7 +100,16 @@ func cancelStockTransactionHandler(responseWriter http.ResponseWriter, data []by
 		responseWriter.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	responseWriter.WriteHeader(http.StatusOK)
+	returnVal := network.ReturnJSON{
+		Success: true,
+		Data:    nil,
+	}
+	returnValJSON, err := json.Marshal(returnVal)
+	if err != nil {
+		responseWriter.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	responseWriter.Write(returnValJSON)
 }
 
 func cancelStockTransaction(id string) error {
