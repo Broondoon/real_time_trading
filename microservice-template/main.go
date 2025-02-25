@@ -4,7 +4,9 @@ import (
 	"Shared/entities/entity"
 	"Shared/entities/order"
 	"Shared/entities/stock"
+	"Shared/entities/wallet"
 	"Shared/network"
+	"databaseAccessUserManagement"
 	"time"
 
 	"github.com/google/uuid"
@@ -24,17 +26,35 @@ func main() {
 	// println(string(val))
 	// println("Stock Transactions gotten")
 
-	// ea := databaseAccessUserManagement.NewDatabaseAccess(&databaseAccessUserManagement.NewDatabaseAccessParams{
-	// 	Network: networkManager,
-	// })
-	// test, err := ea.Wallet().GetByForeignID("user_id", "6fd2fc6b-9142-4777-8b30-575ff6fa2460")
-	// if err != nil {
-	// 	println("Error getting wallet: ", err)
-	// 	panic(err)
-	// }
-	// println(test)
-	// println("Wallet gotten")
-	//stpcls
+	ea := databaseAccessUserManagement.NewDatabaseAccess(&databaseAccessUserManagement.NewDatabaseAccessParams{
+		Network: networkManager,
+	})
+
+	test, err := ea.Wallet().Create(wallet.New(wallet.NewWalletParams{
+		NewEntityParams: entity.NewEntityParams{
+			DateCreated:  time.Now(),
+			DateModified: time.Now(),
+		},
+		UserID:  "6fd2fc6b-9142-4777-8b30-575ff6fa2460",
+		Balance: 100000,
+	}))
+	if err != nil {
+		println("Error creating wallet: ", err)
+		panic(err)
+	}
+	walletOutput, err := test.ToJSON()
+	println("Wallet created: ", string(walletOutput))
+
+	testArray, err := ea.Wallet().GetByForeignID("user_id", "6fd2fc6b-9142-4777-8b30-575ff6fa2460")
+	if err != nil {
+		println("Error getting wallet: ", err)
+		panic(err)
+	}
+	println(testArray)
+	println("Wallet gotten")
+
+	
+
 	//Create a new Stock
 	newStock1 := stock.New(stock.NewStockParams{
 		NewEntityParams: entity.NewEntityParams{
