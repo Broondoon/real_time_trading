@@ -210,13 +210,13 @@ func main() {
 	}
 	println("Stock Prices gotten")
 
-	//cancel so3
-	stockTransactionIdObject := network.StockTransactionID{StockTransactionID: so3.GetId()}
-	val, err = networkManager.OrderInitiator().Post("engine/cancelStockTransaction", stockTransactionIdObject)
-	if err != nil {
-		panic(err)
-	}
-	println(string(val))
+	// //cancel so3
+	// stockTransactionIdObject := network.StockTransactionID{StockTransactionID: so3.GetId()}
+	// val, err = networkManager.OrderInitiator().Post("engine/cancelStockTransaction", stockTransactionIdObject)
+	// if err != nil {
+	// 	panic(err)
+	// }
+	// println(string(val))
 
 	// // fmt.Println the Stock Order
 	// // fmt.Println("Stock Order: ")
