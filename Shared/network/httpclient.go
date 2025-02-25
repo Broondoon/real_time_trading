@@ -383,6 +383,12 @@ func ExtractUserIDFromToken(tokenString string) (uint, error) {
 	return uint(userID), nil
 }
 
+// contextKey is a type for context keys to avoid key collisions.
+type contextKey string
+
+// userIDKey is the key used for storing user ID in the context.
+var userIDKey = contextKey("userID")
+
 func TokenAuthMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// tokenString := r.Header.Get("Authorization")
@@ -396,10 +402,10 @@ func TokenAuthMiddleware(next http.Handler) http.Handler {
 		// 	http.Error(w, "Unauthorized: invalid token", http.StatusUnauthorized)
 		// 	return
 		// }
-		// // Optionally, you can add the userID to the context:
-		userID := "6fd2fc6b-9142-4777-8b30-575ff6fa2460"
+		// Optionally, you can add the userID to the context:
+		userID := "1"
 		ctx := r.Context()
-		ctx = context.WithValue(ctx, "userID", userID)
+		ctx = context.WithValue(ctx, userIDKey, userID)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }

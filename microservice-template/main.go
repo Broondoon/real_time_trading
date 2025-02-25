@@ -4,20 +4,61 @@ import (
 	"Shared/entities/entity"
 	"Shared/entities/order"
 	"Shared/entities/stock"
+	"Shared/entities/wallet"
 	"Shared/network"
+	"databaseAccessUserManagement"
 	"time"
+
+	"github.com/google/uuid"
 	//"Shared/network"
 )
 
 func main() {
 	var err error
+	var val []byte
 
 	networkManager := network.NewNetwork()
+
+	// val, err = networkManager.Transactions().Get("transaction/getStockTransactions", nil)
+	// if err != nil {
+	// 	panic(err)
+	// }
+	// println(string(val))
+	// println("Stock Transactions gotten")
+
+	ea := databaseAccessUserManagement.NewDatabaseAccess(&databaseAccessUserManagement.NewDatabaseAccessParams{
+		Network: networkManager,
+	})
+
+	test, err := ea.Wallet().Create(wallet.New(wallet.NewWalletParams{
+		NewEntityParams: entity.NewEntityParams{
+			DateCreated:  time.Now(),
+			DateModified: time.Now(),
+		},
+		UserID:  "6fd2fc6b-9142-4777-8b30-575ff6fa2460",
+		Balance: 100000,
+	}))
+	if err != nil {
+		println("Error creating wallet: ", err)
+		panic(err)
+	}
+	walletOutput, err := test.ToJSON()
+	println("Wallet created: ", string(walletOutput))
+
+	testArray, err := ea.Wallet().GetByForeignID("user_id", "6fd2fc6b-9142-4777-8b30-575ff6fa2460")
+	if err != nil {
+		println("Error getting wallet: ", err)
+		panic(err)
+	}
+	println(testArray)
+	println("Wallet gotten")
+
+	
 
 	//Create a new Stock
 	newStock1 := stock.New(stock.NewStockParams{
 		NewEntityParams: entity.NewEntityParams{
-			ID:           "",
+			ID:           uuid.New().String(),
 			DateCreated:  time.Now(),
 			DateModified: time.Now(),
 		},
@@ -25,31 +66,23 @@ func main() {
 	})
 	newStock2 := stock.New(stock.NewStockParams{
 		NewEntityParams: entity.NewEntityParams{
-			ID:           "",
+			ID:           uuid.New().String(),
 			DateCreated:  time.Now(),
 			DateModified: time.Now(),
 		},
 		Name: "google",
 	})
 
-	val, err := networkManager.Stocks().Post("setup/createStock", newStock1)
+	val, err = networkManager.Stocks().Post("setup/createStock", newStock1)
 	if err != nil {
 		panic(err)
 	}
-	println(string(val))
+
 	val, err = networkManager.Stocks().Post("setup/createStock", newStock2)
 	if err != nil {
 		panic(err)
 	}
-	println(string(val))
 	println("Stock Created")
-
-	val, err = networkManager.Transactions().Get("transaction/getStockTransactions", nil)
-	if err != nil {
-		panic(err)
-	}
-	println(string(val))
-	println("Stock Transactions gotten")
 
 	//Create a new Stock Order
 	so1 := order.New(order.NewStockOrderParams{
@@ -137,18 +170,18 @@ func main() {
 			panic(err)
 		}
 		println(string(val))
+		//check prices
+		val, err = networkManager.MatchingEngine().Get("transaction/getStockPrices", nil)
+		if err != nil {
+			panic(err)
+		}
+		println(string(val))
 	}
-	//check prices
-	val, err = networkManager.MatchingEngine().Get("engine/getStockPrices", nil)
-	if err != nil {
-		panic(err)
-	}
-	println(string(val))
 	println("Stock Prices gotten")
 
 	//cancel so3
 	stockTransactionIdObject := network.StockTransactionID{StockTransactionID: so3.GetId()}
-	val, err = networkManager.OrderInitiator().Post("engine/cancelStockOrder", stockTransactionIdObject)
+	val, err = networkManager.OrderInitiator().Post("engine/cancelStockTransaction", stockTransactionIdObject)
 	if err != nil {
 		panic(err)
 	}

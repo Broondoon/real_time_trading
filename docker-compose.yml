@@ -53,6 +53,8 @@ services:
         condition: service_healthy
       stock-database-service:
         condition: service_healthy
+      user-management-service-database:
+        condition: service_healthy
       
 
   matching-engine-service:
