@@ -35,26 +35,26 @@ services:
       retries: 3
 
   # ---------------------- Existing Services ----------------------
-  microservice-template:
-    build:
-      context: .
-      dockerfile: ./${MICROSERVICE_TEMPLATE_HOST}/Dockerfile
-    ports:
-      - "${MICROSERVICE_TEMPLATE_PORT}:${MICROSERVICE_TEMPLATE_PORT}"
-    env_file:
-      - .env
-    environment:
-      DATABASE_URL: ${STOCK_ORDER_DATABASE_URL}
-      PORT: ${MICROSERVICE_TEMPLATE_PORT}
-    networks:
-      - go-network
-    depends_on:
-      order-initiator-service:
-        condition: service_healthy
-      stock-database-service:
-        condition: service_healthy
-      user-management-database-service:
-        condition: service_healthy
+  # microservice-template:
+  #   build:
+  #     context: .
+  #     dockerfile: ./${MICROSERVICE_TEMPLATE_HOST}/Dockerfile
+  #   ports:
+  #     - "${MICROSERVICE_TEMPLATE_PORT}:${MICROSERVICE_TEMPLATE_PORT}"
+  #   env_file:
+  #     - .env
+  #   environment:
+  #     DATABASE_URL: ${STOCK_ORDER_DATABASE_URL}
+  #     PORT: ${MICROSERVICE_TEMPLATE_PORT}
+  #   networks:
+  #     - go-network
+  #   depends_on:
+  #     order-initiator-service:
+  #       condition: service_healthy
+  #     stock-database-service:
+  #       condition: service_healthy
+  #     user-management-database-service:
+  #       condition: service_healthy
       
 
   matching-engine-service:
