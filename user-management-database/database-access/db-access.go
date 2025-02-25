@@ -64,7 +64,7 @@ func NewDatabaseAccess(params *NewDatabaseAccessParams) DatabaseAccessInterface 
 		params.UserStockParams.Client = params.Network.UserManagementDatabase()
 	}
 	if params.UserStockParams.DefaultRoute == "" {
-		params.UserStockParams.DefaultRoute = os.Getenv("USER_MANAGEMENT_DATABASE_SERVICE_USER_STOCK_ROUTE")
+		params.UserStockParams.DefaultRoute = os.Getenv("USER_MANAGEMENT_SERVICE_USER_STOCK_ROUTE")
 	}
 	if params.WalletParams.Client == nil {
 		params.WalletParams.Client = params.Network.UserManagementDatabase()

@@ -23,9 +23,27 @@ func InitializeWallet(walletAccess databaseAccessUserManagement.WalletDataAccess
 
 	networkManager.AddHandleFuncProtected(network.HandlerParams{Pattern: "transaction/getWalletBalance", Handler: getWalletBalanceHandler})
 	networkManager.AddHandleFuncProtected(network.HandlerParams{Pattern: "transaction/addMoneyToWallet", Handler: addMoneyToWalletHandler})
+	networkManager.AddHandleFuncProtected(network.HandlerParams{Pattern: "transaction/createWallet", Handler: addMoneyToWalletHandler})
+
 	//TODO: Comment out below line when not testing:
 	testFuncInsertIntoDb("6fd2fc6b-9142-4777-8b30-575ff6fa2460")
 
+}
+
+// TODO: comment this out later
+func testFuncInsertIntoDb(userID string) {
+	params := wallet.NewWalletParams{
+		NewEntityParams: entity.NewEntityParams{},
+		UserID:          userID,
+		Balance:         100.0,
+	}
+	newWallet := wallet.New(params)
+
+	createdWallet, err := _walletAccess.Create(newWallet)
+	if err != nil {
+		log.Fatalf("Failed to create wallet: %v", err)
+	}
+	fmt.Printf("Created wallet for user %s with balance: %.2f\n", createdWallet.GetUserID(), createdWallet.GetBalance())
 }
 
 func getWalletBalanceHandler(responseWriter http.ResponseWriter, data []byte, queryParams url.Values, requestType string) {
@@ -70,22 +88,6 @@ func getWalletBalanceHandler(responseWriter http.ResponseWriter, data []byte, qu
 
 	fmt.Println("Sending successful response...")
 	responseWriter.Write(walletJSON)
-}
-
-// TODO: comment this out later
-func testFuncInsertIntoDb(userID string) {
-	params := wallet.NewWalletParams{
-		NewEntityParams: entity.NewEntityParams{},
-		UserID:          userID,
-		Balance:         100.0,
-	}
-	newWallet := wallet.New(params)
-
-	createdWallet, err := _walletAccess.Create(newWallet)
-	if err != nil {
-		log.Fatalf("Failed to create wallet: %v", err)
-	}
-	fmt.Printf("Created wallet for user %s with balance: %.2f\n", createdWallet.GetUserID(), createdWallet.GetBalance())
 }
 
 func addMoneyToWalletHandler(responseWriter http.ResponseWriter, data []byte, queryParams url.Values, requestType string) {
@@ -143,5 +145,27 @@ func addMoneyToWalletHandler(responseWriter http.ResponseWriter, data []byte, qu
 
 	fmt.Println("DEBUG: Money added successfully, sending 200 OK response")
 	responseWriter.WriteHeader(http.StatusOK)
-	responseWriter.Write([]byte("Money added successfully"))
+}
+
+func createWalletHandler(responseWriter http.ResponseWriter, data []byte, queryParams url.Values, requestType string) {
+	userID := queryParams.Get("userID")
+	if userID == "" {
+		responseWriter.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	params := wallet.NewWalletParams{
+		NewEntityParams: entity.NewEntityParams{},
+		UserID:          userID,
+		Balance:         0.0,
+	}
+	newWallet := wallet.New(params)
+
+	_, err := _walletAccess.Create(newWallet)
+	if err != nil {
+		responseWriter.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	responseWriter.WriteHeader(http.StatusOK)
 }

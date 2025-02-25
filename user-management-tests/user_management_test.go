@@ -3,7 +3,6 @@ package main
 import (
 	"Shared/network"
 	"encoding/json"
-	"log"
 	"testing"
 )
 
@@ -41,16 +40,20 @@ func TestAddMoneyToWallet(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to add money to wallet: %v", err)
 	}
+	println(string(response))
 
-	var result map[string]interface{}
+	var result struct {
+		Success bool        `json:"success"`
+		Data    interface{} `json:"data"`
+	}
 	if err := json.Unmarshal(response, &result); err != nil {
 		t.Fatalf("Failed to parse response: %v", err)
 	}
-
-	log.Printf("Response: %v\n", result)
-
-	if result["message"] != "Money added successfully" {
-		t.Errorf("Expected success message, got: %v", result["message"])
+	if !result.Success {
+		t.Errorf("Expected success to be true, got false")
+	}
+	if result.Data != nil {
+		t.Errorf("Expected data to be null, got: %v", result.Data)
 	}
 }
 
