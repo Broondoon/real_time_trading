@@ -7,7 +7,6 @@ import (
 	"databaseAccessUserManagement"
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 	"net/url"
 )
@@ -26,12 +25,12 @@ func InitializeWallet(walletAccess databaseAccessUserManagement.WalletDataAccess
 	networkManager.AddHandleFuncProtected(network.HandlerParams{Pattern: "transaction/createWallet", Handler: createWalletHandler})
 
 	//TODO: Comment out below line when not testing:
-	testFuncInsertIntoDb("6fd2fc6b-9142-4777-8b30-575ff6fa2460")
+	//testFuncInsertIntoDb("6fd2fc6b-9142-4777-8b30-575ff6fa2460")
 
 }
 
 // TODO: comment this out later
-func testFuncInsertIntoDb(userID string) {
+/*func testFuncInsertIntoDb(userID string) {
 	params := wallet.NewWalletParams{
 		NewEntityParams: entity.NewEntityParams{},
 		UserID:          userID,
@@ -44,7 +43,7 @@ func testFuncInsertIntoDb(userID string) {
 		log.Fatalf("Failed to create wallet: %v", err)
 	}
 	fmt.Printf("Created wallet for user %s with balance: %.2f\n", createdWallet.GetUserID(), createdWallet.GetBalance())
-}
+}*/
 
 func getWalletBalanceHandler(responseWriter http.ResponseWriter, data []byte, queryParams url.Values, requestType string) {
 	userID := queryParams.Get("userID")
