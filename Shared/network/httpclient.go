@@ -133,8 +133,8 @@ func handleFunc(params HandlerParams, w http.ResponseWriter, r *http.Request) {
 		defer r.Body.Close()
 	}
 
-	if r.Context().Value("userID") != nil {
-		queryParams.Add("userID", r.Context().Value("userID").(string))
+	if r.Context().Value(userIDKey) != nil {
+		queryParams.Add("userID", r.Context().Value(userIDKey).(string))
 	}
 
 	params.Handler(w, body, queryParams, r.Method)
