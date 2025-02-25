@@ -52,11 +52,16 @@ func GetStockTransactions(responseWriter http.ResponseWriter, data []byte, query
 	sort.SliceStable((*transactions), func(i, j int) bool {
 		return (*transactions)[i].GetTimestamp().Before((*transactions)[j].GetTimestamp())
 	})
-	transactionsJSON, err := json.Marshal(transactions)
+	returnVal := network.ReturnJSON{
+		Success: true,
+		Data:    transactions,
+	}
+	transactionsJSON, err := json.Marshal(returnVal)
 	if err != nil {
 		responseWriter.WriteHeader(http.StatusInternalServerError)
 		return
 	}
+
 	responseWriter.Write(transactionsJSON)
 }
 
@@ -77,7 +82,11 @@ func getWalletTransactions(responseWriter http.ResponseWriter, data []byte, quer
 	sort.SliceStable((*transactions), func(i, j int) bool {
 		return (*transactions)[i].GetTimestamp().Before((*transactions)[j].GetTimestamp())
 	})
-	transactionsJSON, err := json.Marshal(transactions)
+	returnVal := network.ReturnJSON{
+		Success: true,
+		Data:    transactions,
+	}
+	transactionsJSON, err := json.Marshal(returnVal)
 	if err != nil {
 		responseWriter.WriteHeader(http.StatusInternalServerError)
 		return
