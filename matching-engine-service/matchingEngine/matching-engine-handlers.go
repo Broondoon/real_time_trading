@@ -202,40 +202,40 @@ func GetStockPrices() (*[]network.StockPrice, error) {
 }
 
 func SendToOrderExection(buyOrder order.StockOrderInterface, sellOrder order.StockOrderInterface) (network.ExecutorToMatchingEngineJSON, error) {
-	// buyQty := buyOrder.GetQuantity()
-	// sellQty := sellOrder.GetQuantity()
-	// quantity := buyQty
-	// if sellQty < buyQty {
-	// 	quantity = sellQty
-	// }
-	// transferEntity := network.MatchingEngineToExecutionJSON{
-	// 	BuyerID:       buyOrder.GetUserID(),
-	// 	SellerID:      sellOrder.GetUserID(),
-	// 	StockID:       buyOrder.GetStockID(),
-	// 	BuyOrderID:    buyOrder.GetId(),
-	// 	SellOrderID:   sellOrder.GetId(),
-	// 	IsBuyPartial:  buyQty > sellQty,
-	// 	IsSellPartial: buyQty < sellQty,
-	// 	StockPrice:    sellOrder.GetPrice(),
-	// 	Quantity:      quantity,
-	// }
-
-	// data, err := _networkManager.OrderExecutor().Post("orderexecutor", transferEntity)
-
-	// if err != nil {
-	// 	println("Error: ", err.Error())
-	// 	return network.ExecutorToMatchingEngineJSON{}, err
-	// }
-	// print("Matched Data: ", string(data))
-	var matchedData network.ExecutorToMatchingEngineJSON
-	matchedData = network.ExecutorToMatchingEngineJSON{
-		IsBuyFailure:  false,
-		IsSellFailure: false,
+	buyQty := buyOrder.GetQuantity()
+	sellQty := sellOrder.GetQuantity()
+	quantity := buyQty
+	if sellQty < buyQty {
+		quantity = sellQty
 	}
-	// err = json.Unmarshal(data, &matchedData)
-	// if err != nil {
-	// 	println("Error: ", err.Error())
-	// 	return network.ExecutorToMatchingEngineJSON{}, err
+	transferEntity := network.MatchingEngineToExecutionJSON{
+		BuyerID:       buyOrder.GetUserID(),
+		SellerID:      sellOrder.GetUserID(),
+		StockID:       buyOrder.GetStockID(),
+		BuyOrderID:    buyOrder.GetId(),
+		SellOrderID:   sellOrder.GetId(),
+		IsBuyPartial:  buyQty > sellQty,
+		IsSellPartial: buyQty < sellQty,
+		StockPrice:    sellOrder.GetPrice(),
+		Quantity:      quantity,
+	}
+
+	data, err := _networkManager.OrderExecutor().Post("executor", transferEntity)
+
+	if err != nil {
+		println("Error: ", err.Error())
+		return network.ExecutorToMatchingEngineJSON{}, err
+	}
+	print("Matched Data: ", string(data))
+	var matchedData network.ExecutorToMatchingEngineJSON
+	// matchedData = network.ExecutorToMatchingEngineJSON{
+	// 	IsBuyFailure:  false,
+	// 	IsSellFailure: false,
 	// }
+	err = json.Unmarshal(data, &matchedData)
+	if err != nil {
+		println("Error: ", err.Error())
+		return network.ExecutorToMatchingEngineJSON{}, err
+	}
 	return matchedData, nil
 }
