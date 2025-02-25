@@ -10,8 +10,6 @@ import (
 var userID = "6fd2fc6b-9142-4777-8b30-575ff6fa2460"
 var client = network.NewNetwork().UserManagement()
 
-var stockClient = network.NewNetwork().UserManagementDatabase()
-
 func TestGetWalletBalance(t *testing.T) {
 	queryParams := map[string]string{"userID": userID}
 	response, err := client.Get("transaction/getWalletBalance", queryParams)
@@ -56,10 +54,9 @@ func TestAddMoneyToWallet(t *testing.T) {
 	}
 }
 
-/*
 func TestGetStockPortfolio(t *testing.T) {
 	queryParams := map[string]string{"userID": userID}
-	response, err := stockClient.Get("transaction/getStockPortfolio", queryParams)
+	response, err := client.Get("transaction/getStockPortfolio", queryParams)
 
 	if err != nil {
 		t.Fatalf("Failed to get stock portfolio: %v", err)
@@ -86,9 +83,7 @@ func TestAddStockToUser(t *testing.T) {
 		"quantity": 10,
 	}
 
-	requestJSON, _ := json.Marshal(requestBody)
-
-	response, err := stockClient.Post("setup/addStockToUser?userID="+userID, bytes.NewReader(requestJSON))
+	response, err := client.Post("setup/addStockToUser", requestBody)
 	if err != nil {
 		t.Fatalf("Failed to add stock to user: %v", err)
 	}
@@ -107,4 +102,3 @@ func TestAddStockToUser(t *testing.T) {
 		t.Errorf("Expected stock AAPL with quantity 10, got %s with quantity %d", addStockResponse.StockID, addStockResponse.Quantity)
 	}
 }
-*/
