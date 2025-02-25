@@ -51,6 +51,8 @@ services:
     depends_on:
       order-initiator-service:
         condition: service_healthy
+      stock-database-service:
+        condition: service_healthy
       
 
   matching-engine-service:
