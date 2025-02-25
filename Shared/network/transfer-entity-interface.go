@@ -12,6 +12,8 @@ type MatchingEngineToExecutionJSON struct {
 	Quantity      int     `json:"quantity"`
 }
 
+
+
 type StockPrice struct {
 	StockID   string  `json:"stock_id"`
 	StockName string  `json:"stock_name"`
@@ -33,4 +35,13 @@ type WalletBalance struct {
 type AddStock struct {
 	StockID  string `json:"stock_id"`
 	Quantity int    `json:"quantity"`
+}
+
+
+
+// Transfer Entity to send back to Matching Engine once the steps
+// in order-executor.go's "ProcessTrade" are complete, along with the HTTP status code
+type ExecutorToMatchingEngineJSON struct {
+	IsBuyFailure  bool    `json:"is_buy_failed"` // If the buy order failed, then is_buy_failed = true
+	IsSellFailure bool    `json:"is_sell_failed"`// If the sell order failed, then is_sell_failed = true
 }
