@@ -51,16 +51,18 @@ func getWalletBalanceHandler(responseWriter http.ResponseWriter, data []byte, qu
 	}
 
 	walletBalance := WalletBalance{Balance: balance}
+	returnVal := network.ReturnJSON{
+		Success: true,
+		Data:    walletBalance,
+	}
 
-	walletJSON, err := json.Marshal(walletBalance)
+	walletJSON, err := json.Marshal(returnVal)
 	if err != nil {
 		http.Error(responseWriter, "Failed to marshal wallet balance: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	fmt.Println("Sending successful response...")
-	responseWriter.Header().Set("Content-Type", "application/json")
-	responseWriter.WriteHeader(http.StatusOK)
 	responseWriter.Write(walletJSON)
 }
 
@@ -92,7 +94,16 @@ func addMoneyToWalletHandler(responseWriter http.ResponseWriter, data []byte, qu
 		responseWriter.Write([]byte("Failed to add money to wallet"))
 		return
 	}
+	returnVal := network.ReturnJSON{
+		Success: true,
+		Data:    nil,
+	}
 
-	responseWriter.WriteHeader(http.StatusOK)
-	responseWriter.Write([]byte("Money added successfully"))
+	returnValJSON, err := json.Marshal(returnVal)
+	if err != nil {
+		responseWriter.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	responseWriter.Write(returnValJSON)
 }

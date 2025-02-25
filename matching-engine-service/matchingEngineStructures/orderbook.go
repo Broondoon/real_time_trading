@@ -3,6 +3,7 @@ package matchingEngineStructures
 //Methods partially implmeneted using Copilot and ChatGPT 03-mini (preview)
 import (
 	"Shared/entities/order"
+	"sort"
 	"sync"
 )
 
@@ -11,6 +12,7 @@ type OrderBookInterface interface {
 	GetNextOrder() order.StockOrderInterface
 	CompleteBestOrderExtraction()
 	AddOrder(stockOrder order.StockOrderInterface)
+	ReturnOrder(stockOrder order.StockOrderInterface)
 	GetMutex() *sync.Mutex
 	GetData() OrderBookDataStructureInterface
 	GetBestPrice() float64
@@ -37,6 +39,7 @@ func (o *OrderBook) GetBestPrice() float64 {
 // so current half solution is to only unlock after the order is extracted and we are sure we are done with it.
 func (o *OrderBook) GetBestOrder() order.StockOrderInterface {
 	o.mutex.Lock()
+	defer o.mutex.Unlock()
 	return o.data.PopNext()
 }
 func (o *OrderBook) GetNextOrder() order.StockOrderInterface {
@@ -53,6 +56,12 @@ func (o *OrderBook) AddOrder(stockOrder order.StockOrderInterface) {
 	o.data.Push(stockOrder)
 }
 
+func (o *OrderBook) ReturnOrder(stockOrder order.StockOrderInterface) {
+	o.mutex.Lock()
+	defer o.mutex.Unlock()
+	o.data.PushFront(stockOrder)
+}
+
 type NewOrderBookParams struct {
 	dataStructure OrderBookDataStructureInterface
 	InitalOrders  *[]order.StockOrderInterface
@@ -60,7 +69,8 @@ type NewOrderBookParams struct {
 
 func NewOrderBook(params *NewOrderBookParams) OrderBookInterface {
 	ob := &OrderBook{
-		data: params.dataStructure,
+		data:  params.dataStructure,
+		mutex: &sync.Mutex{},
 	}
 	for _, order := range *params.InitalOrders {
 		ob.AddOrder(order)
@@ -87,6 +97,10 @@ func NewBuyOrderBook(params *NewBuyOrderBookParams) BuyOrderBookInterface {
 }
 
 func DefaultBuyOrderBook(initalOrders *[]order.StockOrderInterface) BuyOrderBookInterface {
+	//sort initial orders by date created, Oldest to newest
+	sort.SliceStable((*initalOrders), func(i, j int) bool {
+		return (*initalOrders)[i].GetDateCreated().Before((*initalOrders)[j].GetDateCreated())
+	})
 	return NewBuyOrderBook(&NewBuyOrderBookParams{
 		&NewOrderBookParams{
 			dataStructure: NewQueue(&NewQueueParams{

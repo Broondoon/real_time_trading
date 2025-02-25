@@ -75,5 +75,14 @@ func AddNewStockHandler(responseWriter http.ResponseWriter, data []byte, queryPa
 		responseWriter.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	responseWriter.WriteHeader(http.StatusOK)
+	returnVal := network.ReturnJSON{
+		Success: true,
+		Data:    network.StockID{StockID: newStock.GetId()},
+	}
+	returnValJSON, err := json.Marshal(returnVal)
+	if err != nil {
+		responseWriter.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	responseWriter.Write(returnValJSON)
 }
