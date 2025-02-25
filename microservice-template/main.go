@@ -123,7 +123,7 @@ func main() {
 			DateModified: time.Now(),
 		},
 		StockID:   newStock1.GetId(),
-		Quantity:  5,
+		Quantity:  4,
 		Price:     7.5,
 		OrderType: "LIMIT",
 		IsBuy:     false,
