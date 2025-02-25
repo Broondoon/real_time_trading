@@ -3,6 +3,7 @@ package main
 import (
 	"Shared/network"
 	"encoding/json"
+	"log"
 	"testing"
 )
 
@@ -33,15 +34,12 @@ func TestGetWalletBalance(t *testing.T) {
 	}
 }
 
-/*
 func TestAddMoneyToWallet(t *testing.T) {
 	payload := map[string]interface{}{
-		"amount": 100.00,
+		"amount": 100,
 	}
 
-	requestBody, _ := json.Marshal(payload)
-
-	response, err := client.Post("transaction/addMoneyToWallet?userID="+userID, bytes.NewReader(requestBody))
+	response, err := client.Post("transaction/addMoneyToWallet", payload)
 	if err != nil {
 		t.Fatalf("Failed to add money to wallet: %v", err)
 	}
@@ -58,6 +56,7 @@ func TestAddMoneyToWallet(t *testing.T) {
 	}
 }
 
+/*
 func TestGetStockPortfolio(t *testing.T) {
 	queryParams := map[string]string{"userID": userID}
 	response, err := stockClient.Get("transaction/getStockPortfolio", queryParams)

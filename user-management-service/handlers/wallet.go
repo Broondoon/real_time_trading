@@ -87,34 +87,47 @@ func testFuncInsertIntoDb(userID string) {
 }
 
 func addMoneyToWalletHandler(responseWriter http.ResponseWriter, data []byte, queryParams url.Values, requestType string) {
+
+	fmt.Printf("DEBUG: Received addMoneyToWallet request. Request Type: %s, Query Params: %v\n", requestType, queryParams)
+
 	userID := queryParams.Get("userID")
+	fmt.Printf("DEBUG: Extracted userID: %s\n", userID)
 	if userID == "" {
+		fmt.Println("DEBUG: userID is missing, returning 400 Bad Request")
 		responseWriter.WriteHeader(http.StatusBadRequest)
+		responseWriter.Write([]byte("Missing userID"))
 		return
 	}
 
+	fmt.Printf("DEBUG: Raw request data: %s\n", string(data))
 	var request struct {
 		Amount float64 `json:"amount"`
 	}
 
 	if err := json.Unmarshal(data, &request); err != nil {
+		fmt.Println("DEBUG: Error unmarshalling request data:", err.Error())
 		responseWriter.WriteHeader(http.StatusBadRequest)
 		responseWriter.Write([]byte("Invalid request body"))
 		return
 	}
+	fmt.Printf("DEBUG: Parsed request amount: %f\n", request.Amount)
 
 	if request.Amount <= 0 {
+		fmt.Println("DEBUG: Request amount is invalid (<= 0), returning 400 Bad Request")
 		responseWriter.WriteHeader(http.StatusBadRequest)
 		responseWriter.Write([]byte("Amount must be greater than zero"))
 		return
 	}
 
+	fmt.Printf("DEBUG: Calling _walletAccess.AddMoneyToWallet for userID %s with amount %f\n", userID, request.Amount)
 	if err := _walletAccess.AddMoneyToWallet(userID, request.Amount); err != nil {
+		fmt.Printf("DEBUG: Error adding money to wallet: %v\n", err)
 		responseWriter.WriteHeader(http.StatusInternalServerError)
 		responseWriter.Write([]byte("Failed to add money to wallet"))
 		return
 	}
 
+	fmt.Println("DEBUG: Money added successfully, sending 200 OK response")
 	responseWriter.WriteHeader(http.StatusOK)
 	responseWriter.Write([]byte("Money added successfully"))
 }
