@@ -271,25 +271,31 @@ func (hc *HttpClient) Get(endpoint string, queryParams map[string]string) ([]byt
 func (hc *HttpClient) Post(endpoint string, payload interface{}) ([]byte, error) {
 	jsonData, err := json.Marshal(payload)
 	if err != nil {
-		fmt.Println("Error: ", err.Error())
+		fmt.Println("DEBUG: Error marshalling payload:", err.Error())
 		return nil, err
 	}
+	fmt.Printf("DEBUG: Payload marshalled successfully: %s\n", string(jsonData))
 
-	req, err := http.NewRequest(http.MethodPost, hc.BaseURL+endpoint, bytes.NewBuffer(jsonData))
+	fullURL := hc.BaseURL + endpoint
+	req, err := http.NewRequest(http.MethodPost, fullURL, bytes.NewBuffer(jsonData))
 	if err != nil {
-		fmt.Println("Error: ", err.Error())
+		fmt.Println("DEBUG: Error creating POST request:", err.Error())
 		return nil, err
 	}
+	fmt.Printf("DEBUG: Created POST request for URL: %s\n", fullURL)
 
 	req.Header.Set("Content-Type", "application/json")
 	// if err := hc.authenticate(req); err != nil {
 	// 	return nil, err
 	// }
 
+	fmt.Println("DEBUG: Sending POST request...")
 	resp, err := hc.Client.Do(req)
 	if err != nil {
+		fmt.Println("DEBUG: Error sending POST request:", err.Error())
 		return nil, err
 	}
+	fmt.Printf("DEBUG: Received response with status: %s\n", resp.Status)
 
 	return hc.handleResponse(resp)
 }
@@ -391,19 +397,19 @@ var userIDKey = contextKey("userID")
 
 func TokenAuthMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// tokenString := r.Header.Get("Authorization")
-		// if tokenString == "" {
-		// 	http.Error(w, "Unauthorized: missing token", http.StatusUnauthorized)
-		// 	return
-		// }
-		// // Validate token and extract user ID
-		// userID, err := ExtractUserIDFromToken(tokenString)
-		// if err != nil {
-		// 	http.Error(w, "Unauthorized: invalid token", http.StatusUnauthorized)
-		// 	return
-		// }
-		// Optionally, you can add the userID to the context:
-		userID := "6fd2fc6b-9142-4777-8b30-575ff6fa2460"
+		tokenString := r.Header.Get("Authorization")
+		if tokenString == "" {
+			http.Error(w, "Unauthorized: missing token", http.StatusUnauthorized)
+			return
+		}
+		//Validate token and extract user ID
+		userID, err := ExtractUserIDFromToken(tokenString)
+		if err != nil {
+			http.Error(w, "Unauthorized: invalid token", http.StatusUnauthorized)
+			return
+		}
+		//Optionally, you can add the userID to the context:
+		//userID := "6fd2fc6b-9142-4777-8b30-575ff6fa2460"
 		ctx := r.Context()
 		ctx = context.WithValue(ctx, userIDKey, userID)
 		next.ServeHTTP(w, r.WithContext(ctx))
