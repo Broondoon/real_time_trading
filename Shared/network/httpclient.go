@@ -343,10 +343,10 @@ func (hc *HttpClient) Delete(endpoint string) ([]byte, error) {
 }
 
 // ExtractUserIDFromToken extracts the user ID from a JWT token
-func ExtractUserIDFromToken(tokenString string) (uint, error) {
+func ExtractUserIDFromToken(tokenString string) (string, error) {
 	if tokenString == "" {
 		log.Println("[ExtractUserIDFromToken] Missing token in request")
-		return 0, errors.New("missing token in request")
+		return "", errors.New("missing token in request")
 	}
 
 	// Remove "Bearer " prefix if present
@@ -355,7 +355,7 @@ func ExtractUserIDFromToken(tokenString string) (uint, error) {
 	// Ensure JWT_SECRET is loaded
 	if len(jwtSecret) == 0 {
 		log.Println("[ExtractUserIDFromToken] JWT secret is missing")
-		return 0, errors.New("server misconfiguration: JWT secret is missing")
+		return "", errors.New("server misconfiguration: JWT secret is missing")
 	}
 
 	// Parse the token
@@ -369,24 +369,24 @@ func ExtractUserIDFromToken(tokenString string) (uint, error) {
 	})
 	if err != nil {
 		log.Printf("[ExtractUserIDFromToken] Token parsing error: %v", err)
-		return 0, fmt.Errorf("invalid token: %v", err)
+		return "", fmt.Errorf("invalid token: %v", err)
 	}
 
 	// Extract claims
 	claims, ok := token.Claims.(jwt.MapClaims)
 	if !ok {
 		log.Println("[ExtractUserIDFromToken] Failed to parse token claims")
-		return 0, errors.New("invalid claims structure in token")
+		return "", errors.New("invalid claims structure in token")
 	}
 
 	// Extract userID from claims
-	userID, ok := claims["sub"].(float64)
+	userID, ok := claims["sub"].(string)
 	if !ok {
 		log.Println("[ExtractUserIDFromToken] Missing or malformed user ID in token")
-		return 0, errors.New("missing or malformed user ID in token")
+		return "", errors.New("missing or malformed user ID in token")
 	}
 
-	return uint(userID), nil
+	return userID, nil
 }
 
 // contextKey is a type for context keys to avoid key collisions.

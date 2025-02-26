@@ -11,7 +11,6 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -44,19 +43,19 @@ func Register(c *gin.Context) {
 	}
 	// Check if the username already exists.
 	var existingUser models.User
-	if err := database.DB.Where("Username = ?", input.Username).First(&existingUser).Error; err == nil {
-		RespondError(c, http.StatusBadRequest, "User already exists.")
+	if err := database.DB.Where("username = ?", input.Username).First(&existingUser).Error; err == nil {
+		RespondError(c, http.StatusBadRequest, "Username already exists.")
 		return
 	}
 
 	// Hash the password.
 	hashedPassword, err := HashPassword(input.Password)
 	if err != nil {
-		RespondError(c, http.StatusInternalServerError, "Error hasning password.")
+		RespondError(c, http.StatusInternalServerError, "Error hashing password.")
 		return
 	}
+
 	user := models.User{
-		ID:       uuid.New().String(),
 		Username: input.Username,
 		Password: hashedPassword,
 		Name:     input.Name,
@@ -64,7 +63,7 @@ func Register(c *gin.Context) {
 
 	// Add the user to the database.
 	if err := database.DB.Create(&user).Error; err != nil {
-		RespondError(c, http.StatusBadRequest, "Registration failed")
+		RespondError(c, http.StatusInternalServerError, "Failed to add user to database.")
 		return
 	}
 
@@ -72,17 +71,17 @@ func Register(c *gin.Context) {
 	umHost := os.Getenv("USER_MANAGEMENT_HOST")
 	umPort := os.Getenv("USER_MANAGEMENT_PORT")
 	if umHost == "" || umPort == "" {
-		RespondError(c, http.StatusInternalServerError, "User management service not configured")
+		RespondError(c, http.StatusInternalServerError, "User management service not found.")
 		return
 	}
-	fmt.Println("id:", user.ID)
+	fmt.Println("user before wallet creation: ", user)
 	//// Build the URL with a query parameter for the user ID.
-	walletURL := fmt.Sprintf("http://%s:%s/createWallet?userID=%s", umHost, umPort, user.ID)
+	walletURL := fmt.Sprintf("http://%s:%s/transaction/createWallet?userID=%s", umHost, umPort, user.ID)
 	// Send a GET request to create the wallet.
 	resp, err := http.Get(walletURL)
-	fmt.Println("Resp:", resp)
+	fmt.Println("Resp after wallet creation attempt: ", resp)
 	if err != nil {
-		RespondError(c, http.StatusInternalServerError, "Failed to create wallet")
+		RespondError(c, http.StatusInternalServerError, "Error with wallet creation request.")
 		return
 	}
 	defer resp.Body.Close()
@@ -91,11 +90,10 @@ func Register(c *gin.Context) {
 	fmt.Println("Resp:", resp)
 	if resp.StatusCode != http.StatusOK {
 		bodyBytes, _ := io.ReadAll(resp.Body)
-		RespondError(c, http.StatusBadRequest, string(bodyBytes))
-		//    RespondError(c, resp.StatusCode, string(bodyBytes))
+		// RespondError(c, http.StatusBadRequest, string(bodyBytes))
+		RespondError(c, resp.StatusCode, string(bodyBytes))
 		return
 	}
-	fmt.Println("Resp:", resp)
 	// Everything succeeded; return a success response.
 	RespondSuccess(c, nil)
 }
