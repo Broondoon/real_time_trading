@@ -3,8 +3,10 @@ package handlers
 import (
 	"auth-service/database"
 	"auth-service/models"
+	"errors"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"os"
 	"time"
@@ -12,6 +14,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/crypto/bcrypt"
+	"gorm.io/gorm"
 )
 
 func HashPassword(password string) (string, error) {
@@ -41,10 +44,17 @@ func Register(c *gin.Context) {
 		RespondError(c, http.StatusBadRequest, err.Error())
 		return
 	}
+
 	// Check if the username already exists.
 	var existingUser models.User
-	if err := database.DB.Where("username = ?", input.Username).First(&existingUser).Error; err == nil {
+	err := database.DB.Where("username = ?", input.Username).First(&existingUser).Error
+	if err == nil {
 		RespondError(c, http.StatusBadRequest, "Username already exists.")
+		return
+	} else if !errors.Is(err, gorm.ErrRecordNotFound) {
+		// Only log unexpected errors.
+		log.Printf("Error checking for existing username: %v", err)
+		RespondError(c, http.StatusInternalServerError, "Internal error")
 		return
 	}
 
@@ -55,14 +65,24 @@ func Register(c *gin.Context) {
 		return
 	}
 
+	// Prepare the user model.
 	user := models.User{
 		Username: input.Username,
 		Password: hashedPassword,
 		Name:     input.Name,
 	}
 
-	// Add the user to the database.
-	if err := database.DB.Create(&user).Error; err != nil {
+	// Begin a transaction.
+	tx := database.DB.Begin()
+	if tx.Error != nil {
+		log.Printf("Error starting transaction: %v", tx.Error)
+		RespondError(c, http.StatusInternalServerError, "Internal error")
+		return
+	}
+
+	// Insert the user within the transaction.
+	if err := tx.Create(&user).Error; err != nil {
+		tx.Rollback()
 		RespondError(c, http.StatusInternalServerError, "Failed to add user to database.")
 		return
 	}
@@ -71,30 +91,34 @@ func Register(c *gin.Context) {
 	umHost := os.Getenv("USER_MANAGEMENT_HOST")
 	umPort := os.Getenv("USER_MANAGEMENT_PORT")
 	if umHost == "" || umPort == "" {
+		tx.Rollback()
 		RespondError(c, http.StatusInternalServerError, "User management service not found.")
 		return
 	}
-	fmt.Println("user before wallet creation: ", user)
-	//// Build the URL with a query parameter for the user ID.
 	walletURL := fmt.Sprintf("http://%s:%s/transaction/createWallet?userID=%s", umHost, umPort, user.ID)
-	// Send a GET request to create the wallet.
+
+	// Call the createWallet endpoint.
 	resp, err := http.Get(walletURL)
-	fmt.Println("Resp after wallet creation attempt: ", resp)
 	if err != nil {
+		tx.Rollback()
 		RespondError(c, http.StatusInternalServerError, "Error with wallet creation request.")
 		return
 	}
 	defer resp.Body.Close()
 
-	// If the wallet creation didn't return a 200 OK, return its error message
-	fmt.Println("Resp:", resp)
 	if resp.StatusCode != http.StatusOK {
 		bodyBytes, _ := io.ReadAll(resp.Body)
-		// RespondError(c, http.StatusBadRequest, string(bodyBytes))
+		tx.Rollback()
 		RespondError(c, resp.StatusCode, string(bodyBytes))
 		return
 	}
-	// Everything succeeded; return a success response.
+
+	// Commit the transaction since all steps succeeded.
+	if err := tx.Commit().Error; err != nil {
+		RespondError(c, http.StatusInternalServerError, "Failed to commit transaction.")
+		return
+	}
+
 	RespondSuccess(c, nil)
 }
 
