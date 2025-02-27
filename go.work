@@ -2,17 +2,18 @@ go 1.23.5
 
 use (
 	./Shared
-	./microservice-template
-	./matching-engine-service
-	./order-executor-service
-	./stock-order-database/database-service
-	./stock-order-database/database-access
 	./Test_base
-	./transaction-database/database-access
-	./transaction-database/database-service
+	./auth-service
+	./matching-engine-service
+	./microservice-template
+	./order-executor-service
+	./order-initiator-service
 	./stock-database/database-access
 	./stock-database/database-service
-	./order-initiator-service
+	./stock-order-database/database-access
+	./stock-order-database/database-service
+	./transaction-database/database-access
+	./transaction-database/database-service
 	./user-management-database/database-access
 	./user-management-database/database-service
 	./user-management-service
