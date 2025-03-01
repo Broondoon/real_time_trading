@@ -49,7 +49,7 @@ class AuthController extends ChangeNotifier {
             && _tokenExpiration != null 
             && DateTime.now().isBefore(_tokenExpiration!)
           ) {
-            options.headers['Authorization'] = 'Bearer $_token';
+            options.headers['token'] = 'Bearer $_token';
           }
           else {            
             //TODO: re-enable auto-logout
@@ -85,7 +85,7 @@ class AuthController extends ChangeNotifier {
 
     if (_token != null && expirationString != null) {
       _tokenExpiration = DateTime.tryParse(expirationString);
-      authdio.options.headers['Authorization'] = 'Bearer $_token';
+      authdio.options.headers['token'] = 'Bearer $_token';
     }
     else {
       _token = null;
@@ -124,7 +124,7 @@ class AuthController extends ChangeNotifier {
           key: 'tokenExpiration',
           value: _tokenExpiration!.toIso8601String()
         );
-        authdio.options.headers['Authorization'] = 'Bearer $_token';
+        authdio.options.headers['token'] = 'Bearer $_token';
         notifyListeners();
         return true;
       }
@@ -180,7 +180,7 @@ class AuthController extends ChangeNotifier {
     await _storage.delete(
       key: 'tokenExpiration',
     );
-    authdio.options.headers.remove('Authorization');
+    authdio.options.headers.remove('token');
     notifyListeners();
   }
 }
