@@ -11,7 +11,7 @@ import (
 var DB *gorm.DB
 
 func ConnectDatabase() {
-	dsn := os.Getenv("AUTH_DATABASE_URL") // "DATABASE_URL" is an ENV variable that
+	dsn := os.Getenv("AUTH_DATABASE_URL") // "AUTH_DATABASE_URL" is an ENV variable that
 	// is set in docker-compose.yml
 	if dsn == "" {
 		log.Fatal("DATABASE_URL environment variable is not set.")

@@ -1,7 +1,7 @@
 package handlers
 
 import (
-	"auth-service/database"
+	"auth-database/database-service"
 	"auth-service/models"
 	"errors"
 	"fmt"

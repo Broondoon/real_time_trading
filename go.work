@@ -4,6 +4,7 @@ use (
 	./Shared
 	./Test_base
 	./auth-service
+	./auth-database
 	./matching-engine-service
 	./microservice-template
 	./order-executor-service

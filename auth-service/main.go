@@ -1,7 +1,7 @@
 package main
 
 import (
-	"auth-service/database"
+	database "auth-database/database-service"
 	"auth-service/handlers" // Import handlers package
 	"auth-service/middleware"
 	"github.com/gin-gonic/gin"
