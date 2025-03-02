@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"time"
 
 	"gorm.io/gorm"
 )
@@ -67,7 +68,9 @@ func placeStockOrderHandler(responseWriter http.ResponseWriter, data []byte, que
 func placeStockOrder(stockOrder order.StockOrderInterface) error {
 	var err error
 	transaction := transaction.NewStockTransaction(transaction.NewStockTransactionParams{
-		StockOrder: stockOrder,
+		StockOrder:  stockOrder,
+		OrderStatus: "IN_PROGRESS",
+		TimeStamp:   time.Now(),
 	})
 
 	createdTransaction, err := _databaseAccess.StockTransaction().Create(transaction)

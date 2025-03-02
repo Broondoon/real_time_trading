@@ -22,7 +22,7 @@ func main() {
     })
 
 
-
+    // Clarify what this is doing and why it is necessary
     go OrderExecutorService.InitalizeExecutorHandlers(networkManager, databaseAccessTransaction, databaseAccessUserManagement)
     println("Order Executor Service Started")
 
