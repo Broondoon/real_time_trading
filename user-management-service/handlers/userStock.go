@@ -93,15 +93,17 @@ func getStockPortfolioHandler(responseWriter http.ResponseWriter, data []byte, q
 	}
 
 	// Transform stocks into desired format
-	portfolioResponse := make([]StockPortfolioResponse, 0)
-	for _, stock := range *stocks {
-		portfolioResponse = append(portfolioResponse, StockPortfolioResponse{
-			StockID:       stock.GetStockID(),
-			StockName:     stock.GetStockName(),
-			QuantityOwned: stock.GetQuantity(),
-			UpdatedAt:     stock.GetUpdatedAt(),
-		})
-	}
+    portfolioResponse := make([]StockPortfolioResponse, 0)
+    for _, stock := range *stocks {
+        if stock.GetQuantity() > 0 {  // Only include stocks with quantity > 0
+            portfolioResponse = append(portfolioResponse, StockPortfolioResponse{
+                StockID:       stock.GetStockID(),
+                StockName:     stock.GetStockName(),
+                QuantityOwned: stock.GetQuantity(),
+                UpdatedAt:     stock.GetUpdatedAt(),
+            })
+        }
+    }
 
 	// Sort by stock name (if still needed)
 	sort.SliceStable(portfolioResponse, func(i, j int) bool {

@@ -4,6 +4,7 @@ import (
 	OrderInitiatorService "OrderInitiatorService/handlers"
 	"Shared/network"
 	"databaseAccessTransaction"
+	"databaseAccessUserManagement"
 	"fmt"
 )
 
@@ -14,12 +15,15 @@ func main() {
 
 	networkManager := network.NewNetwork()
 
-	
 	databaseAccess := databaseAccessTransaction.NewDatabaseAccess(&databaseAccessTransaction.NewDatabaseAccessParams{
 		Network: networkManager,
 	})
 
-	go OrderInitiatorService.InitalizeHandlers(networkManager, databaseAccess)
+	databaseAccessUserManagement := databaseAccessUserManagement.NewDatabaseAccess(&databaseAccessUserManagement.NewDatabaseAccessParams{
+		Network: networkManager,
+	})
+
+	go OrderInitiatorService.InitalizeHandlers(networkManager, databaseAccess, databaseAccessUserManagement)
 	fmt.Println("Matching Engine Service Started")
 
 	networkManager.Listen(network.ListenerParams{
