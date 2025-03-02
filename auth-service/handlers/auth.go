@@ -1,7 +1,8 @@
 package handlers
 
 import (
-	"auth-database/database-service"
+	"Shared/entities/user"
+	database "auth-database/database-access"
 	"auth-service/models"
 	"errors"
 	"fmt"
@@ -39,15 +40,17 @@ func GenerateToken(userID string) (string, error) {
 
 func Register(c *gin.Context) {
 	// Bind incoming JSON to our User model.
-	var input models.User
+	var input user.UserInterface
 	if err := c.ShouldBindJSON(&input); err != nil {
 		RespondError(c, http.StatusBadRequest, err.Error())
 		return
 	}
 
 	// Check if the username already exists.
-	var existingUser models.User
-	err := database.DB.Where("username = ?", input.Username).First(&existingUser).Error
+	var existingUser user.UserInterface
+	existingUser, err := database.DatabaseAccess.GetByID(database.DatabaseAccess{}, input.GetUsername())
+	log.Printf("User from new databaseaccess: %s", existingUser)
+	// err := database.DB.Where("username = ?", input.Username).First(&existingUser).Error
 	if err == nil {
 		RespondError(c, http.StatusBadRequest, "Username already exists.")
 		return
@@ -59,17 +62,22 @@ func Register(c *gin.Context) {
 	}
 
 	// Hash the password.
-	hashedPassword, err := HashPassword(input.Password)
+	hashedPassword, err := HashPassword(input.GetPassword())
 	if err != nil {
 		RespondError(c, http.StatusInternalServerError, "Error hashing password.")
 		return
 	}
 
 	// Prepare the user model.
-	user := models.User{
-		Username: input.Username,
+	//user := models.User{
+	//	Username: input.Username,
+	//	Password: hashedPassword,
+	//	Name:     input.Name,
+	//}
+	user := user.UserInterface{
+		Username: input.GetUsername(),
 		Password: hashedPassword,
-		Name:     input.Name,
+		Name:     input.GetName(),
 	}
 
 	// Begin a transaction.

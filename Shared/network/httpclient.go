@@ -32,6 +32,7 @@ type NetworkInterface interface {
 	Stocks() HttpClientInterface
 	Transactions() HttpClientInterface
 	UserManagementDatabase() HttpClientInterface
+	AuthDatabase() HttpClientInterface
 }
 
 type Network struct {
@@ -44,6 +45,7 @@ type Network struct {
 	StocksService                 HttpClientInterface
 	TransactionsService           HttpClientInterface
 	UserManagementDatabaseService HttpClientInterface
+	AuthDatabaseService           HttpClientInterface
 }
 
 func (n *Network) MatchingEngine() HttpClientInterface {
@@ -82,6 +84,10 @@ func (n *Network) UserManagementDatabase() HttpClientInterface {
 	return n.UserManagementDatabaseService
 }
 
+func (n *Network) AuthDatabase() HttpClientInterface {
+	return n.AuthDatabaseService
+}
+
 func NewNetwork() NetworkInterface {
 	baseURL := os.Getenv("BASE_URL_PREFIX")
 	baseURLPostfix := "/"
@@ -95,7 +101,7 @@ func NewNetwork() NetworkInterface {
 		StocksService:                 newHttpClient(baseURL + os.Getenv("STOCK_DATABASE_SERVICE_HOST") + ":" + os.Getenv("STOCK_DATABASE_SERVICE_PORT") + baseURLPostfix),
 		TransactionsService:           newHttpClient(baseURL + os.Getenv("TRANSACTION_DATABASE_SERVICE_HOST") + ":" + os.Getenv("TRANSACTION_DATABASE_SERVICE_PORT") + baseURLPostfix),
 		UserManagementDatabaseService: newHttpClient(baseURL + os.Getenv("USER_MANAGEMENT_DATABASE_SERVICE_HOST") + ":" + os.Getenv("USER_MANAGEMENT_DATABASE_SERVICE_PORT") + baseURLPostfix),
-	}
+		AuthDatabaseService:           newHttpClient(baseURL + os.Getenv("AUTH_DATABASE_SERVICE_HOST") + ":" + os.Getenv("AUTH_DATABASE_SERVICE_PORT") + baseURLPostfix)}
 }
 
 type HandlerParams struct {

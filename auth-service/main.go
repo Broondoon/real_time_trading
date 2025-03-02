@@ -1,14 +1,22 @@
 package main
 
 import (
-	database "auth-database/database-service"
+	"Shared/network"
+	databaseAccessAuth "auth-database/database-access"
 	"auth-service/handlers" // Import handlers package
 	"auth-service/middleware"
+
 	"github.com/gin-gonic/gin"
 )
 
 func main() {
-	database.ConnectDatabase()
+
+	networkManager := network.NewNetwork()
+	databaseAccess := databaseAccessAuth.NewDatabaseAccess(&databaseAccessAuth.NewDatabaseAccessParams{
+		Network: networkManager,
+	})
+
+	databaseAccess.Connect()
 	r := gin.Default()
 
 	// Public Endpoints

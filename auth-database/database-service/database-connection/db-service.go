@@ -1,4 +1,4 @@
-package database
+package databaseServiceAuth
 
 import (
 	"auth-service/models"
