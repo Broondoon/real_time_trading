@@ -7,6 +7,8 @@ require (
 	gorm.io/driver/postgres v1.5.11
 )
 
+require github.com/rabbitmq/amqp091-go v1.10.0 // indirect
+
 require (
 	github.com/golang-jwt/jwt/v5 v5.2.1
 	github.com/jackc/pgpassfile v1.0.0 // indirect
