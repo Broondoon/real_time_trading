@@ -64,12 +64,14 @@ func ProcessTrade(orderData network.MatchingEngineToExecutionJSON, databaseAcces
 		return false, false, err
 	}
 	if !buyerHasFunds {
-		println("Error: ", err.Error())
 		return false, true, nil
 	}
 
 	// 4. Update buyer and seller wallet balances and create wallet transactions for these changes
-	err = updateWalletBalances((*walletList)[0], (*walletList)[0], totalCost, stockTx, databaseAccessUser, databaseAccessTransact)
+	err = updateWalletBalances((*walletList)[0], (*walletList)[1], totalCost, stockTx, databaseAccessUser, databaseAccessTransact)
+	if len(*walletList) != 2 {
+		return false, false, fmt.Errorf("expected 2 wallets, got %d", len(*walletList))
+	}
 	if err != nil {
 		println("Error: ", err.Error())
 		return false, false, fmt.Errorf("failed to update wallet balances: %v", err)
@@ -175,10 +177,10 @@ func updateUserStocks(
 	isSellPartial bool) error {
 
 	// Get buyer's current stock holdings
-	buyerStocks, err := databaseAccessUser.UserStock().GetUserStocks(buyerID)
+	buyerStockPortfolio, err := databaseAccessUser.UserStock().GetUserStocks(buyerID)
 	if err != nil {
-		if err.Error() == "server returned error: 404 404 Not Found" {
-			buyerStocks = &[]userStock.UserStockInterface{}
+		if err.Error() == "server returned error: 404 Not Found" {
+			buyerStockPortfolio = &[]userStock.UserStockInterface{}
 
 		} else {
 			println("Error: ", err.Error())
@@ -187,7 +189,7 @@ func updateUserStocks(
 	}
 
 	// Get seller's current stock holdings
-	sellerStocks, err := databaseAccessUser.UserStock().GetUserStocks(sellerID)
+	sellerStockPortfolio, err := databaseAccessUser.UserStock().GetUserStocks(sellerID)
 	if err != nil {
 		println("Error: ", err.Error())
 		return fmt.Errorf("failed to get seller stocks: %v", err)
@@ -195,7 +197,7 @@ func updateUserStocks(
 
 	// Find the stock in the seller's portfolio
 	var sellerStock userStock.UserStockInterface
-	for _, stock := range *sellerStocks {
+	for _, stock := range *sellerStockPortfolio {
 		if stock.GetStockID() == stockID {
 			sellerStock = stock
 			break
@@ -212,7 +214,7 @@ func updateUserStocks(
 
 	// Find the stock in the buyer's portfolio
 	var buyerStock userStock.UserStockInterface
-	for _, stock := range *buyerStocks {
+	for _, stock := range *buyerStockPortfolio {
 		if stock.GetStockID() == stockID {
 			buyerStock = stock
 			break
@@ -257,45 +259,49 @@ func updateUserStocks(
 		return fmt.Errorf("failed to update buyer stock: %v", err)
 	}
 
-	// Check if this is a complete or partial fill using flags from matching engine
-	if !isBuyPartial && !isSellPartial {
-		// Both orders are complete
-		stockTx.SetOrderStatus("COMPLETED")
-		err = databaseAccessTransact.StockTransaction().Update(stockTx)
-		if err != nil {
-			println("Error: ", err.Error())
-			return fmt.Errorf("failed to update stock transaction status: %v", err)
-		}
+	
+    // Update transaction status based on is_buy
+    if stockTx.GetIsBuy() {
+        // If it's a buy order, set to COMPLETED regardless of partial status
+        stockTx.SetOrderStatus("COMPLETED")
+    } else {
+        // For sell orders, use the existing partial/complete logic
+        if !isBuyPartial && !isSellPartial {
+            stockTx.SetOrderStatus("COMPLETED")
+        } else {
+            stockTx.SetOrderStatus("PARTIALLY_COMPLETE")
+        }
+    }
 
-	} else {
-		// At least one order is partial
-		stockTx.SetOrderStatus("PARTIALLY_COMPLETE")
-		err = databaseAccessTransact.StockTransaction().Update(stockTx)
-		if err != nil {
-			println("Error: ", err.Error())
-			return fmt.Errorf("failed to update original stock transaction status: %v", err)
-		}
+    // Update the transaction status in database
+    err = databaseAccessTransact.StockTransaction().Update(stockTx)
+    if err != nil {
+        println("Error: ", err.Error())
+        return fmt.Errorf("failed to update stock transaction status: %v", err)
+    }
 
-		// Create new transaction for the filled portion
-		filledTx := transaction.NewStockTransaction(transaction.NewStockTransactionParams{
-			NewEntityParams: entity.NewEntityParams{
-				DateCreated:  time.Now(),
-				DateModified: time.Now(),
-			},
-			ParentStockTransaction: stockTx, // Pass the parent transaction interface
-			OrderStatus:            "COMPLETED",
-			TimeStamp:              time.Now(),
-		})
+    // Create a filled transaction for partial orders only if it's not a buy order
+    if (isBuyPartial || isSellPartial) && !stockTx.GetIsBuy() {
+        filledTx := transaction.NewStockTransaction(transaction.NewStockTransactionParams{
+            NewEntityParams: entity.NewEntityParams{
+                DateCreated:  time.Now(),
+                DateModified: time.Now(),
+            },
+            ParentStockTransaction: stockTx,
+            OrderStatus:            "COMPLETED",
+            TimeStamp:             time.Now(),
+        })
 
-		_, err = databaseAccessTransact.StockTransaction().Create(filledTx)
-		if err != nil {
-			println("Error: ", err.Error())
-			return fmt.Errorf("failed to create filled stock transaction: %v", err)
-		}
-	}
+        _, err = databaseAccessTransact.StockTransaction().Create(filledTx)
+        if err != nil {
+            println("Error: ", err.Error())
+            return fmt.Errorf("failed to create filled stock transaction: %v", err)
+        }
+    }
 
-	return nil
+    return nil
 }
+
 
 // Calculates the total cost of a transaction given the quantity and stock price.
 func calculateTotalTransactionCost(quantity int, stockPrice float64) float64 {
