@@ -6,7 +6,7 @@ import (
 	"Shared/entities/stock"
 	userStock "Shared/entities/user-stock"
 	"Shared/entities/wallet"
-	"Shared/network"
+	networkHttp "Shared/network/http"
 	"databaseAccessUserManagement"
 	"time"
 
@@ -18,7 +18,7 @@ func main() {
 	var err error
 	var val []byte
 
-	networkManager := network.NewNetwork()
+	networkManager := networkHttp.NewNetworkHttp()
 
 	// val, err = networkManager.Transactions().Get("transaction/getStockTransactions", nil)
 	// if err != nil {

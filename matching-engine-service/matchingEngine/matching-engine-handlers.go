@@ -47,7 +47,7 @@ func healthHandler(w http.ResponseWriter, r *http.Request) {
 
 // Expected input is a stock ID in the body of the request
 // we're expecting {"StockID":"{id value}"}
-func AddNewStockHandler(responseWriter http.ResponseWriter, data []byte, queryParams url.Values, requestType string) {
+func AddNewStockHandler(responseWriter network.ResponseWriter, data []byte, queryParams url.Values, requestType string) {
 	println("Adding new stock")
 	println("Data: ", string(data))
 	println("Query Params: ", queryParams.Encode())
@@ -82,7 +82,7 @@ func AddNewStock(stockID string) {
 	}
 }
 
-func PlaceStockOrderHandler(responseWriter http.ResponseWriter, data []byte, queryParams url.Values, requestType string) {
+func PlaceStockOrderHandler(responseWriter network.ResponseWriter, data []byte, queryParams url.Values, requestType string) {
 	println("Received stock order")
 	println("Data: ", string(data))
 	//parse the stock order
@@ -114,7 +114,7 @@ func PlaceStockOrder(stockOrder order.StockOrderInterface) bool {
 	return false
 }
 
-func DeleteStockOrderHandler(responseWriter http.ResponseWriter, data []byte, queryParams url.Values, requestType string) {
+func DeleteStockOrderHandler(responseWriter network.ResponseWriter, data []byte, queryParams url.Values, requestType string) {
 	orderID := queryParams.Get("id")
 	err := DeleteStockOrder(orderID)
 	if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -149,7 +149,7 @@ func DeleteStockOrder(orderID string) error {
 	return nil
 }
 
-func GetStockPricesHandler(responseWriter http.ResponseWriter, data []byte, queryParams url.Values, requestType string) {
+func GetStockPricesHandler(responseWriter network.ResponseWriter, data []byte, queryParams url.Values, requestType string) {
 	println("Getting stock prices")
 	prices, err := GetStockPrices()
 	if err != nil {

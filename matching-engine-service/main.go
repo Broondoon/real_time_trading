@@ -2,7 +2,7 @@ package main
 
 import (
 	"MatchingEngineService/matchingEngine"
-	"Shared/network"
+	networkHttp "Shared/network/http"
 	"databaseAccessStock"
 	"databaseAccessStockOrder"
 	"fmt"
@@ -13,7 +13,7 @@ import (
 func main() {
 	//Need to upgrade to use my entity class stuff and the new services.
 
-	networkManager := network.NewNetwork()
+	networkManager := networkHttp.NewNetworkHttp()
 	_databaseManager := databaseAccessStockOrder.NewDatabaseAccess(&databaseAccessStockOrder.NewDatabaseAccessParams{})
 	_databaseAccess := databaseAccessStock.NewDatabaseAccess(&databaseAccessStock.NewDatabaseAccessParams{
 		Network: networkManager,
@@ -26,7 +26,5 @@ func main() {
 	go matchingEngine.InitalizeHandlers(stockList, networkManager, _databaseManager, _databaseAccess)
 	fmt.Println("Matching Engine Service Started")
 
-	networkManager.Listen(network.ListenerParams{
-		Handler: nil,
-	})
+	networkManager.Listen()
 }

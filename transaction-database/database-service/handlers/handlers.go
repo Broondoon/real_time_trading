@@ -39,7 +39,7 @@ func healthHandler(w http.ResponseWriter, r *http.Request) {
 	//fmt.Println(w, "OK")
 }
 
-func GetStockTransactions(responseWriter http.ResponseWriter, data []byte, queryParams url.Values, requestType string) {
+func GetStockTransactions(responseWriter network.ResponseWriter, data []byte, queryParams url.Values, requestType string) {
 	transactions, err := _databaseManager.StockTransactions().GetAll()
 	if err != nil {
 		responseWriter.WriteHeader(http.StatusInternalServerError)
@@ -108,7 +108,7 @@ func GetStockTransactions(responseWriter http.ResponseWriter, data []byte, query
 
 // Expected input is a stock ID in the body of the request
 // we're expecting {"StockID":"{id value}"}
-func getWalletTransactions(responseWriter http.ResponseWriter, data []byte, queryParams url.Values, requestType string) {
+func getWalletTransactions(responseWriter network.ResponseWriter, data []byte, queryParams url.Values, requestType string) {
 	transactions, err := _databaseManager.WalletTransactions().GetAll()
 	if err != nil {
 		fmt.Println("error: ", err.Error())
@@ -135,7 +135,7 @@ func getWalletTransactions(responseWriter http.ResponseWriter, data []byte, quer
 	responseWriter.Write(transactionsJSON)
 }
 
-func cancelStockTransactionHandler(responseWriter http.ResponseWriter, data []byte, queryParams url.Values, requestType string) {
+func cancelStockTransactionHandler(responseWriter network.ResponseWriter, data []byte, queryParams url.Values, requestType string) {
 	stockTransaction, err := _databaseManager.StockTransactions().GetByID(queryParams.Get("id"))
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		responseWriter.WriteHeader(http.StatusNotFound)

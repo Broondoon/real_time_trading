@@ -1,6 +1,7 @@
-package network
+package networkHttp
 
 import (
+	"Shared/network"
 	"bytes"
 	"context"
 	"encoding/json"
@@ -19,170 +20,21 @@ import (
 
 var jwtSecret = []byte(os.Getenv("JWT_SECRET"))
 
-type NetworkInterface interface {
-	AddHandleFuncUnprotected(params HandlerParams)
-	AddHandleFuncProtected(params HandlerParams)
-	Listen(params ListenerParams)
-	MatchingEngine() HttpClientInterface
-	MicroserviceTemplate() HttpClientInterface
-	UserManagement() HttpClientInterface
-	Authentication() HttpClientInterface
-	OrderInitiator() HttpClientInterface
-	OrderExecutor() HttpClientInterface
-	Stocks() HttpClientInterface
-	Transactions() HttpClientInterface
-	UserManagementDatabase() HttpClientInterface
+type NetworkHttp struct {
+	network.BaseNetworkInterface
 }
 
-type Network struct {
-	MatchingEngineService         HttpClientInterface
-	MicroserviceTemplateService   HttpClientInterface
-	UserManagementService         HttpClientInterface
-	AuthenticationService         HttpClientInterface
-	OrderInitiatorService         HttpClientInterface
-	OrderExecutorService          HttpClientInterface
-	StocksService                 HttpClientInterface
-	TransactionsService           HttpClientInterface
-	UserManagementDatabaseService HttpClientInterface
-}
-
-func (n *Network) MatchingEngine() HttpClientInterface {
-	return n.MatchingEngineService
-}
-
-func (n *Network) MicroserviceTemplate() HttpClientInterface {
-	return n.MicroserviceTemplateService
-}
-
-func (n *Network) UserManagement() HttpClientInterface {
-	return n.UserManagementService
-}
-
-func (n *Network) Authentication() HttpClientInterface {
-	return n.AuthenticationService
-}
-
-func (n *Network) OrderInitiator() HttpClientInterface {
-	return n.OrderInitiatorService
-}
-
-func (n *Network) OrderExecutor() HttpClientInterface {
-	return n.OrderExecutorService
-}
-
-func (n *Network) Stocks() HttpClientInterface {
-	return n.StocksService
-}
-
-func (n *Network) Transactions() HttpClientInterface {
-	return n.TransactionsService
-}
-
-func (n *Network) UserManagementDatabase() HttpClientInterface {
-	return n.UserManagementDatabaseService
-}
-
-func NewNetwork() NetworkInterface {
-	baseURL := os.Getenv("BASE_URL_PREFIX")
-	baseURLPostfix := "/"
-	return &Network{
-		MatchingEngineService:         newHttpClient(baseURL + os.Getenv("MATCHING_ENGINE_HOST") + ":" + os.Getenv("MATCHING_ENGINE_PORT") + baseURLPostfix),
-		MicroserviceTemplateService:   newHttpClient(baseURL + os.Getenv("MICROSERVICE_TEMPLATE_HOST") + ":" + os.Getenv("MICROSERVICE_TEMPLATE_PORT") + baseURLPostfix),
-		UserManagementService:         newHttpClient(baseURL + os.Getenv("USER_MANAGEMENT_HOST") + ":" + os.Getenv("USER_MANAGEMENT_PORT") + baseURLPostfix),
-		AuthenticationService:         newHttpClient(baseURL + os.Getenv("AUTH_HOST") + ":" + os.Getenv("AUTH_PORT") + baseURLPostfix),
-		OrderInitiatorService:         newHttpClient(baseURL + os.Getenv("ORDER_INITIATOR_HOST") + ":" + os.Getenv("ORDER_INITIATOR_PORT") + baseURLPostfix),
-		OrderExecutorService:          newHttpClient(baseURL + os.Getenv("ORDER_EXECUTOR_HOST") + ":" + os.Getenv("ORDER_EXECUTOR_PORT") + baseURLPostfix),
-		StocksService:                 newHttpClient(baseURL + os.Getenv("STOCK_DATABASE_SERVICE_HOST") + ":" + os.Getenv("STOCK_DATABASE_SERVICE_PORT") + baseURLPostfix),
-		TransactionsService:           newHttpClient(baseURL + os.Getenv("TRANSACTION_DATABASE_SERVICE_HOST") + ":" + os.Getenv("TRANSACTION_DATABASE_SERVICE_PORT") + baseURLPostfix),
-		UserManagementDatabaseService: newHttpClient(baseURL + os.Getenv("USER_MANAGEMENT_DATABASE_SERVICE_HOST") + ":" + os.Getenv("USER_MANAGEMENT_DATABASE_SERVICE_PORT") + baseURLPostfix),
+func NewNetworkHttp() network.NetworkInterface {
+	nh := &NetworkHttp{
+		BaseNetworkInterface: network.NewNetwork(func(serviceString string) network.ClientInterface {
+			return newHttpClient(os.Getenv("BASE_URL_PREFIX") + serviceString + os.Getenv("BASE_URL_POSTFIX"))
+		}),
 	}
-}
+	return nh
 
-type HandlerParams struct {
-	Pattern string
-	Handler func(http.ResponseWriter, []byte, url.Values, string)
-}
-
-func handleFunc(params HandlerParams, w http.ResponseWriter, r *http.Request) {
-	// fmt.Println("Handling request for: ", r.URL.Path)
-	var body []byte
-	var err error
-	queryParams := make(url.Values)
-	queryParams, err = url.ParseQuery(r.URL.RawQuery)
-	if err != nil {
-		fmt.Println("Error, there was an issue with reading the message:", err)
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-	if r.Method == http.MethodGet || r.Method == http.MethodDelete || r.Method == http.MethodPut {
-		//decode params
-		queryParams = r.URL.Query()
-		id := strings.TrimPrefix(r.URL.Path, "/"+params.Pattern)
-		if id != "" {
-			queryParams.Add("id", id)
-		}
-	}
-
-	if r.Method == http.MethodPost || r.Method == http.MethodPut {
-		body, err = io.ReadAll(r.Body)
-		if err != nil {
-			fmt.Println("Error, there was an issue with reading the message:", err)
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-		defer r.Body.Close()
-	}
-
-	// The type assertion here is failing; r.Context().Value(userIDKey) returns a uint.
-	// So we need to change that.
-	if r.Context().Value(userIDKey) != nil {
-		// queryParams.Add("userID", r.Context().Value(userIDKey).(string))
-		if userID, ok := r.Context().Value(userIDKey).(uint); ok {
-			queryParams.Add("userID", fmt.Sprintf("%d", userID)) // Convert to string
-		} else if userID, ok := r.Context().Value(userIDKey).(string); ok {
-			queryParams.Add("userID", userID)
-		}
-	}
-
-	params.Handler(w, body, queryParams, r.Method)
-	//w.WriteHeader(http.StatusOK)
-}
-
-// For Internal handlers
-func (n *Network) AddHandleFuncUnprotected(params HandlerParams) {
-	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		handleFunc(params, w, r)
-	})
-	http.Handle("/"+params.Pattern, handler)
-
-}
-
-// For Protected handlers (I.E exposed to the outside)
-func (n *Network) AddHandleFuncProtected(params HandlerParams) {
-	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		handleFunc(params, w, r)
-	})
-	//To reable after testing is done.
-	protectedHandler := TokenAuthMiddleware(handler)
-	http.Handle("/"+params.Pattern, protectedHandler)
-}
-
-type ListenerParams struct {
-	Handler http.Handler //can be nil
-}
-
-func (n *Network) Listen(params ListenerParams) {
-	http.ListenAndServe(":"+os.Getenv("PORT"), params.Handler)
 }
 
 // HttpClientInterface is an interface for the HttpClient struct
-
-type HttpClientInterface interface {
-	Get(endpoint string, queryParams map[string]string) ([]byte, error)
-	Post(endpoint string, payload interface{}) ([]byte, error)
-	Put(endpoint string, payload interface{}) ([]byte, error)
-	Delete(endpoint string) ([]byte, error)
-}
 
 type HttpClient struct {
 	BaseURL   string
@@ -191,7 +43,7 @@ type HttpClient struct {
 	SecretKey []byte
 }
 
-func newHttpClient(baseURL string) HttpClientInterface {
+func newHttpClient(baseURL string) network.ClientInterface {
 	return &HttpClient{
 		BaseURL: baseURL,
 		Client:  &http.Client{Timeout: 10 * time.Second},
@@ -421,4 +273,76 @@ func TokenAuthMiddleware(next http.Handler) http.Handler {
 		ctx = context.WithValue(ctx, userIDKey, userID)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
+}
+
+func handleFunc(params network.HandlerParams, w http.ResponseWriter, r *http.Request) {
+	// fmt.Println("Handling request for: ", r.URL.Path)
+	var body []byte
+	var err error
+	queryParams := make(url.Values)
+	queryParams, err = url.ParseQuery(r.URL.RawQuery)
+	if err != nil {
+		fmt.Println("Error, there was an issue with reading the message:", err)
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	if r.Method == http.MethodGet || r.Method == http.MethodDelete || r.Method == http.MethodPut {
+		//decode params
+		queryParams = r.URL.Query()
+		id := strings.TrimPrefix(r.URL.Path, "/"+params.Pattern)
+		if id != "" {
+			queryParams.Add("id", id)
+		}
+	}
+
+	if r.Method == http.MethodPost || r.Method == http.MethodPut {
+		body, err = io.ReadAll(r.Body)
+		if err != nil {
+			fmt.Println("Error, there was an issue with reading the message:", err)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		defer r.Body.Close()
+	}
+
+	// The type assertion here is failing; r.Context().Value(userIDKey) returns a uint.
+	// So we need to change that.
+	if r.Context().Value(userIDKey) != nil {
+		// queryParams.Add("userID", r.Context().Value(userIDKey).(string))
+		if userID, ok := r.Context().Value(userIDKey).(uint); ok {
+			queryParams.Add("userID", fmt.Sprintf("%d", userID)) // Convert to string
+		} else if userID, ok := r.Context().Value(userIDKey).(string); ok {
+			queryParams.Add("userID", userID)
+		}
+	}
+
+	params.Handler(w, body, queryParams, r.Method)
+	//w.WriteHeader(http.StatusOK)
+}
+
+// For Internal handlers
+func (n *NetworkHttp) AddHandleFuncUnprotected(params network.HandlerParams) {
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		handleFunc(params, w, r)
+	})
+	http.Handle("/"+params.Pattern, handler)
+
+}
+
+// For Protected handlers (I.E exposed to the outside)
+func (n *NetworkHttp) AddHandleFuncProtected(params network.HandlerParams) {
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		handleFunc(params, w, r)
+	})
+	//To reable after testing is done.
+	protectedHandler := TokenAuthMiddleware(handler)
+	http.Handle("/"+params.Pattern, protectedHandler)
+}
+
+// type ListenerParams struct {
+// 	Handler http.Handler //can be nil
+// }
+
+func (n *NetworkHttp) Listen() {
+	http.ListenAndServe(":"+os.Getenv("PORT"), nil)
 }

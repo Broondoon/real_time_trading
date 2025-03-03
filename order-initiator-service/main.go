@@ -2,7 +2,7 @@ package main
 
 import (
 	OrderInitiatorService "OrderInitiatorService/handlers"
-	"Shared/network"
+	networkHttp "Shared/network/http"
 	"databaseAccessTransaction"
 	"databaseAccessUserManagement"
 	"fmt"
@@ -13,7 +13,7 @@ import (
 func main() {
 	//Need to upgrade to use my entity class stuff and the new services.
 
-	networkManager := network.NewNetwork()
+	networkManager := networkHttp.NewNetworkHttp()
 
 	databaseAccess := databaseAccessTransaction.NewDatabaseAccess(&databaseAccessTransaction.NewDatabaseAccessParams{
 		Network: networkManager,
@@ -26,7 +26,5 @@ func main() {
 	go OrderInitiatorService.InitalizeHandlers(networkManager, databaseAccess, databaseAccessUserManagement)
 	fmt.Println("Matching Engine Service Started")
 
-	networkManager.Listen(network.ListenerParams{
-		Handler: nil,
-	})
+	networkManager.Listen()
 }
