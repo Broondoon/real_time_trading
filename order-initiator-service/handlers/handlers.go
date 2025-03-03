@@ -3,23 +3,29 @@ package OrderInitiatorService
 import (
 	"Shared/entities/order"
 	"Shared/entities/transaction"
+	userStock "Shared/entities/user-stock"
 	"Shared/network"
 	"databaseAccessTransaction"
+	"databaseAccessUserManagement"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/url"
 	"os"
+	"time"
 
 	"gorm.io/gorm"
 )
 
 var _databaseAccess databaseAccessTransaction.DatabaseAccessInterface
+var _databaseAccessUser databaseAccessUserManagement.DatabaseAccessInterface
 var _networkManager network.NetworkInterface
 
 func InitalizeHandlers(
-	networkManager network.NetworkInterface, databaseAccess databaseAccessTransaction.DatabaseAccessInterface) {
+	networkManager network.NetworkInterface, databaseAccess databaseAccessTransaction.DatabaseAccessInterface, databaseAccessUser databaseAccessUserManagement.DatabaseAccessInterface) {
 	_databaseAccess = databaseAccess
+	_databaseAccessUser = databaseAccessUser
 	_networkManager = networkManager
 
 	//listen for placeStockOrder. Create a new stock Transaction, updatet he stock order id, pass it to the matching engine.
@@ -66,8 +72,47 @@ func placeStockOrderHandler(responseWriter http.ResponseWriter, data []byte, que
 
 func placeStockOrder(stockOrder order.StockOrderInterface) error {
 	var err error
+
+
+	if !stockOrder.GetIsBuy() {
+		// Get seller's current stock holdings
+		sellerStockPortfolio, err := _databaseAccessUser.UserStock().GetUserStocks(stockOrder.GetUserID())
+		if err != nil {
+			return fmt.Errorf("failed to get seller stocks: %v", err)
+		}
+
+		// Find the stock in the seller's portfolio
+		var sellerStock userStock.UserStockInterface
+		for _, stock := range *sellerStockPortfolio {
+			if stock.GetStockID() == stockOrder.GetStockID() {
+				sellerStock = stock
+				break
+			}
+		}
+
+		// Verify seller has the stock and sufficient quantity
+		if sellerStock == nil {
+			return fmt.Errorf("seller does not own stock %s", stockOrder.GetStockID())
+		}
+		if sellerStock.GetQuantity() < stockOrder.GetQuantity() {
+			return fmt.Errorf("insufficient stock quantity: has %d, wants to sell %d",
+				sellerStock.GetQuantity(), stockOrder.GetQuantity())
+		}
+
+        // Deduct the quantity from seller's portfolio but keep the record
+        newQuantity := sellerStock.GetQuantity() - stockOrder.GetQuantity()
+        sellerStock.SetQuantity(newQuantity)
+        err = _databaseAccessUser.UserStock().Update(sellerStock)
+        if err != nil {
+            return fmt.Errorf("failed to update seller stock quantity: %v", err)
+        }
+    }
+
+
 	transaction := transaction.NewStockTransaction(transaction.NewStockTransactionParams{
-		StockOrder: stockOrder,
+		StockOrder:  stockOrder,
+		OrderStatus: "IN_PROGRESS",
+		TimeStamp:   time.Now(),
 	})
 
 	createdTransaction, err := _databaseAccess.StockTransaction().Create(transaction)
@@ -128,3 +173,44 @@ func cancelStockTransaction(id string) error {
 	return nil
 
 }
+
+
+/* 
+func cancelStockTransaction(id string) error {
+    // Get the transaction details first
+    transaction, err := _databaseAccess.StockTransaction().Get(id)
+    if err != nil {
+        return fmt.Errorf("failed to get transaction: %v", err)
+    }
+
+    // If it's a sell order, restore the seller's stock quantity
+    if !transaction.GetIsBuy() {
+        stockOrder := transaction.GetStockOrder()
+        sellerID := stockOrder.GetUserID()
+        stockID := stockOrder.GetStockID()
+        quantity := stockOrder.GetQuantity()
+
+        // Get seller's current stock holdings
+        sellerStock, err := _databaseAccessUser.UserStock().GetUserStock(sellerID, stockID)
+        if err != nil {
+            return fmt.Errorf("failed to get seller stock: %v", err)
+        }
+
+        // Restore the quantity
+        sellerStock.SetQuantity(sellerStock.GetQuantity() + quantity)
+        err = _databaseAccessUser.UserStock().Update(sellerStock)
+        if err != nil {
+            return fmt.Errorf("failed to restore seller stock quantity: %v", err)
+        }
+    }
+
+    // Continue with existing cancellation logic
+    _, err = _networkManager.Transactions().Put("cancelStockTransaction/"+id, nil)
+    if err != nil {
+        return err
+    }
+
+    _, err = _networkManager.MatchingEngine().Delete("deleteOrder/" + id)
+    return err
+}
+ */

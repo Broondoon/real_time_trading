@@ -5,6 +5,7 @@ import (
 	"Shared/entities/stock"
 	"Shared/entities/user"
 	"encoding/json"
+	"time"
 )
 
 // For tracking stocks owned per user.
@@ -18,6 +19,8 @@ type UserStockInterface interface {
 	SetStockName(stockName string)
 	GetQuantity() int
 	SetQuantity(quantity int)
+	SetUpdatedAt(time.Time)
+	GetUpdatedAt() time.Time
 	ToParams() NewUserStockParams
 	entity.EntityInterface
 }
@@ -72,6 +75,14 @@ func (us *UserStock) GetStockName() string {
 
 func (us *UserStock) SetStockName(stockName string) {
 	us.StockName = stockName
+}
+
+func (us *UserStock) SetUpdatedAt(updatedAt time.Time) {
+	us.DateModified = updatedAt
+}
+
+func (us *UserStock) GetUpdatedAt() time.Time {
+	return us.DateModified
 }
 
 type NewUserStockParams struct {
@@ -147,6 +158,10 @@ func (us *UserStock) ToParams() NewUserStockParams {
 func (us *UserStock) ToJSON() ([]byte, error) {
 	return json.Marshal(us.ToParams())
 }
+
+
+
+
 
 type FakeUserStock struct {
 	entity.FakeEntity

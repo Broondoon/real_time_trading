@@ -28,6 +28,8 @@ services:
     depends_on:
       user-management-database-service:
         condition: service_healthy
+      stock-database-service:
+        condition: service_healthy
     healthcheck:
       test:
         [
