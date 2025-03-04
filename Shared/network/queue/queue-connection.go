@@ -10,6 +10,7 @@ import (
 )
 
 type QueueConnectionInterface interface {
+	GetConnection() *amqp.Connection
 	Connect()
 	Disconnect()
 	GetDialAddress() string
@@ -48,6 +49,15 @@ func NewNetworkQueueConnection(params *NewNetworkQueueConnectionParams) QueueCon
 		connection:  params.Connection,
 		Channels:    make([]*amqp.Channel, 0, maxChannels),
 	}
+}
+
+func (b *NetworkQueueConnection) GetConnection() *amqp.Connection {
+	println("Getting connection")
+	if !b.connected {
+		b.Connect()
+	}
+	println("Returning connection")
+	return b.connection
 }
 
 func (b *NetworkQueueConnection) GetDialAddress() string {
@@ -116,14 +126,14 @@ func (n *NetworkQueueConnection) SpawnChannel(params ExchangeParams) *amqp.Chann
 	)
 	failOnError(err, "Failed to set QoS")
 
-	if params.Name != "" {
+	if params.Name == "" {
 		panic("Not implemented correctly")
 	}
 	if params.Type == "" {
 		params.Type = "topic"
 	}
 
-	err = ch.ExchangeDeclarePassive(
+	err = ch.ExchangeDeclare(
 		params.Name,
 		params.Type,
 		params.Durable,

@@ -30,6 +30,11 @@ func NewQueueClient(exchangeRoute string, params *NewQueueClientParams) QueueCli
 	if params.NewNetworkQueueConnectionParams == nil {
 		params.NewNetworkQueueConnectionParams = &NewNetworkQueueConnectionParams{}
 	}
+	if exchangeRoute == "" {
+		panic("Exchange route cannot be empty")
+	} else {
+		println("Exchange route for new client: ", exchangeRoute)
+	}
 	return &QueueClient{
 		QueueConnectionInterface: NewNetworkQueueConnection(params.NewNetworkQueueConnectionParams),
 		ExchangeRoute:            exchangeRoute,
@@ -51,8 +56,16 @@ func DefaultPublishParams() SendParams {
 }
 
 func (n *QueueClient) SendWithReturn(route string, message []byte, params SendParams, onReturn func([]byte) ([]byte, error)) ([]byte, error) {
+	println("######")
+	println("Sending with return")
+	println("Route: ", route)
+	println("ExchangeRoute: ", n.ExchangeRoute)
+	println("Message: ", string(message))
+	println("######")
+
 	exchangeParams := ExchangeParams{
-		Name: n.ExchangeRoute,
+		Name:    n.ExchangeRoute,
+		Durable: true,
 	}
 	ch := n.SpawnChannel(exchangeParams)
 	if params.Timeout == 0 {
@@ -70,6 +83,7 @@ func (n *QueueClient) SendWithReturn(route string, message []byte, params SendPa
 		nil,
 	)
 	failOnError(err, "Failed to declare a return queue")
+	println("Return queue declared")
 	msg, err := ch.Consume(
 		returnQueue.Name,
 		"",
@@ -80,6 +94,7 @@ func (n *QueueClient) SendWithReturn(route string, message []byte, params SendPa
 		nil,
 	)
 	failOnError(err, "Failed to register a consumer")
+	println("Consumer registered")
 	corrID := generateRandomID()
 	err = ch.PublishWithContext(
 		ctx,
@@ -94,6 +109,7 @@ func (n *QueueClient) SendWithReturn(route string, message []byte, params SendPa
 			Body:          message,
 		})
 	failOnError(err, "Failed to publish a message")
+	println("Message published")
 	for d := range msg {
 		if corrID == d.CorrelationId {
 			println("Response received")
@@ -106,6 +122,10 @@ func (n *QueueClient) SendWithReturn(route string, message []byte, params SendPa
 
 // need a RPC
 func (n *QueueClient) Get(route string, headers map[string]string) ([]byte, error) {
+	id := strings.Split(route, "/")[len(strings.Split(route, "/"))-1]
+	if id != "" && id != route {
+		headers["id"] = id
+	}
 	data := QueueJSONData{
 		Headers:     headers,
 		MessageType: "GET",

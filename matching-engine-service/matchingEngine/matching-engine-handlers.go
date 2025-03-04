@@ -17,13 +17,15 @@ import (
 
 var _matchingEngineMap map[string]MatchingEngineInterface
 var _databaseManager databaseAccessStockOrder.DatabaseAccessInterface
-var _networkManager network.NetworkInterface
+var _networkHttpManager network.NetworkInterface
+var _networkQueueManager network.NetworkInterface
 var _stockDatabaseAccess databaseAccessStock.DatabaseAccessInterface
 
 func InitalizeHandlers(stockIDs *[]string,
-	networkManager network.NetworkInterface, databaseManager databaseAccessStockOrder.DatabaseAccessInterface, stockDatabaseAccess databaseAccessStock.DatabaseAccessInterface) {
+	networkHttpManager network.NetworkInterface, networkQueueManager network.NetworkInterface, databaseManager databaseAccessStockOrder.DatabaseAccessInterface, stockDatabaseAccess databaseAccessStock.DatabaseAccessInterface) {
 	_databaseManager = databaseManager
-	_networkManager = networkManager
+	_networkHttpManager = networkHttpManager
+	_networkQueueManager = networkQueueManager
 	_stockDatabaseAccess = stockDatabaseAccess
 	_matchingEngineMap = make(map[string]MatchingEngineInterface)
 	//Create all matching engines for stocks.
@@ -32,11 +34,12 @@ func InitalizeHandlers(stockIDs *[]string,
 	}
 
 	//Add handlers
-	networkManager.AddHandleFuncUnprotected(network.HandlerParams{Pattern: "createStock", Handler: AddNewStockHandler})
-	networkManager.AddHandleFuncUnprotected(network.HandlerParams{Pattern: "placeStockOrder", Handler: PlaceStockOrderHandler})
-	networkManager.AddHandleFuncUnprotected(network.HandlerParams{Pattern: "deleteOrder/", Handler: DeleteStockOrderHandler})
-	networkManager.AddHandleFuncProtected(network.HandlerParams{Pattern: os.Getenv("transaction_route") + "/getStockPrices", Handler: GetStockPricesHandler})
+	_networkHttpManager.AddHandleFuncUnprotected(network.HandlerParams{Pattern: "createStock", Handler: AddNewStockHandler})
+	_networkQueueManager.AddHandleFuncUnprotected(network.HandlerParams{Pattern: "placeStockOrder", Handler: PlaceStockOrderHandler})
+	_networkQueueManager.AddHandleFuncUnprotected(network.HandlerParams{Pattern: "deleteOrder/", Handler: DeleteStockOrderHandler})
+	_networkHttpManager.AddHandleFuncProtected(network.HandlerParams{Pattern: os.Getenv("transaction_route") + "/getStockPrices", Handler: GetStockPricesHandler})
 	http.HandleFunc("/health", healthHandler)
+	networkQueueManager.Listen()
 }
 
 func healthHandler(w http.ResponseWriter, r *http.Request) {
@@ -142,7 +145,7 @@ func DeleteStockOrder(orderID string) error {
 	}
 	me, ok := _matchingEngineMap[order.GetStockID()]
 	if !ok {
-		println("Error: ", err.Error())
+		println("Error: Matching engine not found for ID: ", order.GetStockID())
 		return nil
 	}
 	me.RemoveOrder(orderID, order.GetPrice())
@@ -225,7 +228,7 @@ func SendToOrderExection(buyOrder order.StockOrderInterface, sellOrder order.Sto
 		Quantity:      quantity,
 	}
 
-	data, err := _networkManager.OrderExecutor().Post("executor", transferEntity)
+	data, err := _networkHttpManager.OrderExecutor().Post("executor", transferEntity)
 
 	if err != nil {
 		println("Error: ", err.Error())

@@ -3,9 +3,11 @@ package main
 import (
 	OrderInitiatorService "OrderInitiatorService/handlers"
 	networkHttp "Shared/network/http"
+	networkQueue "Shared/network/queue"
 	"databaseAccessTransaction"
 	"databaseAccessUserManagement"
 	"fmt"
+	"os"
 )
 
 //"Shared/network"
@@ -13,18 +15,20 @@ import (
 func main() {
 	//Need to upgrade to use my entity class stuff and the new services.
 
-	networkManager := networkHttp.NewNetworkHttp()
+	networkHttpManager := networkHttp.NewNetworkHttp()
+	networkQueueManager := networkQueue.NewNetworkQueue(nil, os.Getenv("ORDER_INITIATOR_HOST")+":"+os.Getenv("ORDER_INITIATOR_PORT"))
 
 	databaseAccess := databaseAccessTransaction.NewDatabaseAccess(&databaseAccessTransaction.NewDatabaseAccessParams{
-		Network: networkManager,
+		Network: networkHttpManager,
 	})
 
 	databaseAccessUserManagement := databaseAccessUserManagement.NewDatabaseAccess(&databaseAccessUserManagement.NewDatabaseAccessParams{
-		Network: networkManager,
+		Network: networkHttpManager,
 	})
 
-	go OrderInitiatorService.InitalizeHandlers(networkManager, databaseAccess, databaseAccessUserManagement)
+	go OrderInitiatorService.InitalizeHandlers(networkHttpManager, networkQueueManager, databaseAccess, databaseAccessUserManagement)
 	fmt.Println("Matching Engine Service Started")
 
-	networkManager.Listen()
+	networkHttpManager.Listen()
+	<-make(chan struct{})
 }

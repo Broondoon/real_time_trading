@@ -20,20 +20,22 @@ import (
 
 var _databaseAccess databaseAccessTransaction.DatabaseAccessInterface
 var _databaseAccessUser databaseAccessUserManagement.DatabaseAccessInterface
-var _networkManager network.NetworkInterface
+var _networkHttpManager network.NetworkInterface
+var _networkQueueManager network.NetworkInterface
 
 func InitalizeHandlers(
-	networkManager network.NetworkInterface, databaseAccess databaseAccessTransaction.DatabaseAccessInterface, databaseAccessUser databaseAccessUserManagement.DatabaseAccessInterface) {
+	networkHttpManager network.NetworkInterface, networkQueueManager network.NetworkInterface, databaseAccess databaseAccessTransaction.DatabaseAccessInterface, databaseAccessUser databaseAccessUserManagement.DatabaseAccessInterface) {
 	_databaseAccess = databaseAccess
 	_databaseAccessUser = databaseAccessUser
-	_networkManager = networkManager
+	_networkHttpManager = networkHttpManager
+	_networkQueueManager = networkQueueManager
 
 	//listen for placeStockOrder. Create a new stock Transaction, updatet he stock order id, pass it to the matching engine.
 	//listen for cancelStockTransaction.
 
 	//Add handlers
-	networkManager.AddHandleFuncProtected(network.HandlerParams{Pattern: os.Getenv("engine_route") + "/placeStockOrder", Handler: placeStockOrderHandler})
-	networkManager.AddHandleFuncProtected(network.HandlerParams{Pattern: os.Getenv("engine_route") + "/cancelStockTransaction", Handler: cancelStockTransactionHandler})
+	_networkHttpManager.AddHandleFuncProtected(network.HandlerParams{Pattern: os.Getenv("engine_route") + "/placeStockOrder", Handler: placeStockOrderHandler})
+	_networkHttpManager.AddHandleFuncProtected(network.HandlerParams{Pattern: os.Getenv("engine_route") + "/cancelStockTransaction", Handler: cancelStockTransactionHandler})
 	http.HandleFunc("/health", healthHandler)
 }
 
@@ -120,7 +122,7 @@ func placeStockOrder(stockOrder order.StockOrderInterface) error {
 	}
 	stockOrder.SetId(createdTransaction.GetId())
 	//pass to matching engine
-	_, err = _networkManager.MatchingEngine().Post("placeStockOrder", stockOrder)
+	_, err = _networkQueueManager.MatchingEngine().Post("placeStockOrder", stockOrder)
 	return err
 }
 
@@ -157,13 +159,13 @@ func cancelStockTransactionHandler(responseWriter network.ResponseWriter, data [
 
 func cancelStockTransaction(id string) error {
 	//pass to matching engine
-	_, err := _networkManager.Transactions().Put("cancelStockTransaction/"+id, nil)
+	_, err := _networkHttpManager.Transactions().Put("cancelStockTransaction/"+id, nil)
 	if err != nil {
 		println("Error: ", err.Error())
 		return err
 	}
 
-	_, err = _networkManager.MatchingEngine().Delete("deleteOrder/" + id)
+	_, err = _networkQueueManager.MatchingEngine().Delete("deleteOrder/" + id)
 	if err != nil {
 		println("Error: ", err.Error())
 		return err

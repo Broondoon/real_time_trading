@@ -82,6 +82,9 @@ services:
         condition: service_healthy
       order-executor-service:
         condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      
     networks:
       - go-network
     healthcheck:
@@ -184,7 +187,7 @@ services:
     depends_on:
       - auth-service
       - auth-db
-      - frontend
+      #- frontend
       - user-management-service
       - order-initiator-service
     networks:
@@ -399,6 +402,14 @@ services:
       - 15672:15672
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: ${HEALTHCHECK_INTERVAL}       # Check every 30 seconds
+      timeout: ${HEALTHCHECK_TIMEOUT}        # Fail if no response in 10 seconds
+      retries: ${HEALTHCHECK_RETRIES}          # Retry 5 times before marking as unhealthy
+      start_period: 10s   # Allow 30 seconds for initialization before starting health checks
+    networks:
+      - go-network
 
 volumes:
   user-management-db-data:
