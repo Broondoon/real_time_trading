@@ -123,8 +123,9 @@ type ResponseWriter interface {
 }
 
 type HandlerParams struct {
-	Pattern string
-	Handler func(ResponseWriter, []byte, url.Values, string)
+	Pattern     string
+	Handler     func(ResponseWriter, []byte, url.Values, string)
+	RequestType string
 }
 
 func CreateNetworkEntityHandlers[T entity.EntityInterface](network NetworkInterface, entityName string, databaseManager databaseService.EntityDataInterface[T], Parse func(jsonBytes []byte) (T, error)) {

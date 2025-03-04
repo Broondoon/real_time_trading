@@ -2,61 +2,61 @@ package databaseAccess
 
 import (
 	"Shared/entities/entity"
+	"Shared/network"
 	"fmt"
-	"log"
 	"strings"
 )
 
-type EntityDataAccessQueue[TEntity entity.EntityInterface, TInterface entity.EntityInterface] struct {
+type EntityDataAccessClient[TEntity entity.EntityInterface, TInterface entity.EntityInterface] struct {
 	BaseDatabaseAccessInterface
-	// _client      network.HttpClientInterface
-	// PostRoute    string
-	// GetRoute     string
-	// PutRoute     string
-	// DeleteRoute  string
-	// DefaultRoute string
-	Parser     func([]byte) (TEntity, error)
-	ParserList func([]byte) (*[]TEntity, error)
+	_client      network.ClientInterface
+	PostRoute    string
+	GetRoute     string
+	PutRoute     string
+	DeleteRoute  string
+	DefaultRoute string
+	Parser       func([]byte) (TEntity, error)
+	ParserList   func([]byte) (*[]TEntity, error)
 }
 
-type NewEntityDataAccessQueueParams[TEntity entity.EntityInterface] struct {
+type NewEntityDataAccessHTTPParams[TEntity entity.EntityInterface] struct {
 	*NewDatabaseAccessParams // leave nil for default. usually fine.
-	// Client                   network.HttpClientInterface
-	// PostRoute                string
-	// GetRoute                 string
-	// PutRoute                 string
-	// DeleteRoute              string
-	// DefaultRoute             string
-	Parser     func([]byte) (TEntity, error)
-	ParserList func([]byte) (*[]TEntity, error)
+	Client                   network.ClientInterface
+	PostRoute                string
+	GetRoute                 string
+	PutRoute                 string
+	DeleteRoute              string
+	DefaultRoute             string
+	Parser                   func([]byte) (TEntity, error)
+	ParserList               func([]byte) (*[]TEntity, error)
 }
 
-func NewEntityDataAccessQueueHTTP[TEntity entity.EntityInterface, TInterface entity.EntityInterface](params *NewEntityDataAccessQueueParams[TEntity]) EntityDataAccessInterface[TEntity, TInterface] {
+func NewEntityDataAccessHTTP[TEntity entity.EntityInterface, TInterface entity.EntityInterface](params *NewEntityDataAccessHTTPParams[TEntity]) EntityDataAccessInterface[TEntity, TInterface] {
 	if params.NewDatabaseAccessParams == nil {
 		params.NewDatabaseAccessParams = &NewDatabaseAccessParams{}
 	}
-	return &EntityDataAccessQueue[TEntity, TInterface]{
+	return &EntityDataAccessClient[TEntity, TInterface]{
 		BaseDatabaseAccessInterface: NewBaseDatabaseAccess(params.NewDatabaseAccessParams),
-		// _client:                     params.Client,
-		// PostRoute:                   params.PostRoute,
-		// GetRoute:                    params.GetRoute,
-		// PutRoute:                    params.PutRoute,
-		// DeleteRoute:                 params.DeleteRoute,
-		// DefaultRoute:                params.DefaultRoute,
-		Parser:     params.Parser,
-		ParserList: params.ParserList,
+		_client:                     params.Client,
+		PostRoute:                   params.PostRoute,
+		GetRoute:                    params.GetRoute,
+		PutRoute:                    params.PutRoute,
+		DeleteRoute:                 params.DeleteRoute,
+		DefaultRoute:                params.DefaultRoute,
+		Parser:                      params.Parser,
+		ParserList:                  params.ParserList,
 	}
 }
 
-func (d *EntityDataAccessQueue[TEntity, TInterface]) Connect() {
+func (d *EntityDataAccessClient[TEntity, TInterface]) Connect() {
 
 }
 
-func (d *EntityDataAccessQueue[TEntity, TInterface]) Disconnect() {
+func (d *EntityDataAccessClient[TEntity, TInterface]) Disconnect() {
 
 }
 
-func (d *EntityDataAccessQueue[TEntity, TInterface]) GetByID(id string) (TInterface, error) {
+func (d *EntityDataAccessClient[TEntity, TInterface]) GetByID(id string) (TInterface, error) {
 	if d.GetRoute == "" {
 		d.GetRoute = d.DefaultRoute
 	}
@@ -64,19 +64,17 @@ func (d *EntityDataAccessQueue[TEntity, TInterface]) GetByID(id string) (TInterf
 	if err != nil {
 		var zero TInterface
 		return zero, err
-		log.Fatal("Failed to get entity by ID: ", err)
 	}
 	entity, err := d.Parser(jsonBytes)
 	if err != nil {
 		var zero TInterface
 		fmt.Println("Failed to unmarshal entity: ", err)
 		return zero, err
-		log.Fatal("Failed to unmarshal entity: ", err)
 	}
 	return interface{}(entity).(TInterface), nil
 }
 
-func (d *EntityDataAccessQueue[TEntity, TInterface]) GetAll() (*[]TInterface, error) {
+func (d *EntityDataAccessClient[TEntity, TInterface]) GetAll() (*[]TInterface, error) {
 	if d.GetRoute == "" {
 		d.GetRoute = d.DefaultRoute
 	}
@@ -85,14 +83,12 @@ func (d *EntityDataAccessQueue[TEntity, TInterface]) GetAll() (*[]TInterface, er
 		var zero []TInterface
 		fmt.Println("Failed to get all entities: ", err)
 		return &zero, err
-		log.Fatal("Failed to get all entities: ", err)
 	}
 	entities, err := d.ParserList(jsonBytes)
 	if err != nil {
 		var zero []TInterface
 		fmt.Println("Failed to unmarshal entities: ", err)
 		return &zero, err
-		log.Fatal("Failed to unmarshal entities: ", err)
 	}
 	converted := make([]TInterface, len(*entities))
 	for i, e := range *entities {
@@ -101,7 +97,7 @@ func (d *EntityDataAccessQueue[TEntity, TInterface]) GetAll() (*[]TInterface, er
 	return &converted, nil
 }
 
-func (d *EntityDataAccessQueue[TEntity, TInterface]) GetByIDs(ids []string) (*[]TInterface, error) {
+func (d *EntityDataAccessClient[TEntity, TInterface]) GetByIDs(ids []string) (*[]TInterface, error) {
 	if d.GetRoute == "" {
 		d.GetRoute = d.DefaultRoute
 	}
@@ -111,14 +107,12 @@ func (d *EntityDataAccessQueue[TEntity, TInterface]) GetByIDs(ids []string) (*[]
 		var zero []TInterface
 		fmt.Println("Failed to get entities by IDs: ", err)
 		return &zero, err
-		log.Fatal("Failed to get entities by IDs: ", err)
 	}
 	entities, err := d.ParserList(jsonBytes)
 	if err != nil {
 		var zero []TInterface
 		fmt.Println("Failed to unmarshal entities: ", err)
 		return &zero, err
-		log.Fatal("Failed to unmarshal entities: ", err)
 	}
 	converted := make([]TInterface, len(*entities))
 	for i, e := range *entities {
@@ -127,7 +121,7 @@ func (d *EntityDataAccessQueue[TEntity, TInterface]) GetByIDs(ids []string) (*[]
 	return &converted, nil
 }
 
-func (d *EntityDataAccessQueue[TEntity, TInterface]) GetByForeignID(foreignIDColumn string, foreignID string) (*[]TInterface, error) {
+func (d *EntityDataAccessClient[TEntity, TInterface]) GetByForeignID(foreignIDColumn string, foreignID string) (*[]TInterface, error) {
 	println("Getting by foreign ID")
 	if d.GetRoute == "" {
 		d.GetRoute = d.DefaultRoute
@@ -139,7 +133,6 @@ func (d *EntityDataAccessQueue[TEntity, TInterface]) GetByForeignID(foreignIDCol
 		var zero []TInterface
 		fmt.Printf("[DEBUG] Failed to get entities by foreignKey: %v\n", err)
 		return &zero, err
-		log.Fatal("Failed to get entities by foreignKey: ", err)
 	}
 	fmt.Printf("[DEBUG] Received JSON response: %s\n", string(jsonBytes))
 	entities, err := d.ParserList(jsonBytes)
@@ -148,7 +141,6 @@ func (d *EntityDataAccessQueue[TEntity, TInterface]) GetByForeignID(foreignIDCol
 		var zero []TInterface
 		fmt.Println("Failed to unmarshal entities: ", err)
 		return &zero, err
-		log.Fatal("Failed to unmarshal entities: ", err)
 	}
 	fmt.Printf("[DEBUG] Parsed entities: %v\n", *entities)
 	converted := make([]TInterface, len(*entities))
@@ -158,7 +150,7 @@ func (d *EntityDataAccessQueue[TEntity, TInterface]) GetByForeignID(foreignIDCol
 	return &converted, nil
 }
 
-func (d *EntityDataAccessQueue[TEntity, TInterface]) Create(entity TInterface) (TInterface, error) {
+func (d *EntityDataAccessClient[TEntity, TInterface]) Create(entity TInterface) (TInterface, error) {
 	if d.PostRoute == "" {
 		d.PostRoute = d.DefaultRoute
 	}
@@ -167,19 +159,17 @@ func (d *EntityDataAccessQueue[TEntity, TInterface]) Create(entity TInterface) (
 		var zero TInterface
 		fmt.Println("Failed to create entity: ", err)
 		return zero, err
-		log.Fatal("Failed to create entity: ", err)
 	}
 	newEntity, err := d.Parser(jsonBytes)
 	if err != nil {
 		var zero TInterface
 		fmt.Println("Failed to unmarshal entity: ", err)
 		return zero, err
-		log.Fatal("Failed to unmarshal entity: ", err)
 	}
 	return interface{}(newEntity).(TInterface), nil
 }
 
-func (d *EntityDataAccessQueue[TEntity, TInterface]) Update(entity TInterface) error {
+func (d *EntityDataAccessClient[TEntity, TInterface]) Update(entity TInterface) error {
 	if d.PutRoute == "" {
 		d.PutRoute = d.DefaultRoute
 	}
@@ -187,12 +177,11 @@ func (d *EntityDataAccessQueue[TEntity, TInterface]) Update(entity TInterface) e
 	if err != nil {
 		fmt.Println("Failed to update entity: ", err)
 		return err
-		log.Fatal("Failed to update entity: ", err)
 	}
 	return nil
 }
 
-func (d *EntityDataAccessQueue[TEntity, TInterface]) Delete(id string) error {
+func (d *EntityDataAccessClient[TEntity, TInterface]) Delete(id string) error {
 	if d.DeleteRoute == "" {
 		d.DeleteRoute = d.DefaultRoute
 	}
@@ -200,7 +189,6 @@ func (d *EntityDataAccessQueue[TEntity, TInterface]) Delete(id string) error {
 	if err != nil {
 		fmt.Println("Failed to delete entity: ", err)
 		return err
-		log.Fatal("Failed to delete entity: ", err)
 	}
 	return nil
 }
