@@ -171,6 +171,7 @@ func (wt *WalletTransaction) ToJSON() ([]byte, error) {
 	return json.Marshal(wt.ToParams())
 }
 
+
 type FakeWalletTransaction struct {
 	entity.FakeEntity
 	WalletID           string  `json:"walletID"`

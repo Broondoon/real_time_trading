@@ -28,6 +28,7 @@ func validateBuyerWalletBalance(buyerWallet wallet.WalletInterface, totalCost fl
 
 
 
+
 // Updates the balance of a single wallet and handles errors
 func updateWalletBalance(
     wallet wallet.WalletInterface,

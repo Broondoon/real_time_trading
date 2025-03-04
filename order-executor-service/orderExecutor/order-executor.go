@@ -106,7 +106,6 @@ func ProcessTrade(orderData network.MatchingEngineToExecutionJSON, databaseAcces
 	}
 
 	
-
 	// 3. Check if buyer has enough funds to afford the quantity*stockprice
 	buyerHasFunds, err := validateBuyerWalletBalance(buyerWallet, totalCost)
 	println("The buyer has enough funds in their wallet?: ", buyerHasFunds)

@@ -13,7 +13,6 @@ import (
 
 
 
-
 // Calculates the total cost of a transaction given the quantity and stock price.
 func calculateTotalTransactionCost(quantity int, stockPrice float64) float64 {
     return float64(quantity) * stockPrice
