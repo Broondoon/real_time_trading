@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/google/uuid"
@@ -88,16 +89,26 @@ func (d *PostGresDatabase) Connect() {
 	if !d.IsConnected() {
 		dsn := d.GetDBUrl()
 		var db *gorm.DB
-		var err error
-		for i := 0; i < 10; i++ { // try 10 times
+		retriesStr := os.Getenv("HEALTHCHECK_RETRIES")
+		retries, err := strconv.Atoi(retriesStr)
+		if err != nil {
+			retries = 10
+		}
+		intervalStr := os.Getenv("HEALTHCHECK_INTERVAL")
+		interval, err := strconv.Atoi(intervalStr)
+		if err != nil {
+			interval = 1
+		}
+
+		for i := 0; i < retries; i++ { // try with converted retries count
 			db, err = gorm.Open(postgres.Open(dsn), &gorm.Config{})
 			if err == nil {
 				d.database = db
 				d.SetConnected(true)
 				return
 			}
-			log.Printf("Database not ready yet, retrying... (%d/10)", i+1)
-			time.Sleep(2 * time.Second)
+			log.Printf("Database not ready yet, retrying... (%d/%d)", i+1, retries)
+			time.Sleep(time.Duration(interval) * time.Second)
 		}
 		log.Fatal("Database connection failed after multiple attempts: ", err)
 	}

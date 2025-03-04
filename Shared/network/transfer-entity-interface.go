@@ -50,3 +50,23 @@ type ReturnJSON struct {
 	Success bool `json:"success"`
 	Data    any  `json:"data"`
 }
+
+/* 
+	// Create custom response structure
+	type StockPortfolioResponse struct {
+		StockID       string    `json:"stock_id"`
+		StockName     string    `json:"stock_name"`
+		QuantityOwned int       `json:"quantity_owned"`
+		UpdatedAt     time.Time `json:"updated_at"`
+	}
+
+	// Transform stocks into desired format
+	portfolioResponse := make([]StockPortfolioResponse, 0)
+	for _, stock := range *stocks {
+		portfolioResponse = append(portfolioResponse, StockPortfolioResponse{
+			StockID:       stock.GetStockID(),
+			StockName:     stock.GetStockName(),
+			QuantityOwned: stock.GetQuantity(),
+			UpdatedAt:     stock.GetUpdatedAt(),
+		})
+	} */

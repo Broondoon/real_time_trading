@@ -1,7 +1,8 @@
 package main
 
 import (
-	"Shared/network"
+	networkHttp "Shared/network/http"
+	"databaseAccessStock"
 	"databaseAccessUserManagement"
 	"log"
 	"os"
@@ -11,8 +12,11 @@ import (
 
 func main() {
 
-	networkManager := network.NewNetwork()
+	networkManager := networkHttp.NewNetworkHttp()
 	databaseAccess := databaseAccessUserManagement.NewDatabaseAccess(&databaseAccessUserManagement.NewDatabaseAccessParams{
+		Network: networkManager,
+	})
+	stockDatabaseAccess := databaseAccessStock.NewDatabaseAccess(&databaseAccessStock.NewDatabaseAccessParams{
 		Network: networkManager,
 	})
 
@@ -20,10 +24,10 @@ func main() {
 	userStockAccess := databaseAccess.UserStock()
 
 	handlers.InitializeWallet(walletAccess, networkManager)
-	handlers.InitializeUserStock(userStockAccess, networkManager)
+	handlers.InitializeUserStock(userStockAccess, stockDatabaseAccess, networkManager)
 	handlers.InitializeHealth()
 
 	log.Println("User Management Service started on port", os.Getenv("USER_MANAGEMENT_PORT"))
 
-	networkManager.Listen(network.ListenerParams{Handler: nil})
+	networkManager.Listen()
 }

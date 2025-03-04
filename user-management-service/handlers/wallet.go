@@ -45,7 +45,7 @@ func InitializeWallet(walletAccess databaseAccessUserManagement.WalletDataAccess
 	fmt.Printf("Created wallet for user %s with balance: %.2f\n", createdWallet.GetUserID(), createdWallet.GetBalance())
 }*/
 
-func getWalletBalanceHandler(responseWriter http.ResponseWriter, data []byte, queryParams url.Values, requestType string) {
+func getWalletBalanceHandler(responseWriter network.ResponseWriter, data []byte, queryParams url.Values, requestType string) {
 	userID := queryParams.Get("userID")
 	if userID == "" {
 		// Fallback if "userID" isn’t provided.
@@ -81,7 +81,8 @@ func getWalletBalanceHandler(responseWriter http.ResponseWriter, data []byte, qu
 
 	walletJSON, err := json.Marshal(returnVal)
 	if err != nil {
-		http.Error(responseWriter, "Failed to marshal wallet balance: "+err.Error(), http.StatusInternalServerError)
+		defer responseWriter.WriteHeader(http.StatusInternalServerError)
+		//http.Error(responseWriter, "Failed to marshal wallet balance: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 
@@ -89,7 +90,7 @@ func getWalletBalanceHandler(responseWriter http.ResponseWriter, data []byte, qu
 	responseWriter.Write(walletJSON)
 }
 
-func addMoneyToWalletHandler(responseWriter http.ResponseWriter, data []byte, queryParams url.Values, requestType string) {
+func addMoneyToWalletHandler(responseWriter network.ResponseWriter, data []byte, queryParams url.Values, requestType string) {
 
 	fmt.Printf("DEBUG: Received addMoneyToWallet request. Request Type: %s, Query Params: %v\n", requestType, queryParams)
 
@@ -146,7 +147,7 @@ func addMoneyToWalletHandler(responseWriter http.ResponseWriter, data []byte, qu
 	responseWriter.WriteHeader(http.StatusOK)
 }
 
-func createWalletHandler(responseWriter http.ResponseWriter, data []byte, queryParams url.Values, requestType string) {
+func createWalletHandler(responseWriter network.ResponseWriter, data []byte, queryParams url.Values, requestType string) {
 	fmt.Printf("DEBUG: createWalletHandler invoked. Request Type: %s, Query Params: %v, Request Body: %s\n", requestType, queryParams, string(data))
 
 	userID := queryParams.Get("userID")
