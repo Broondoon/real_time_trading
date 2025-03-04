@@ -73,7 +73,6 @@ func placeStockOrderHandler(responseWriter http.ResponseWriter, data []byte, que
 func placeStockOrder(stockOrder order.StockOrderInterface) error {
 	var err error
 
-
 	if !stockOrder.GetIsBuy() {
 		// Get seller's current stock holdings
 		sellerStockPortfolio, err := _databaseAccessUser.UserStock().GetUserStocks(stockOrder.GetUserID())
@@ -99,15 +98,14 @@ func placeStockOrder(stockOrder order.StockOrderInterface) error {
 				sellerStock.GetQuantity(), stockOrder.GetQuantity())
 		}
 
-        // Deduct the quantity from seller's portfolio but keep the record
-        newQuantity := sellerStock.GetQuantity() - stockOrder.GetQuantity()
-        sellerStock.SetQuantity(newQuantity)
-        err = _databaseAccessUser.UserStock().Update(sellerStock)
-        if err != nil {
-            return fmt.Errorf("failed to update seller stock quantity: %v", err)
-        }
-    }
-
+		// Deduct the quantity from seller's portfolio but keep the record
+		newQuantity := sellerStock.GetQuantity() - stockOrder.GetQuantity()
+		sellerStock.SetQuantity(newQuantity)
+		err = _databaseAccessUser.UserStock().Update(sellerStock)
+		if err != nil {
+			return fmt.Errorf("failed to update seller stock quantity: %v", err)
+		}
+	}
 
 	transaction := transaction.NewStockTransaction(transaction.NewStockTransactionParams{
 		StockOrder:  stockOrder,
@@ -174,8 +172,7 @@ func cancelStockTransaction(id string) error {
 
 }
 
-
-/* 
+/*
 func cancelStockTransaction(id string) error {
     // Get the transaction details first
     transaction, err := _databaseAccess.StockTransaction().Get(id)
@@ -213,4 +210,4 @@ func cancelStockTransaction(id string) error {
     _, err = _networkManager.MatchingEngine().Delete("deleteOrder/" + id)
     return err
 }
- */
+*/
