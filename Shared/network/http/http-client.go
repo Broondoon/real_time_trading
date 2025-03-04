@@ -29,6 +29,10 @@ type HttpClient struct {
 	SecretKey []byte
 }
 
+func (hc *HttpClient) GetBaseURL() string {
+	return hc.BaseURL
+}
+
 func newHttpClient(baseURL string) network.ClientInterface {
 	return &HttpClient{
 		BaseURL: baseURL,

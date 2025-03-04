@@ -118,6 +118,7 @@ func PlaceStockOrder(stockOrder order.StockOrderInterface) bool {
 }
 
 func DeleteStockOrderHandler(responseWriter network.ResponseWriter, data []byte, queryParams url.Values, requestType string) {
+	println("Deleting stock order")
 	orderID := queryParams.Get("id")
 	err := DeleteStockOrder(orderID)
 	if errors.Is(err, gorm.ErrRecordNotFound) {

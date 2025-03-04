@@ -165,7 +165,9 @@ func (n *QueueResponseHandler) WriteHeader(statusCode int) {
 	println("Writing header: ", statusCode)
 	switch statusCode {
 	case http.StatusOK:
-		n.d.Ack(false)
+		// println("Acking")
+		// n.d.Ack(false)
+		n.Write([]byte("OK")) //Bad situation here, since we need to make a few adjustments to the response. We have to send back a body right now
 	case http.StatusNotFound:
 		n.d.Nack(false, false)
 	case http.StatusBadRequest:

@@ -4,6 +4,7 @@ import (
 	"Shared/network"
 	"context"
 	"encoding/json"
+	"os"
 	"strings"
 	"time"
 
@@ -18,8 +19,13 @@ type QueueClientInterface interface {
 }
 
 type QueueClient struct {
+	BaseURL string
 	QueueConnectionInterface
 	ExchangeRoute string
+}
+
+func (n *QueueClient) GetBaseURL() string {
+	return n.BaseURL
 }
 
 type NewQueueClientParams struct {
@@ -38,6 +44,7 @@ func NewQueueClient(exchangeRoute string, params *NewQueueClientParams) QueueCli
 	return &QueueClient{
 		QueueConnectionInterface: NewNetworkQueueConnection(params.NewNetworkQueueConnectionParams),
 		ExchangeRoute:            exchangeRoute,
+		BaseURL:                  os.Getenv("BASE_URL_PREFIX") + exchangeRoute + os.Getenv("BASE_URL_POSTFIX"),
 	}
 }
 
@@ -122,8 +129,10 @@ func (n *QueueClient) SendWithReturn(route string, message []byte, params SendPa
 
 // need a RPC
 func (n *QueueClient) Get(route string, headers map[string]string) ([]byte, error) {
-	id := strings.Split(route, "/")[len(strings.Split(route, "/"))-1]
+	splitRoute := strings.Split(route, "/")
+	id := splitRoute[len(strings.Split(route, "/"))-1]
 	if id != "" && id != route {
+		route = splitRoute[0] + "/"
 		headers["id"] = id
 	}
 	data := QueueJSONData{
@@ -174,7 +183,9 @@ func (n *QueueClient) Put(route string, payload interface{}) ([]byte, error) {
 
 func (n *QueueClient) Delete(route string) ([]byte, error) {
 	//header will have id as the last part of the route
-	id := strings.Split(route, "/")[len(strings.Split(route, "/"))-1]
+	splitRoute := strings.Split(route, "/")
+	id := splitRoute[len(splitRoute)-1]
+	route = splitRoute[0] + "/"
 	headers := map[string]string{"id": id}
 	data := QueueJSONData{
 		Headers:     headers,

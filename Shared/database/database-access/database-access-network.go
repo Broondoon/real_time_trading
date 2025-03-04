@@ -4,7 +4,12 @@ import (
 	"Shared/entities/entity"
 	"Shared/network"
 	"fmt"
+	"log"
+	"net/http"
+	"os"
+	"strconv"
 	"strings"
+	"time"
 )
 
 type EntityDataAccessClient[TEntity entity.EntityInterface, TInterface entity.EntityInterface] struct {
@@ -49,6 +54,38 @@ func NewEntityDataAccessHTTP[TEntity entity.EntityInterface, TInterface entity.E
 }
 
 func (d *EntityDataAccessClient[TEntity, TInterface]) Connect() {
+	retriesStr := os.Getenv("HEALTHCHECK_RETRIES")
+	retries, err := strconv.Atoi(retriesStr)
+	if err != nil {
+		retries = 10
+	}
+	intervalStr := os.Getenv("HEALTHCHECK_INTERVAL")
+	interval, err := strconv.Atoi(intervalStr)
+	if err != nil {
+		interval = 1
+	}
+	timeoutStr := os.Getenv("HEALTHCHECK_TIMEOUT")
+	timeout, err := strconv.Atoi(timeoutStr)
+	if err != nil {
+		interval = 1
+	}
+	baseURL := fmt.Sprintf("%s/health", d._client.GetBaseURL())
+
+	for i := 0; i < retries; i++ { // try with converted retries count
+		client := &http.Client{
+			Timeout: time.Duration(timeout) * time.Second,
+		}
+		resp, err := client.Get(baseURL)
+		if err != nil {
+			log.Printf("Database not ready yet, retrying... (%d/%d)", i+1, retries)
+			time.Sleep(time.Duration(interval) * time.Second)
+		}
+		defer resp.Body.Close()
+		if resp.StatusCode == http.StatusOK {
+			return
+		}
+	}
+	log.Fatal("Database connection failed after multiple attempts: ", err)
 
 }
 
