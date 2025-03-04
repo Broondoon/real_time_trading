@@ -40,16 +40,6 @@ func healthHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func GetStockTransactions(responseWriter http.ResponseWriter, data []byte, queryParams url.Values, requestType string) {
-
-/*     stocks, err := _userStockAccess.GetUserStocks(userID)
-    if err != nil {
-        log.Printf("Error retrieving stocks for userID %s: %v", userID, err)
-        responseWriter.WriteHeader(http.StatusNotFound)
-        return
-    }
-
-	//userStockAccess databaseAccessUserManagement.UserStocksDataAccessInterface */
-
 	transactions, err := _databaseManager.StockTransactions().GetByForeignID("user_id", queryParams.Get("userID"))
 
 
@@ -145,55 +135,69 @@ alletTxId>,
 "time_stamp":<timestamp>}]
 */
 func getWalletTransactions(responseWriter http.ResponseWriter, data []byte, queryParams url.Values, requestType string) {
-	walletTransactions, err := _databaseManager.WalletTransactions().GetAll()
-	if err != nil {
-		fmt.Println("error: ", err.Error())
-		responseWriter.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-	// Create formatted response structure
-	type FormattedWalletTransaction struct {
-		WalletTxID *string   `json:"wallet_tx_id"`
-		StockTxID  string    `json:"stock_tx_id"`
-		IsDebit    bool      `json:"is_debit"`
-		Amount     float64   `json:"amount"`
-		Timestamp  time.Time `json:"time_stamp"`
-	}
+    walletTransactions, err := _databaseManager.WalletTransactions().GetByForeignID("user_id", queryParams.Get("userID"))
 
-	// Format transactions
-	formattedTransactions := make([]FormattedWalletTransaction, 0)
-	for _, tx := range *walletTransactions {
-		tx.SetWalletTXID() // ensure the wallet_tx_id is set
+    if err != nil {
+        println("Had an error. Error: ", err.Error())
+        responseWriter.WriteHeader(http.StatusInternalServerError)
+        return
+    }
+    for _, transaction := range *walletTransactions {
+        json, err := transaction.ToJSON()
+        if err != nil {
+            println("Had an error. Error: ", err.Error())
+            responseWriter.WriteHeader(http.StatusInternalServerError)
+            return
+        }
+        fmt.Println(string(json))
+    }
 
-		// Create formatted transaction
-		formatted := FormattedWalletTransaction{
-			//WalletTxID: tx.GetId(),
-			StockTxID: tx.GetStockTransactionID(),
-			IsDebit:   tx.GetIsDebit(),
-			Amount:    tx.GetAmount(),
-			Timestamp: tx.GetTimestamp(),
-		}
+    // Create formatted response structure
+    type FormattedWalletTransaction struct {
+        WalletTxID string   `json:"wallet_tx_id"`
+        StockTxID  string    `json:"stock_tx_id"`
+        IsDebit    bool      `json:"is_debit"`
+        Amount     float64   `json:"amount"`
+        Timestamp  time.Time `json:"time_stamp"`
+    }
 
-		formattedTransactions = append(formattedTransactions, formatted)
-	}
+    // Format transactions
+    formattedTransactions := make([]FormattedWalletTransaction, 0)
+    for _, tx := range *walletTransactions {
+        tx.SetWalletTXID() // ensure the wallet_tx_id is set
+        
+        // Get the ID from the wallet transaction
+        id := tx.GetId()
 
-	//sort transactions by timestamp. Oldest to newest
-	sort.SliceStable((formattedTransactions), func(i, j int) bool {
-		return formattedTransactions[i].Timestamp.Before(formattedTransactions[j].Timestamp)
-	})
+        // Create formatted transaction
+        formatted := FormattedWalletTransaction{
+            WalletTxID: id,  // Use the wallet transaction's ID
+            StockTxID:  tx.GetStockTransactionID(),
+            IsDebit:    tx.GetIsDebit(),
+            Amount:     tx.GetAmount(),
+            Timestamp:  tx.GetTimestamp(),
+        }
 
-	returnVal := network.ReturnJSON{
-		Success: true,
-		Data:    formattedTransactions,
-	}
+        formattedTransactions = append(formattedTransactions, formatted)
+    }
 
-	transactionsJSON, err := json.Marshal(returnVal)
-	if err != nil {
-		responseWriter.WriteHeader(http.StatusInternalServerError)
-		return
-	}
+    //sort transactions by timestamp. Oldest to newest
+    sort.SliceStable((formattedTransactions), func(i, j int) bool {
+        return formattedTransactions[i].Timestamp.Before(formattedTransactions[j].Timestamp)
+    })
 
-	responseWriter.Write(transactionsJSON)
+    returnVal := network.ReturnJSON{
+        Success: true,
+        Data:    formattedTransactions,
+    }
+
+    transactionsJSON, err := json.Marshal(returnVal)
+    if err != nil {
+        responseWriter.WriteHeader(http.StatusInternalServerError)
+        return
+    }
+
+    responseWriter.Write(transactionsJSON)
 }
 
 func cancelStockTransactionHandler(responseWriter http.ResponseWriter, data []byte, queryParams url.Values, requestType string) {

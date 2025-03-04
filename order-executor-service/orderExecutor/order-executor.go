@@ -58,7 +58,14 @@ func ProcessTrade(orderData network.MatchingEngineToExecutionJSON, databaseAcces
 		println("Error: ", err.Error())
 		return false, false, fmt.Errorf("failed to get transactions: %v", err)
 	}
+    for _, transaction := range *transactionList {
+        json, err := transaction.ToJSON()
+        if err != nil {
+            println("Had an error. Error: ", err.Error())
 
+        }
+        fmt.Println(string(json))
+    }
 
 	// Validate we got both transactions
 	if len(*transactionList) != 2 {
@@ -67,27 +74,21 @@ func ProcessTrade(orderData network.MatchingEngineToExecutionJSON, databaseAcces
 
 	stockTx := (*transactionList)[0]
 
-	var buyTx, sellTx transaction.StockTransactionInterface
-	for _, tx := range *transactionList {
-		if tx.GetId() == buyOrderID {
-			buyTx = tx
-		} else if tx.GetId() == sellOrderID {
-			sellTx = tx
-		}
-	}
-
-	if buyTx == nil || sellTx == nil {
-		return false, false, fmt.Errorf("could not match buy and sell transactions")
-	}
-
-
 
 	// 2. Go to User-Managment DB, get wallet of userID present on  Buy order transaction
 	walletList, err := databaseAccessUser.Wallet().GetByIDs([]string{buyerID, sellerID})
+	for _, wallet := range *walletList{
+        json, err := wallet.ToJSON()
+        if err != nil {
+            println("Had an error. Error: ", err.Error())
+        }
+        fmt.Println(string(json))
+    }
 	if err != nil {
 		println("Error: ", err.Error())
 		return false, false, fmt.Errorf("failed to get wallets: %v", err)
 	}
+
 
 	// Validate we got both wallets
 	if len(*walletList) != 2 {
@@ -95,9 +96,20 @@ func ProcessTrade(orderData network.MatchingEngineToExecutionJSON, databaseAcces
 	}
 
 	
+	var buyerWallet, sellerWallet wallet.WalletInterface
+	for _, w := range *walletList {
+		if w.GetUserID() == buyerID {
+			buyerWallet = w
+		} else if w.GetUserID() == sellerID {
+			sellerWallet = w
+		}
+	}
+
+	
 
 	// 3. Check if buyer has enough funds to afford the quantity*stockprice
-	buyerHasFunds, err := validateBuyerWalletBalance((*walletList)[0], totalCost)
+	buyerHasFunds, err := validateBuyerWalletBalance(buyerWallet, totalCost)
+	println("The buyer has enough funds in their wallet?: ", buyerHasFunds)
 	if err != nil {
 		println("Error: ", err.Error())
 		return false, false, err
@@ -107,10 +119,10 @@ func ProcessTrade(orderData network.MatchingEngineToExecutionJSON, databaseAcces
 	}
 
 
-
 	// Ask Kyle about the (*walletList)[0] and (*walletList)[0]
 	// 4. Update buyer and seller wallet balances and create wallet transactions for these changes
-	err = updateUserWallets((*walletList)[0], (*walletList)[1], totalCost, stockTx, databaseAccessUser, databaseAccessTransact)
+	err = updateUserWallets(buyerWallet, sellerWallet, totalCost, stockTx, databaseAccessUser, databaseAccessTransact)
+	println("Done updating wallets")
 	if len(*walletList) != 2 {
 		return false, false, fmt.Errorf("expected 2 wallets, got %d", len(*walletList))
 	}
@@ -123,7 +135,8 @@ func ProcessTrade(orderData network.MatchingEngineToExecutionJSON, databaseAcces
 
 	// 5. Update buyer and seller stock portfolios. Deduct the stock quantity from the seller's portfolio.
 	//    Add the stock quantity to the buyer's portfolio.
-	err = updateUserStocks(buyerID, sellerID, stockID, quantity, buyTx, sellTx, databaseAccessUser, databaseAccessTransact, isBuyPartial, isSellPartial)
+	err = updateUserStocks(buyerID, sellerID, stockID, quantity, stockTx, databaseAccessUser, databaseAccessTransact, isBuyPartial, isSellPartial, stockPrice)
+	print("Done updating user stocks")
 	if err != nil {
 		println("Error: ", err.Error())
 		if err.Error() == "seller does not have enough shares of stock "+stockID {
@@ -181,9 +194,9 @@ func updateUserWallets(
 
 
 
-    println("Final balances - Buyer: %.2f, Seller: %.2f",
-        buyerWallet.GetBalance(),
-        sellerWallet.GetBalance())
+	println(fmt.Sprintf("Final balances - Buyer: %.2f, Seller: %.2f",
+		buyerWallet.GetBalance(),
+		sellerWallet.GetBalance()))
 
     return nil
 
@@ -197,12 +210,12 @@ func updateUserStocks(
     sellerID string,
     stockID string,
     quantity int,
-    buyTx transaction.StockTransactionInterface,
-	sellTx transaction.StockTransactionInterface,
+	stockTx transaction.StockTransactionInterface,
     databaseAccessUser databaseAccessUserManagement.DatabaseAccessInterface,
     databaseAccessTransact databaseAccessTransaction.DatabaseAccessInterface,
     isBuyPartial bool,
     isSellPartial bool,
+	stockPrice float64,
 ) error {
 
 
@@ -230,7 +243,7 @@ func updateUserStocks(
 
 
 
-    if err := updateTransactionStatus(buyTx, sellTx, isBuyPartial, isSellPartial, databaseAccessTransact); err != nil {
+    if err := updateTransactionStatus(stockTx, isBuyPartial, isSellPartial, stockPrice, databaseAccessTransact); err != nil {
         return err
     }
 

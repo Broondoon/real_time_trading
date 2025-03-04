@@ -1,7 +1,7 @@
 package orderExecutorService
 
 import (
-    "Shared/entities/entity"
+    //"Shared/entities/entity"
     "Shared/entities/transaction"
     userStock "Shared/entities/user-stock"
     "databaseAccessTransaction"
@@ -9,6 +9,18 @@ import (
     "fmt"
     "time"
 )
+
+
+
+
+
+// Calculates the total cost of a transaction given the quantity and stock price.
+func calculateTotalTransactionCost(quantity int, stockPrice float64) float64 {
+    return float64(quantity) * stockPrice
+}
+
+
+
 
 // Gets and validates user stock portfolios
 func getUserStockPortfolios(
@@ -33,6 +45,9 @@ func getUserStockPortfolios(
 
     return buyerStockPortfolio, sellerStockPortfolio, nil
 }
+
+
+
 
 // Finds and validates seller's stock holding
 func handleSellerStock(
@@ -61,6 +76,10 @@ func handleSellerStock(
     return sellerStock, nil
 }
 
+
+
+
+
 // Creates or retrieves buyer's stock holding
 func handleBuyerStock(
     buyerStockPortfolio *[]userStock.UserStockInterface,
@@ -82,16 +101,11 @@ func handleBuyerStock(
 
     if buyerStock == nil {
         buyerStock = userStock.New(userStock.NewUserStockParams{
-            NewEntityParams: entity.NewEntityParams{
-                DateCreated:  time.Now(),
-                DateModified: time.Now(),
-            },
             UserID:    buyerID,
             StockID:   stockID,
             StockName: sellerStock.GetStockName(),
             Quantity:  0,
         })
-
         createdStock, err := databaseAccessUser.UserStock().Create(buyerStock)
         if err != nil {
             return nil, fmt.Errorf("failed to create buyer stock holding: %v", err)
@@ -100,6 +114,9 @@ func handleBuyerStock(
     }
     return buyerStock, nil
 }
+
+
+
 
 // Updates stock quantities in database
 func updateUserStockQuantities(
@@ -125,54 +142,60 @@ func updateUserStockQuantities(
     return nil
 }
 
+
+
+
+
 // Updates transaction status and creates filled transaction if needed
+// In order-executor-service/orderExecutor/stock-helpers.go
 func updateTransactionStatus(
-    buyTx transaction.StockTransactionInterface,
-    sellTx transaction.StockTransactionInterface,
+    stockTx transaction.StockTransactionInterface,
     isBuyPartial bool,
     isSellPartial bool,
+    stockPrice float64,
     databaseAccessTransact databaseAccessTransaction.DatabaseAccessInterface,
 ) error {
-    // Update buy transaction
-    buyTx.SetOrderStatus("COMPLETED")
-    if err := databaseAccessTransact.StockTransaction().Update(buyTx); err != nil {
-        return fmt.Errorf("failed to update buy transaction status: %v", err)
-    }
 
-    // Update sell transaction
-    if !isBuyPartial && !isSellPartial {
-        sellTx.SetOrderStatus("COMPLETED")
+
+    // Handle partial matching for both buy and sell orders
+    if stockTx.GetIsBuy() {
+        if isBuyPartial {
+            stockTx.SetOrderStatus("PARTIALLY_COMPLETE")
+        } else {
+            stockTx.SetOrderStatus("COMPLETED")
+        }
     } else {
-        sellTx.SetOrderStatus("PARTIALLY_COMPLETE")
+        // For sell orders
+        if isSellPartial {
+            stockTx.SetOrderStatus("PARTIALLY_COMPLETE")
+        } else {
+            stockTx.SetOrderStatus("COMPLETED")
+        }
     }
-    if err := databaseAccessTransact.StockTransaction().Update(sellTx); err != nil {
-        return fmt.Errorf("failed to update sell transaction status: %v", err)
+    
+    // Set the stock price in the transaction
+    stockTx.SetStockPrice(stockPrice)
+    
+    // Update in database
+    if err := databaseAccessTransact.StockTransaction().Update(stockTx); err != nil {
+        return fmt.Errorf("failed to update transaction status: %v", err)
     }
 
     // Create filled transaction for partial orders
     if isBuyPartial || isSellPartial {
         filledTx := transaction.NewStockTransaction(transaction.NewStockTransactionParams{
-            NewEntityParams: entity.NewEntityParams{
-                DateCreated:  time.Now(),
-                DateModified: time.Now(),
-            },
-            ParentStockTransaction: sellTx,
-            OrderStatus:            "COMPLETED",
+            ParentStockTransaction: stockTx,
+            OrderStatus:            "COMPLETED", // Child transaction is always COMPLETED
             TimeStamp:              time.Now(),
         })
+        
+        // Set the stock price in the filled transaction
+        filledTx.SetStockPrice(stockPrice)
 
         if _, err := databaseAccessTransact.StockTransaction().Create(filledTx); err != nil {
             return fmt.Errorf("failed to create filled stock transaction: %v", err)
         }
     }
+    
     return nil
-}
-
-
-
-
-
-// Calculates the total cost of a transaction given the quantity and stock price.
-func calculateTotalTransactionCost(quantity int, stockPrice float64) float64 {
-    return float64(quantity) * stockPrice
 }
