@@ -40,11 +40,35 @@ func healthHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func GetStockTransactions(responseWriter http.ResponseWriter, data []byte, queryParams url.Values, requestType string) {
-	transactions, err := _databaseManager.StockTransactions().GetAll()
+
+/*     stocks, err := _userStockAccess.GetUserStocks(userID)
+    if err != nil {
+        log.Printf("Error retrieving stocks for userID %s: %v", userID, err)
+        responseWriter.WriteHeader(http.StatusNotFound)
+        return
+    }
+
+	//userStockAccess databaseAccessUserManagement.UserStocksDataAccessInterface */
+
+	transactions, err := _databaseManager.StockTransactions().GetByForeignID("user_id", queryParams.Get("userID"))
+
+
 	if err != nil {
-		responseWriter.WriteHeader(http.StatusInternalServerError)
-		return
-	}
+        println("Had an error. Error: ", err.Error())
+        responseWriter.WriteHeader(http.StatusInternalServerError)
+        return
+    }
+    for _, transaction := range *transactions {
+        json, err := transaction.ToJSON()
+        if err != nil {
+            println("Had an error. Error: ", err.Error())
+            responseWriter.WriteHeader(http.StatusInternalServerError)
+            return
+        }
+        fmt.Println(string(json))
+    }
+
+	
 	// Create formatted response structure
 	type FormattedStockTransaction struct {
 		StockTxID       string    `json:"stock_tx_id"`
@@ -58,6 +82,7 @@ func GetStockTransactions(responseWriter http.ResponseWriter, data []byte, query
 		Quantity        int       `json:"quantity"`
 		Timestamp       time.Time `json:"time_stamp"`
 	}
+
 
 	// Format transactions
 	formattedTransactions := make([]FormattedStockTransaction, 0)
@@ -104,34 +129,70 @@ func GetStockTransactions(responseWriter http.ResponseWriter, data []byte, query
 	}
 
 	responseWriter.Write(transactionsJSON)
+	
 }
 
 // Expected input is a stock ID in the body of the request
 // we're expecting {"StockID":"{id value}"}
+// ** ^ ?? Need to clarify this with group - The Expected Header input should be {"token":<user1Token>} or {"token":<compToken>}
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+/* Example of Expected Output:
+"success":true,
+"data":[{"wallet_tx_id"":<googleW
+alletTxId>,
+"stock_tx_id":<googleStockTxId>,
+"is_debit":true, "amount":1350,
+"time_stamp":<timestamp>}]
+*/
 func getWalletTransactions(responseWriter http.ResponseWriter, data []byte, queryParams url.Values, requestType string) {
-	transactions, err := _databaseManager.WalletTransactions().GetAll()
+	walletTransactions, err := _databaseManager.WalletTransactions().GetAll()
 	if err != nil {
 		fmt.Println("error: ", err.Error())
 		responseWriter.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	for _, transaction := range *transactions {
-		//making sure the wallet_tx_id is set
-		transaction.SetWalletTXID()
+	// Create formatted response structure
+	type FormattedWalletTransaction struct {
+		WalletTxID *string   `json:"wallet_tx_id"`
+		StockTxID  string    `json:"stock_tx_id"`
+		IsDebit    bool      `json:"is_debit"`
+		Amount     float64   `json:"amount"`
+		Timestamp  time.Time `json:"time_stamp"`
 	}
+
+	// Format transactions
+	formattedTransactions := make([]FormattedWalletTransaction, 0)
+	for _, tx := range *walletTransactions {
+		tx.SetWalletTXID() // ensure the wallet_tx_id is set
+
+		// Create formatted transaction
+		formatted := FormattedWalletTransaction{
+			//WalletTxID: tx.GetId(),
+			StockTxID: tx.GetStockTransactionID(),
+			IsDebit:   tx.GetIsDebit(),
+			Amount:    tx.GetAmount(),
+			Timestamp: tx.GetTimestamp(),
+		}
+
+		formattedTransactions = append(formattedTransactions, formatted)
+	}
+
 	//sort transactions by timestamp. Oldest to newest
-	sort.SliceStable((*transactions), func(i, j int) bool {
-		return (*transactions)[i].GetTimestamp().Before((*transactions)[j].GetTimestamp())
+	sort.SliceStable((formattedTransactions), func(i, j int) bool {
+		return formattedTransactions[i].Timestamp.Before(formattedTransactions[j].Timestamp)
 	})
+
 	returnVal := network.ReturnJSON{
 		Success: true,
-		Data:    transactions,
+		Data:    formattedTransactions,
 	}
+
 	transactionsJSON, err := json.Marshal(returnVal)
 	if err != nil {
 		responseWriter.WriteHeader(http.StatusInternalServerError)
 		return
 	}
+
 	responseWriter.Write(transactionsJSON)
 }
 
