@@ -1,4 +1,3 @@
-// In auth-database/databaseAccess/db-access.go
 package databaseAccessAuth
 
 import (
@@ -7,43 +6,52 @@ import (
 	"os"
 
 	databaseAccess "Shared/database/database-access"
-	"Shared/entities/user"
-	"Shared/network"
+	user "Shared/entities/user"
+	"Shared/network" // for the HTTP client (package network)
 )
 
-// AuthDataAccessInterface defines the operations required by auth-service.
-type AuthDataAccessInterface interface {
-	databaseAccess.DatabaseAccessInterface
-	// GetUserByUsername (or similar) is the method to check for an existing username.
-	GetUserByUsername(username string) (*user.User, error)
+// UserDataAccessInterface defines the operations that auth-service needs.
+type UserDataAccessInterface interface {
+	databaseAccess.EntityDataAccessInterface[*user.User, user.UserInterface]
+	// GetUserByUsername queries by the "username" field.
+	GetUserByUsername(username string) (user.UserInterface, error)
+	// CreateUser creates a new user.
 	CreateUser(u *user.User) error
-	// ... other methods as needed.
 }
 
-// AuthDataAccess is the concrete implementation.
-type AuthDataAccess struct {
+// UserDataAccess is the concrete implementation.
+type UserDataAccess struct {
 	databaseAccess.EntityDataAccessInterface[*user.User, user.UserInterface]
+}
+
+type DatabaseAccessInterface interface {
+	databaseAccess.DatabaseAccessInterface
+	User() UserDataAccessInterface
+}
+
+type DatabaseAccess struct {
+	UserDataAccessInterface
 	_networkManager network.NetworkInterface
 }
 
-// NewDatabaseAccessParams are the parameters needed to create the auth database access.
+// NewUserDataAccessParams holds parameters for creating a new auth data access.
 type NewDatabaseAccessParams struct {
 	UserParams *databaseAccess.NewEntityDataAccessHTTPParams[*user.User]
 	Network    network.NetworkInterface
 }
 
-// NewDatabaseAccess creates a new auth database access implementation.
-func NewDatabaseAccess(params *NewDatabaseAccessParams) AuthDataAccessInterface {
+// NewUserDataAccess creates an UserDataAccessInterface instance.
+func NewDatabaseAccess(params *NewDatabaseAccessParams) DatabaseAccessInterface {
 	if params.UserParams == nil {
 		params.UserParams = &databaseAccess.NewEntityDataAccessHTTPParams[*user.User]{}
 	}
 	if params.Network == nil {
-		panic("No Network provided.")
+		panic("No Network provided")
 	}
 	if params.UserParams.Client == nil {
 		params.UserParams.Client = params.Network.AuthDatabase()
 	}
-	// Set default route if needed.
+	// Use an environment variable for the default route.
 	if params.UserParams.DefaultRoute == "" {
 		params.UserParams.DefaultRoute = os.Getenv("AUTH_SERVICE_USER_ROUTE")
 	}
@@ -54,43 +62,44 @@ func NewDatabaseAccess(params *NewDatabaseAccessParams) AuthDataAccessInterface 
 		params.UserParams.ParserList = user.ParseList
 	}
 
-	dba := &AuthDataAccess{
-		EntityDataAccessInterface: databaseAccess.NewEntityDataAccessHTTP[*user.User, user.UserInterface](params.UserParams),
-		_networkManager:           params.Network,
+	dba := &DatabaseAccess{
+		UserDataAccessInterface: &UserDataAccess{
+			EntityDataAccessInterface: databaseAccess.NewEntityDataAccessHTTP[*user.User, user.UserInterface](params.UserParams),
+		},
+		_networkManager: params.Network,
 	}
-	// Optionally call Connect() if needed.
 	dba.Connect()
 	return dba
 }
 
-func (a *AuthDataAccess) Connect() {
-	// Implementation can be empty if the HTTP–based access doesn't require an explicit connection.
+func (a *DatabaseAccess) Connect() {
 }
 
-func (a *AuthDataAccess) Disconnect() {
-	// Similarly, provide a disconnect if needed.
+func (a *UserDataAccess) Disconnect() {
 }
 
-// GetUserByUsername fetches a user using the "username" column.
-func (a *AuthDataAccess) GetUserByUsername(username string) (*user.User, error) {
-	// Assuming the generic access provides GetByForeignID:
-	users, err := a.GetByForeignID("username", username)
+func (d *DatabaseAccess) User() UserDataAccessInterface {
+	return d.UserDataAccessInterface
+}
+
+// GetUserByUsername uses the generic GetByForeignID method from the shared layer.
+func (d *UserDataAccess) GetUserByUsername(username string) (user.UserInterface, error) {
+	users, err := d.GetByForeignID("user_name", username)
 	if err != nil {
 		return nil, err
 	}
 	if len(*users) == 0 {
 		return nil, errors.New("user not found")
 	}
-	// Assuming the first result is the one we want.
 	u, ok := (*users)[0].(*user.User)
 	if !ok {
-		return nil, fmt.Errorf("failed to convert result")
+		return nil, fmt.Errorf("failed to convert result to *user.User")
 	}
 	return u, nil
 }
 
 // CreateUser calls the generic Create method.
-func (a *AuthDataAccess) CreateUser(u *user.User) error {
-	_, err := a.Create(u)
+func (d *UserDataAccess) CreateUser(u *user.User) error {
+	_, err := d.Create(u)
 	return err
 }

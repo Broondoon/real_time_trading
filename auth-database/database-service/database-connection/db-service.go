@@ -1,26 +1,61 @@
 package databaseServiceAuth
 
 import (
-	"auth-service/models"
-	"gorm.io/driver/postgres"
-	"gorm.io/gorm"
-	"log"
-	"os"
+	databaseService "Shared/database/database-service"
+	"Shared/entities/user"
 )
 
-var DB *gorm.DB
+type UserDataServiceInterface interface {
+	databaseService.EntityDataInterface[*user.User]
+}
 
-func ConnectDatabase() {
-	dsn := os.Getenv("AUTH_DATABASE_URL") // "AUTH_DATABASE_URL" is an ENV variable that
-	// is set in docker-compose.yml
-	if dsn == "" {
-		log.Fatal("DATABASE_URL environment variable is not set.")
+type DatabaseServiceInterface interface {
+	databaseService.DatabaseInterface
+	User() UserDataServiceInterface
+}
+
+type DatabaseService struct {
+	UserInterface UserDataServiceInterface
+	databaseService.DatabaseInterface
+}
+
+type NewDatabaseServiceParams struct {
+	UserParams *databaseService.NewEntityDataParams // leave nil for default
+}
+
+func NewDatabaseService(params *NewDatabaseServiceParams) DatabaseServiceInterface {
+	if params.UserParams == nil {
+		params.UserParams = &databaseService.NewEntityDataParams{
+			NewPostGresDatabaseParams: &databaseService.NewPostGresDatabaseParams{},
+		}
 	}
-	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
-	if err != nil {
-		log.Fatal("Failed to connect to database: ", err)
+	var newDBConnection databaseService.PostGresDatabaseInterface
+	if params.UserParams.Existing != nil {
+		newDBConnection = params.UserParams.Existing
+	} else {
+		newDBConnection = databaseService.NewPostGresDatabase(params.UserParams.NewPostGresDatabaseParams)
+		params.UserParams.Existing = newDBConnection
 	}
 
-	db.AutoMigrate(&models.User{})
-	DB = db
+	db := &DatabaseService{
+		UserInterface:     databaseService.NewEntityData[*user.User](params.UserParams),
+		DatabaseInterface: newDBConnection,
+	}
+	db.Connect()
+	db.User().GetDatabaseSession().AutoMigrate(&user.User{})
+	return db
+}
+
+func (d *DatabaseService) User() UserDataServiceInterface {
+	return d.UserInterface
+}
+
+func (d *DatabaseService) Connect() {
+	d.User().Connect()
+	d.User().Connect()
+}
+
+func (d *DatabaseService) Disconnect() {
+	d.User().Disconnect()
+	d.User().Disconnect()
 }

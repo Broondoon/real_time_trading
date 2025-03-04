@@ -3,8 +3,9 @@ go 1.23.5
 use (
 	./Shared
 	./Test_base
+	./auth-database/database-access
+	./auth-database/database-service
 	./auth-service
-	./auth-database
 	./matching-engine-service
 	./microservice-template
 	./order-executor-service
