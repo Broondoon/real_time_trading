@@ -36,9 +36,9 @@ services:
           "-f",
           "http://user-management-service:${USER_MANAGEMENT_PORT}/health",
         ]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+      interval: ${HEALTHCHECK_INTERVAL}
+      timeout: ${HEALTHCHECK_TIMEOUT}
+      retries: ${HEALTHCHECK_RETRIES}
 
   # ---------------------- Existing Services ----------------------
   # microservice-template:
@@ -156,8 +156,12 @@ services:
     build:
       context: .
       dockerfile: auth-service/Dockerfile
+    ports:
+      - "${AUTH_PORT}:${AUTH_PORT}"
     env_file:
       - .env
+    environment:
+      PORT: ${AUTH_PORT}
     depends_on:
       auth-db:
         condition: service_healthy
@@ -183,7 +187,6 @@ services:
       - ./reverse_proxy/nginx.conf:/etc/nginx/nginx.conf:ro
     depends_on:
       - auth-service
-      - auth-db
       - frontend
       - user-management-service
       - order-initiator-service

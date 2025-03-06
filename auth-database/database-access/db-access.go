@@ -84,7 +84,7 @@ func (d *DatabaseAccess) User() UserDataAccessInterface {
 
 // GetUserByUsername uses the generic GetByForeignID method from the shared layer.
 func (d *UserDataAccess) GetUserByUsername(username string) (user.UserInterface, error) {
-	users, err := d.GetByForeignID("user_name", username)
+	users, err := d.GetByForeignID("Username", username)
 	if err != nil {
 		return nil, err
 	}

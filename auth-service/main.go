@@ -26,11 +26,7 @@ func main() {
 	//	router.POST("/authentication/login", handlers.Login)
 	//	router.GET("/authentication/test", handlers.Test)
 
-	port := os.Getenv("AUTH_SERVICE_PORT")
-	if port == "" {
-		port = "8000"
-	}
-	log.Printf("Auth-service listening on port %s", port)
+	log.Printf("Auth-service listening on port %s", os.Getenv("AUTH_PORT"))
 	//	http.ListenAndServe(":"+port, router)
 	networkManager.Listen(network.ListenerParams{Handler: nil})
 }

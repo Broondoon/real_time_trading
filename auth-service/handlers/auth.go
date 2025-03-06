@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"net/url"
 	"os"
@@ -37,120 +38,131 @@ func GenerateToken(userID string) (string, error) {
 	return token.SignedString(jwtsecret)
 }
 
+// ---------- Response Helpers ----------
+
+func RespondSuccess(w http.ResponseWriter, data interface{}) {
+	w.Header().Set("Content-Type", "application/json")
+	response := map[string]interface{}{
+		"success": true,
+		"data":    data,
+	}
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(response)
+}
+
+func RespondError(w http.ResponseWriter, statusCode int, errorMsg string) {
+	w.Header().Set("Content-Type", "application/json")
+	response := map[string]interface{}{
+		"success": false,
+		"error":   errorMsg,
+	}
+	w.WriteHeader(statusCode)
+	json.NewEncoder(w).Encode(response)
+}
+
 // ---------- Dependency Injection ----------
 
 // authDB is the dependency injected from main.go.
-// It implements databaseAccessAuth.AuthDataAccessInterface.
+// It implements databaseAccessAdduth.AuthDataAccessInterface.
 var _authDB databaseAccessAuth.UserDataAccessInterface
 
 // InitializeAuthHandlers sets up the dependency for the handlers.
 func InitializeUser(db databaseAccessAuth.UserDataAccessInterface, networkManager network.NetworkInterface) {
 	_authDB = db
-	networkManager.AddHandleFuncProtected(network.HandlerParams{Pattern: "authentication/register", Handler: Register})
-	networkManager.AddHandleFuncProtected(network.HandlerParams{Pattern: "authentication/login", Handler: Login})
+	networkManager.AddHandleFuncUnprotected(network.HandlerParams{Pattern: "authentication/register", Handler: Register})
+	networkManager.AddHandleFuncUnprotected(network.HandlerParams{Pattern: "authentication/login", Handler: Login})
 }
 
 // ---------- HTTP Handlers ----------
-
-// ---------- HTTP Handlers ----------
-
 // Register handles user registration.
-// It expects a POST request with a JSON body representing a user.
-func Register(responseWriter http.ResponseWriter, data []byte, queryParams url.Values, requestType string) {
-	// Decode the JSON body into a user.
+func Register(w http.ResponseWriter, data []byte, queryParams url.Values, requestType string) {
+	log.Println("Register() called by handler in Auth-service.")
+
+	// Decode the JSON body into a User object.
 	var input user.User
 	if err := json.Unmarshal(data, &input); err != nil {
-		http.Error(responseWriter, fmt.Sprintf("Invalid JSON: %v", err), http.StatusBadRequest)
+		RespondError(w, http.StatusBadRequest, fmt.Sprintf("Invalid JSON: %v", err))
 		return
 	}
 
 	// Check if the username already exists.
 	existingUser, err := _authDB.GetUserByUsername(input.GetUsername())
-	if err == nil && existingUser != nil {
-		http.Error(responseWriter, "Username already exists.", http.StatusBadRequest)
+	if existingUser != nil {
+		log.Printf("Username exists?: %s", existingUser)
+		RespondError(w, http.StatusBadRequest, "Username already exists.")
 		return
 	} else if err != nil && err.Error() != "user not found" {
-		// Log unexpected errors.
-		http.Error(responseWriter, "Internal error", http.StatusInternalServerError)
+		// Unexpected error.
+		log.Printf("Couldn't find user? %s", err.Error())
+		RespondError(w, http.StatusInternalServerError, "Internal error")
 		return
 	}
-
-	// (Optional debug printing if needed)
-	// If existingUser is nil (which is expected when user is not found), skip JSON conversion.
-	// Otherwise, you might log the user details.
 
 	// Hash the password.
 	hashedPassword, err := HashPassword(input.GetPassword())
 	if err != nil {
-		http.Error(responseWriter, "Error hashing password.", http.StatusInternalServerError)
+		log.Printf("error hashing: %s", err)
+		RespondError(w, http.StatusInternalServerError, "Error hashing password.")
 		return
 	}
 	input.Password = hashedPassword
 
-	// Create the user using the new interface.
+	// Create the user.
 	if err := _authDB.CreateUser(&input); err != nil {
-		http.Error(responseWriter, "Failed to add user to database.", http.StatusInternalServerError)
+		log.Printf("Failed to add user to database: %s", err)
+		RespondError(w, http.StatusInternalServerError, "Failed to add user to database.")
 		return
 	}
 
-	// Optionally, call a wallet creation endpoint.
+	getUser, err := _authDB.GetUserByUsername(input.Username)
+
+	// Call the wallet creation endpoint.
 	umHost := os.Getenv("USER_MANAGEMENT_HOST")
 	umPort := os.Getenv("USER_MANAGEMENT_PORT")
 	if umHost == "" || umPort == "" {
-		http.Error(responseWriter, "User management service not found.", http.StatusInternalServerError)
+		log.Printf("Host and Port:: %s:%s", umHost, umPort)
+		RespondError(w, http.StatusInternalServerError, "User management service not found.")
 		return
 	}
-	walletURL := fmt.Sprintf("http://%s:%s/transaction/createWallet?userID=%s", umHost, umPort, input.GetId())
+
+	// Note: Make sure that input.GetId() returns the newly created user ID.
+	walletURL := fmt.Sprintf("http://%s:%s/transaction/createWallet?userID=%s", umHost, umPort, getUser.GetId())
+	log.Printf("This is the input obj: %s", getUser.GetId())
 	resp, err := http.Get(walletURL)
 	if err != nil {
-		http.Error(responseWriter, "Error with wallet creation request.", http.StatusInternalServerError)
+		RespondError(w, http.StatusInternalServerError, "Error with wallet creation request.")
 		return
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		bodyBytes, _ := io.ReadAll(resp.Body)
-		http.Error(responseWriter, string(bodyBytes), resp.StatusCode)
+		RespondError(w, resp.StatusCode, string(bodyBytes))
 		return
 	}
 
 	// Return a success response.
-	responseWriter.Header().Set("Content-Type", "application/json")
-	responseWriter.WriteHeader(http.StatusCreated)
-	json.NewEncoder(responseWriter).Encode(map[string]interface{}{
-		"success": true,
-		"data":    nil,
-	})
+	RespondSuccess(w, nil)
 }
 
 // Login handles user login.
-// It expects a POST request with a JSON body containing username and password.
-func Login(responseWriter http.ResponseWriter, data []byte, queryParams url.Values, requestType string) {
-	// Decode the JSON body.
+func Login(w http.ResponseWriter, data []byte, queryParams url.Values, requestType string) {
 	var input user.User
 	if err := json.Unmarshal(data, &input); err != nil {
-		http.Error(responseWriter, fmt.Sprintf("Invalid JSON: %v", err), http.StatusBadRequest)
+		RespondError(w, http.StatusBadRequest, fmt.Sprintf("Invalid JSON: %v", err))
 		return
 	}
 
-	// Retrieve the user by username.
 	u, err := _authDB.GetUserByUsername(input.GetUsername())
 	if err != nil || u == nil || !CheckPasswordHash(input.GetPassword(), u.GetPassword()) {
-		http.Error(responseWriter, "Invalid Credentials.", http.StatusBadRequest)
+		RespondError(w, http.StatusBadRequest, "Invalid Credentials.")
 		return
 	}
 
-	// Generate a JWT token.
 	token, err := GenerateToken(u.GetId())
 	if err != nil {
-		http.Error(responseWriter, "Token generation failed.", http.StatusInternalServerError)
+		RespondError(w, http.StatusInternalServerError, "Token generation failed.")
 		return
 	}
 
-	// Return the token in a success JSON response.
-	responseWriter.Header().Set("Content-Type", "application/json")
-	responseWriter.WriteHeader(http.StatusOK)
-	json.NewEncoder(responseWriter).Encode(map[string]interface{}{
-		"success": true,
-		"token":   token,
-	})
+	RespondSuccess(w, map[string]interface{}{"token": token})
 }

@@ -22,7 +22,7 @@ func main() {
 
 	go authDatabaseHandlers.InitializeHandlers(_networkManager, _databaseManager)
 
-	fmt.Println("User Management Database Service Started")
+	fmt.Println("Auth Database Service Started")
 
 	_networkManager.Listen(network.ListenerParams{
 		Handler: nil,
