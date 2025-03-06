@@ -1,17 +1,14 @@
 package orderExecutorService
 
 import (
-    //"Shared/entities/entity"
-    "Shared/entities/transaction"
-    userStock "Shared/entities/user-stock"
-    "databaseAccessTransaction"
-    "databaseAccessUserManagement"
-    "fmt"
-    "time"
+	//"Shared/entities/entity"
+	"Shared/entities/transaction"
+	userStock "Shared/entities/user-stock"
+	"databaseAccessTransaction"
+	"databaseAccessUserManagement"
+	"fmt"
+	"time"
 )
-
-
-
 
 // Calculates the total cost of a transaction given the quantity and stock price.
 func calculateTotalTransactionCost(quantity int, stockPrice float64) float64 {
@@ -67,11 +64,13 @@ func handleSellerStock(
         return nil, fmt.Errorf("seller does not own stock %s", stockID)
     }
 
-    if sellerStock.GetQuantity() < quantity {
-        return nil, fmt.Errorf("seller does not have enough shares of stock %s", stockID)
+    sellerQuantity := sellerStock.GetQuantity()
+    if sellerQuantity < quantity {
+        return nil, fmt.Errorf("seller does not have enough shares of stock %s (has: %d, needs: %d)", 
+            stockID, sellerQuantity, quantity)
     }
 
-    println(fmt.Sprintf("Initially Seller has %d shares of StockID: %s", sellerStock.GetQuantity(), sellerStock.GetStockID()))
+    println(fmt.Sprintf("Initially Seller has %d shares of StockID: %s", sellerQuantity, sellerStock.GetStockID()))
     return sellerStock, nil
 }
 
@@ -157,6 +156,9 @@ func updateTransactionStatus(
     databaseAccessTransact databaseAccessTransaction.DatabaseAccessInterface,
 ) error {
 
+    println(fmt.Sprintf("BEFORE Update Status: %s", stockTx.GetOrderStatus()))
+    // Set the stock price in the transaction
+    stockTx.SetStockPrice(stockPrice)
 
     // Handle partial matching for both buy and sell orders
     if stockTx.GetIsBuy() {
@@ -174,13 +176,14 @@ func updateTransactionStatus(
         }
     }
     
-    // Set the stock price in the transaction
-    stockTx.SetStockPrice(stockPrice)
-    
+
     // Update in database
     if err := databaseAccessTransact.StockTransaction().Update(stockTx); err != nil {
         return fmt.Errorf("failed to update transaction status: %v", err)
     }
+    println(fmt.Sprintf("AFTER Update Status: %s", stockTx.GetOrderStatus()))
+
+
 
     // Create filled transaction for partial orders
     if isBuyPartial || isSellPartial {
@@ -196,6 +199,7 @@ func updateTransactionStatus(
         if _, err := databaseAccessTransact.StockTransaction().Create(filledTx); err != nil {
             return fmt.Errorf("failed to create filled stock transaction: %v", err)
         }
+        println(fmt.Sprintf("Created Filled Transaction with ID: %s", filledTx.GetId()))
     }
     
     return nil

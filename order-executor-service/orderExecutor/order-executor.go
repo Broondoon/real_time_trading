@@ -9,6 +9,7 @@ import (
 	"databaseAccessTransaction"
 	"databaseAccessUserManagement"
 	"fmt"
+	"strings"
 )
 
 // ProcessTrade
@@ -74,7 +75,7 @@ func ProcessTrade(orderData network.MatchingEngineToExecutionJSON, databaseAcces
 	}
 
 	stockTx := (*transactionList)[0]
-
+	println(fmt.Sprintf("Grabbing first stock transaction in Transaction List: ID= %s, Order Status= %s", stockTx.GetId(), stockTx.GetOrderStatus()))
 
 	// 2. Go to User-Managment DB, get wallet of userID present on  Buy order transaction
 	walletList, err := databaseAccessUser.Wallet().GetByIDs([]string{buyerID, sellerID})
@@ -140,11 +141,11 @@ func ProcessTrade(orderData network.MatchingEngineToExecutionJSON, databaseAcces
 	println("Updating user stocks...")
 	err = updateUserStocks(buyerID, sellerID, stockID, quantity, stockTx, databaseAccessUser, 
 		databaseAccessTransact, isBuyPartial, isSellPartial, stockPrice)
-
-	if err != nil {
+		if err != nil {
 		// Special case: if the seller doesn't have enough shares, the buy succeeds but sell fails
-		if err.Error() == "seller does not have enough shares of stock "+stockID {
-			println("Error: Seller does not have enough shares to complete the transaction")
+		if err.Error() == "seller does not have enough shares of stock "+stockID ||  // Support old error format
+			strings.Contains(err.Error(), "seller does not have enough shares of stock "+stockID) { // Support new error format
+			println("Error:", err.Error())
 			return true, false, nil // Buy succeeds, sell fails
 		}
 		
