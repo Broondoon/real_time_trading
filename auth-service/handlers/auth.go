@@ -113,7 +113,8 @@ func Register(w http.ResponseWriter, data []byte, queryParams url.Values, reques
 		RespondError(w, http.StatusInternalServerError, "Failed to add user to database.")
 		return
 	}
-
+	//TODO: Checking if the user exists, then creating, and then fetching
+	// the user from the DB again is not very efficient.
 	getUser, err := _authDB.GetUserByUsername(input.Username)
 
 	// Call the wallet creation endpoint.
@@ -125,7 +126,6 @@ func Register(w http.ResponseWriter, data []byte, queryParams url.Values, reques
 		return
 	}
 
-	// Note: Make sure that input.GetId() returns the newly created user ID.
 	walletURL := fmt.Sprintf("http://%s:%s/transaction/createWallet?userID=%s", umHost, umPort, getUser.GetId())
 	log.Printf("This is the input obj: %s", getUser.GetId())
 	resp, err := http.Get(walletURL)
