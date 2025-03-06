@@ -46,7 +46,7 @@ func executorHandler(responseWriter http.ResponseWriter, data []byte, queryParam
 		responseWriter.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-
+	println(fmt.Sprintf("Done ProcessTrade - buySuccess: %t, sellSuccess: %t", buySuccess, sellSuccess))
 	// Independent failure flags //
 	// If the match was successful, both IsBuyFailure and IsSellFailure will be false
 	// If the match was unsuccessful, only one of IsBuyFailure and IsSellFailure will be true
@@ -56,6 +56,7 @@ func executorHandler(responseWriter http.ResponseWriter, data []byte, queryParam
 		IsSellFailure: !sellSuccess,
 	}
 
+	println(fmt.Sprintf("IsBuyFailure: %t, IsSellFailure: %t", responseEntity.IsBuyFailure, responseEntity.IsSellFailure))
 	jsonResponseToMatchingEngine, err := json.Marshal(responseEntity)
 	if err != nil {
 		responseWriter.WriteHeader(http.StatusInternalServerError)

@@ -56,14 +56,14 @@ func updateWalletBalance(
 
 
 
-// Creates a wallet transaction record
+// Creates a wallet transaction record and returns its ID
 func createWalletTransaction(
     wallet wallet.WalletInterface,
     stockTransaction transaction.StockTransactionInterface,
     isDebit bool,
     amount float64,
     databaseAccessTransact databaseAccessTransaction.DatabaseAccessInterface,
-) error {
+) (string, error) {
     walletTx := transaction.NewWalletTransaction(transaction.NewWalletTransactionParams{
         NewEntityParams: entity.NewEntityParams{
             DateCreated:  time.Now(),
@@ -76,9 +76,12 @@ func createWalletTransaction(
         Timestamp:        time.Now(),
     })
 
-    _, err := databaseAccessTransact.WalletTransaction().Create(walletTx)
+    createdTx, err := databaseAccessTransact.WalletTransaction().Create(walletTx)
     if err != nil {
-        return fmt.Errorf("failed to create wallet transaction: %v", err)
+        return "", fmt.Errorf("failed to create wallet transaction: %v", err)
     }
-    return nil
+    
+    // Set wallet transaction ID and return it
+    createdTx.SetWalletTXID()
+    return createdTx.GetId(), nil
 }

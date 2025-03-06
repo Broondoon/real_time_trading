@@ -21,8 +21,8 @@ func calculateTotalTransactionCost(quantity int, stockPrice float64) float64 {
 
 
 
-// Gets and validates user stock portfolios
-func getUserStockPortfolios(
+// Finds and validates user stock portfolios
+func findUserStockPortfolios(
     buyerID string,
     sellerID string,
     databaseAccessUser databaseAccessUserManagement.DatabaseAccessInterface,
