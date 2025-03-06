@@ -33,14 +33,14 @@ func findUserStockPortfolios(
     if err != nil {
         return nil, nil, fmt.Errorf("failed to get buyer stocks: %v", err)
     }
-    println("Retrieved buyer portfolio with %d stocks", len(*buyerStockPortfolio))
+    println(fmt.Sprintf("Retrieved buyer portfolio with %d stocks", len(*buyerStockPortfolio)))
 
     // Get seller's current stock holdings
     sellerStockPortfolio, err := databaseAccessUser.UserStock().GetUserStocks(sellerID)
     if err != nil {
         return nil, nil, fmt.Errorf("failed to get seller stocks: %v", err)
     }
-    println("Retrieved seller portfolio with %d stocks", len(*sellerStockPortfolio))
+    println(fmt.Sprintf("Retrieved seller portfolio with %d stocks", len(*sellerStockPortfolio)))
 
     return buyerStockPortfolio, sellerStockPortfolio, nil
 }
@@ -71,7 +71,7 @@ func handleSellerStock(
         return nil, fmt.Errorf("seller does not have enough shares of stock %s", stockID)
     }
 
-    println("Initial quantities - Seller: %d", sellerStock.GetQuantity())
+    println(fmt.Sprintf("Initially Seller has %d shares of StockID: %s", sellerStock.GetQuantity(), sellerStock.GetStockID()))
     return sellerStock, nil
 }
 
@@ -96,7 +96,7 @@ func handleBuyerStock(
             break
         }
     }
-    println("Buyer initial: %d", buyerStock.GetQuantity())
+    println(fmt.Sprintf("Initially Buyer has %d shares of StockID: %s", buyerStock.GetQuantity(), buyerStock.GetStockID()))
 
     if buyerStock == nil {
         buyerStock = userStock.New(userStock.NewUserStockParams{
@@ -131,12 +131,14 @@ func updateUserStockQuantities(
     if err := databaseAccessUser.UserStock().Update(sellerStock); err != nil {
         return fmt.Errorf("failed to update seller stock: %v", err)
     }
+    println(fmt.Sprintf("Final -> Seller  has %d shares of StockID: %s", sellerStock.GetQuantity(), sellerStock.GetStockID()))
 
     if err := databaseAccessUser.UserStock().Update(buyerStock); err != nil {
         return fmt.Errorf("failed to update buyer stock: %v", err)
     }
+    println(fmt.Sprintf("Final -> Buyer  has %d shares of StockID: %s", buyerStock.GetQuantity(), buyerStock.GetStockID()))
 
-    println("Final quantities - Buyer: %d, Seller: %d", buyerStock.GetQuantity(), sellerStock.GetQuantity())
+    println("Final Buyer Quantity of StockID = %s is %d, Final Seller Quantity of StockID = %s is %d", buyerStock.GetStockID(), buyerStock.GetQuantity(), sellerStock.GetStockID(), sellerStock.GetQuantity())
 
     return nil
 }

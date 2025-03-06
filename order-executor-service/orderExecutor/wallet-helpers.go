@@ -69,11 +69,14 @@ func createWalletTransaction(
             DateCreated:  time.Now(),
             DateModified: time.Now(),
         },
-        Wallet:           wallet,
-        StockTransaction: stockTransaction,
-        IsDebit:          isDebit,
-        Amount:           amount,
-        Timestamp:        time.Now(),
+        WalletID:           wallet.GetId(),
+        StockTransactionID: stockTransaction.GetId(),
+        IsDebit:            isDebit,
+        Amount:             amount,
+        Timestamp:          time.Now(),
+        Wallet:             wallet,
+        StockTransaction:   stockTransaction,
+        UserID:             wallet.GetUserID(),
     })
 
     createdTx, err := databaseAccessTransact.WalletTransaction().Create(walletTx)
