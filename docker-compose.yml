@@ -413,9 +413,9 @@ services:
     healthcheck:
       test: ["CMD", "rabbitmq-diagnostics", "ping"]
       interval: ${HEALTHCHECK_INTERVAL}       # Check every 30 seconds
-      timeout: ${HEALTHCHECK_TIMEOUT}        # Fail if no response in 10 seconds
-      retries: ${HEALTHCHECK_RETRIES}          # Retry 5 times before marking as unhealthy
-      start_period: 10s   # Allow 30 seconds for initialization before starting health checks
+      timeout: ${HEALTHCHECK_TIMEOUT}         # Fail if no response in 10 seconds
+      retries: ${HEALTHCHECK_RETRIES}         # Retry 5 times before marking as unhealthy
+      start_period: 10s                       # Allow 10 seconds for initialization before starting health checks
     networks:
       - go-network
 

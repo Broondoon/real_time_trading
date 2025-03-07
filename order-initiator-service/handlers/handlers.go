@@ -24,9 +24,9 @@ var _databaseAccessUser databaseAccessUserManagement.DatabaseAccessInterface
 var _networkHttpManager network.NetworkInterface
 var _networkQueueManager network.NetworkInterface
 
-var _bulkRoutineStockOrderCheckUserStocks subfunctions.BulkRoutineInterface[StockOrderBulk]
-var _bulkRoutineStockOrderUpdateUserStocks subfunctions.BulkRoutineInterface[StockOrderBulk]
-var _bulkRoutineCreateStockOrderTransactions subfunctions.BulkRoutineInterface[StockOrderBulk]
+var _bulkRoutineStockOrderCheckUserStocks subfunctions.BulkRoutineInterface[*StockOrderBulk]
+var _bulkRoutineStockOrderUpdateUserStocks subfunctions.BulkRoutineInterface[*StockOrderBulk]
+var _bulkRoutineCreateStockOrderTransactions subfunctions.BulkRoutineInterface[*StockOrderBulk]
 
 type StockOrderBulk struct {
 	StockOrder     order.StockOrderInterface
@@ -42,15 +42,15 @@ func InitalizeHandlers(
 	_networkHttpManager = networkHttpManager
 	_networkQueueManager = networkQueueManager
 
-	_bulkRoutineStockOrderCheckUserStocks = subfunctions.NewBulkRoutine[StockOrderBulk](subfunctions.BulkRoutineParams[StockOrderBulk]{
+	_bulkRoutineStockOrderCheckUserStocks = subfunctions.NewBulkRoutine[*StockOrderBulk](&subfunctions.BulkRoutineParams[*StockOrderBulk]{
 		Routine: placeStockOrder,
 	})
 
-	_bulkRoutineStockOrderUpdateUserStocks = subfunctions.NewBulkRoutine[StockOrderBulk](subfunctions.BulkRoutineParams[StockOrderBulk]{
+	_bulkRoutineStockOrderUpdateUserStocks = subfunctions.NewBulkRoutine[*StockOrderBulk](&subfunctions.BulkRoutineParams[*StockOrderBulk]{
 		Routine: updateUserStocks,
 	})
 
-	_bulkRoutineCreateStockOrderTransactions = subfunctions.NewBulkRoutine[StockOrderBulk](subfunctions.BulkRoutineParams[StockOrderBulk]{
+	_bulkRoutineCreateStockOrderTransactions = subfunctions.NewBulkRoutine[*StockOrderBulk](&subfunctions.BulkRoutineParams[*StockOrderBulk]{
 		Routine: placeStockOrderResponse,
 	})
 
@@ -75,21 +75,21 @@ func placeStockOrderHandler(responseWriter network.ResponseWriter, data []byte, 
 		return
 	}
 	stockOrder.SetUserID(queryParams.Get("userID"))
-	_bulkRoutineStockOrderCheckUserStocks.Insert(StockOrderBulk{
+	_bulkRoutineStockOrderCheckUserStocks.Insert(&StockOrderBulk{
 		StockOrder:     stockOrder,
 		ResponseWriter: responseWriter,
 		userId:         queryParams.Get("userID"),
 	})
 }
 
-func placeStockOrder(data []StockOrderBulk, TransferParams any) error {
+func placeStockOrder(data *[]*StockOrderBulk, TransferParams any) error {
 	// bul routine, taking in stock order.
 	//then we organize the stock order's by USer IDS
 	//then we run the bulk routine on user stocks. That will give us back
 	//map stock orders by user id.
-	ordersByUserId := make(map[string][]StockOrderBulk)
+	ordersByUserId := make(map[string][]*StockOrderBulk)
 	userIds := make([]string, 0)
-	for _, stockOrder := range data {
+	for _, stockOrder := range *data {
 		if stockOrder.StockOrder.GetIsBuy() {
 			_bulkRoutineCreateStockOrderTransactions.Insert(stockOrder)
 		} else {
@@ -133,7 +133,7 @@ func placeStockOrder(data []StockOrderBulk, TransferParams any) error {
 	}
 	err := _databaseAccessUser.UserStock().GetUserStocksBulk(userIds, handleSellOrders)
 	if err != nil {
-		for _, responseWriter := range data {
+		for _, responseWriter := range *data {
 			go func(responseWriter network.ResponseWriter) {
 				responseWriter.WriteHeader(http.StatusInternalServerError)
 			}(responseWriter.ResponseWriter)
@@ -143,35 +143,35 @@ func placeStockOrder(data []StockOrderBulk, TransferParams any) error {
 	return nil
 }
 
-func updateUserStocks(data []StockOrderBulk, TransferParams any) error {
+func updateUserStocks(data *[]*StockOrderBulk, TransferParams any) error {
 	//map user stocks by id and by stock id
 	//then map then map them to the stock orders
 	//then we
 	userStocks := []userStock.UserStockInterface{}
-	for _, stockOrder := range data {
+	for _, stockOrder := range *data {
 		userStocks = append(userStocks, stockOrder.UserStock)
 	}
 	//bulk update user stocks
 	//TODO create a setup that errors out only specific parts of the update, not the entire thing.
 	err := _databaseAccessUser.UserStock().UpdateBulk(&userStocks)
 	if err != nil {
-		for _, responseWriter := range data {
+		for _, responseWriter := range *data {
 			go func(responseWriter network.ResponseWriter) {
 				responseWriter.WriteHeader(http.StatusInternalServerError)
 			}(responseWriter.ResponseWriter)
 		}
 		return fmt.Errorf("failed to update user stocks: %v", err)
 	}
-	for _, stockOrder := range data {
+	for _, stockOrder := range *data {
 		_bulkRoutineCreateStockOrderTransactions.Insert(stockOrder)
 	}
 	return nil
 }
 
-func placeStockOrderResponse(data []StockOrderBulk, TransferParams any) error {
+func placeStockOrderResponse(data *[]*StockOrderBulk, TransferParams any) error {
 
-	bulkTransactions := make([]transaction.StockTransactionInterface, len(data))
-	for _, stockOrder := range data {
+	bulkTransactions := make([]transaction.StockTransactionInterface, len(*data))
+	for _, stockOrder := range *data {
 		newTransaction := transaction.NewStockTransaction(transaction.NewStockTransactionParams{
 			StockOrder:  stockOrder.StockOrder,
 			OrderStatus: "IN_PROGRESS",
@@ -181,7 +181,7 @@ func placeStockOrderResponse(data []StockOrderBulk, TransferParams any) error {
 	}
 	createdTransactions, err := _databaseAccess.StockTransaction().CreateBulk(&bulkTransactions)
 	if err != nil {
-		for _, responseWriter := range data {
+		for _, responseWriter := range *data {
 			go func(responseWriter network.ResponseWriter) {
 				responseWriter.WriteHeader(http.StatusInternalServerError)
 			}(responseWriter.ResponseWriter)
@@ -199,7 +199,7 @@ func placeStockOrderResponse(data []StockOrderBulk, TransferParams any) error {
 		})
 		_, err = _networkQueueManager.MatchingEngine().Post("placeStockOrder", reconstructedStockOrder)
 		if err != nil {
-			for _, responseWriter := range data {
+			for _, responseWriter := range *data {
 				go func(responseWriter network.ResponseWriter) {
 					responseWriter.WriteHeader(http.StatusInternalServerError)
 				}(responseWriter.ResponseWriter)
@@ -207,7 +207,7 @@ func placeStockOrderResponse(data []StockOrderBulk, TransferParams any) error {
 			}
 		}
 	}
-	for _, responseWriter := range data {
+	for _, responseWriter := range *data {
 		go func(responseWriter network.ResponseWriter) {
 			returnVal := network.ReturnJSON{
 				Success: true,
