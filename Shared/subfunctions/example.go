@@ -13,6 +13,9 @@ func main() {
 	routine := NewBulkRoutine[responseStruct](BulkRoutineParams[responseStruct]{
 		Routine: func(entities []responseStruct, _ any) error {
 			println("Routine called with entities: ", entities)
+			// use DataAccess.CreateBulk(entities) here.
+			// then call entity.ResponseWriter("200 OK") for each entity.
+			// this will send the response back to the client.
 			for _, entity := range entities {
 				println("Entity: ", entity.entity)
 				println("Response write: ", entity.ResponseWriter("200 OK"))
