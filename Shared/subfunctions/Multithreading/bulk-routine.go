@@ -11,10 +11,12 @@ type BulkRoutineInterface[T any] interface {
 }
 
 type BulkRoutine[T any] struct {
-	objects      []T
-	insert       chan T
-	routine      func([]T, any) error
-	routineDelay time.Duration
+	objects         []T
+	insert          chan T
+	routine         func([]T, any) error
+	routineDelay    time.Duration
+	workerSemaphore chan struct{} // Limits concurrent routine executions.
+
 }
 
 func (b *BulkRoutine[T]) Insert(object T) {
@@ -24,6 +26,7 @@ func (b *BulkRoutine[T]) Insert(object T) {
 type BulkRoutineParams[T any] struct {
 	Routine        func([]T, any) error
 	TransferParams any //Params that you want to pass to the routine.
+	Concurrency    int // Limits the number of concurrent routine executions.
 }
 
 // basic usage.
@@ -43,11 +46,16 @@ func NewBulkRoutine[T any](params BulkRoutineParams[T]) BulkRoutineInterface[T] 
 		println("Error getting bulk routine delay: ", err.Error())
 		routineDelay = 500
 	}
+	concurrency := params.Concurrency
+	if concurrency <= 0 {
+		concurrency = 10
+	}
 	b := BulkRoutine[T]{
-		routine:      params.Routine,
-		objects:      make([]T, 0, maxQueueSize),
-		insert:       make(chan T, maxQueueSize),
-		routineDelay: time.Duration(routineDelay) * time.Millisecond,
+		routine:         params.Routine,
+		objects:         make([]T, 0, maxQueueSize),
+		insert:          make(chan T, maxQueueSize),
+		routineDelay:    time.Duration(routineDelay) * time.Millisecond,
+		workerSemaphore: make(chan struct{}, concurrency),
 	}
 	go func(passParams any) {
 		for {
@@ -74,7 +82,9 @@ func NewBulkRoutine[T any](params BulkRoutineParams[T]) BulkRoutineInterface[T] 
 			}
 			if len(b.objects) > 0 {
 				batch := append([]T(nil), b.objects...)
+				b.workerSemaphore <- struct{}{}
 				go func(batchCopy []T, passParams any) {
+					defer func() { <-b.workerSemaphore }()
 					if err := b.routine(batchCopy, passParams); err != nil {
 						println("Error in bulk routine:", err.Error())
 					}
