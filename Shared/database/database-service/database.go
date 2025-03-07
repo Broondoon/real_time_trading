@@ -143,6 +143,7 @@ type EntityDataInterface[T entity.EntityInterface] interface {
 	GetByForeignID(foreignIDColumn string, foreignID string) (*[]T, error)
 	GetAll() (*[]T, error)
 	Create(entity T) error
+	CreateBulk(entities *[]T) error
 	Update(entity T) error
 	Delete(ID string) error
 	Exists(ID string) (bool, error)
@@ -233,43 +234,63 @@ func (d *EntityData[T]) GetAll() (*[]T, error) {
 	return &entities, nil
 }
 
-func (d *EntityData[T]) Create(entity T) error {
-	json, _ := entity.ToJSON()
-	print("Creating entity: ", string(json))
-	//candidateID := entity.GetId()
-	// if candidateID == "" {
-	// 	candidateID = generateRandomID()
-	// }
-	//for {
-	//newEnt := entity
-	//newEnt.SetId(candidateID)
-	result := d.GetNewDatabaseSession().Create(&entity)
-	//result := d.GetNewDatabaseSession().FirstOrCreate(&newEnt, "id = ?", candidateID)
-	if result.Error != nil {
-		// if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-		// 	candidateID = generateRandomID()
-		// 	//continue
-		// }
-		fmt.Printf("error checking if entity exists: %s", result.Error.Error())
-		return result.Error
-	} else {
-		// entity.SetId(candidateID)
-		// entity.SetDateCreated(newEnt.GetDateCreated())
-		// entity.SetDateModified(newEnt.GetDateModified())
-		// break
-		return nil
+func (d *EntityData[T]) CreateBulk(entities *[]T) error {
+	maxInsertCount, err := strconv.Atoi(os.Getenv("MAX_DB_INSERT_COUNT"))
+	if err != nil {
+		fmt.Printf("error getting max insert count: %s", err.Error())
+		return err
 	}
 
-	// result, err := d.Exists()
-	// if err != nil {
-	// 	fmt.Printf("error checking existing: %s", err.Error())
-	// 	return err
-	// }
+	result := d.GetNewDatabaseSession().CreateInBatches(&entities, maxInsertCount)
+	if result.Error != nil {
+		fmt.Printf("error creating entities in bulk: %s", result.Error.Error())
+		return result.Error
+	}
+	return nil
+}
 
-	// if !result {
-	// 	break
-	// }
-	//}
+func (d *EntityData[T]) Create(entity T) error {
+	// json, _ := entity.ToJSON()
+	// print("Creating entity: ", string(json))
+	result := d.GetNewDatabaseSession().Create(&entity)
+	//if we have a conflicting ID
+	if result.Error != nil {
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			candidateID := generateRandomID()
+			for {
+				newEnt := entity
+				newEnt.SetId(candidateID)
+				result := d.GetNewDatabaseSession().Create(&entity)
+				//result := d.GetNewDatabaseSession().FirstOrCreate(&newEnt, "id = ?", candidateID)
+				if result.Error != nil {
+					if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+						candidateID = generateRandomID()
+						//continue
+					}
+					fmt.Printf("error checking if entity exists: %s", result.Error.Error())
+					return result.Error
+				} else {
+					entity.SetId(candidateID)
+					entity.SetDateCreated(newEnt.GetDateCreated())
+					entity.SetDateModified(newEnt.GetDateModified())
+					break
+				}
+
+				// result, err := d.Exists()
+				// if err != nil {
+				// 	fmt.Printf("error checking existing: %s", err.Error())
+				// 	return err
+				// }
+
+				// if !result {
+				// 	break
+				// }
+			}
+		} else {
+			fmt.Printf("error creating %s: %s", entity.GetId(), result.Error.Error())
+			return result.Error
+		}
+	}
 
 	// entity.SetId(candidateID)
 	// createResult := d.GetDatabaseSession().Create(entity)
@@ -296,10 +317,10 @@ func (d *EntityData[T]) Update(entity T) error {
 }
 
 func (d *EntityData[T]) Delete(id string) error {
-	_, err := d.GetByID(id)
-	if err != nil {
-		return err
-	}
+	// _, err := d.GetByID(id)
+	// if err != nil {
+	// 	return err
+	// }
 	var zero T
 	deleteResult := d.GetDatabaseSession().Delete(&zero, "id = ?", id)
 	if deleteResult.Error != nil {
