@@ -53,7 +53,7 @@ func NewBulkRoutine[T any](params BulkRoutineParams[T]) BulkRoutineInterface[T] 
 	b := BulkRoutine[T]{
 		routine:         params.Routine,
 		objects:         make([]T, 0, maxQueueSize),
-		insert:          make(chan T, maxQueueSize),
+		insert:          make(chan T, maxQueueSize*concurrency),
 		routineDelay:    time.Duration(routineDelay) * time.Millisecond,
 		workerSemaphore: make(chan struct{}, concurrency),
 	}
