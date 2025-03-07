@@ -236,38 +236,40 @@ func (d *EntityData[T]) GetAll() (*[]T, error) {
 func (d *EntityData[T]) Create(entity T) error {
 	json, _ := entity.ToJSON()
 	print("Creating entity: ", string(json))
-	candidateID := entity.GetId()
-	if candidateID == "" {
-		candidateID = generateRandomID()
-	}
-	for {
-		newEnt := entity
-		newEnt.SetId(candidateID)
-		result := d.GetNewDatabaseSession().FirstOrCreate(&newEnt, "id = ?", candidateID)
-		if result.Error != nil {
-			if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-				candidateID = generateRandomID()
-				continue
-			}
-			fmt.Printf("error checking if entity exists: %s", result.Error.Error())
-			return result.Error
-		} else {
-			entity.SetId(candidateID)
-			entity.SetDateCreated(newEnt.GetDateCreated())
-			entity.SetDateModified(newEnt.GetDateModified())
-			break
-		}
-
-		// result, err := d.Exists()
-		// if err != nil {
-		// 	fmt.Printf("error checking existing: %s", err.Error())
-		// 	return err
+	//candidateID := entity.GetId()
+	// if candidateID == "" {
+	// 	candidateID = generateRandomID()
+	// }
+	//for {
+	//newEnt := entity
+	//newEnt.SetId(candidateID)
+	result := d.GetNewDatabaseSession().Create(&entity)
+	//result := d.GetNewDatabaseSession().FirstOrCreate(&newEnt, "id = ?", candidateID)
+	if result.Error != nil {
+		// if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+		// 	candidateID = generateRandomID()
+		// 	//continue
 		// }
-
-		// if !result {
-		// 	break
-		// }
+		fmt.Printf("error checking if entity exists: %s", result.Error.Error())
+		return result.Error
+	} else {
+		// entity.SetId(candidateID)
+		// entity.SetDateCreated(newEnt.GetDateCreated())
+		// entity.SetDateModified(newEnt.GetDateModified())
+		// break
+		return nil
 	}
+
+	// result, err := d.Exists()
+	// if err != nil {
+	// 	fmt.Printf("error checking existing: %s", err.Error())
+	// 	return err
+	// }
+
+	// if !result {
+	// 	break
+	// }
+	//}
 
 	// entity.SetId(candidateID)
 	// createResult := d.GetDatabaseSession().Create(entity)
