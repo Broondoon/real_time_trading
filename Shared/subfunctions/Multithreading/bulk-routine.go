@@ -36,12 +36,12 @@ func NewBulkRoutine[T any](params BulkRoutineParams[T]) BulkRoutineInterface[T] 
 	maxQueueSize, err := strconv.Atoi(os.Getenv("MAX_DB_INSERT_COUNT"))
 	if err != nil {
 		println("Error getting max insert count: ", err.Error())
-		panic(err)
+		maxQueueSize = 100
 	}
 	routineDelay, err := strconv.Atoi(os.Getenv("BULK_ROUTINE_DELAY"))
 	if err != nil {
 		println("Error getting bulk routine delay: ", err.Error())
-		panic(err)
+		routineDelay = 5000
 	}
 	b := BulkRoutine[T]{
 		routine:      params.Routine,
@@ -50,7 +50,9 @@ func NewBulkRoutine[T any](params BulkRoutineParams[T]) BulkRoutineInterface[T] 
 		routineDelay: time.Duration(routineDelay) * time.Millisecond,
 	}
 	go func(passParams any) {
+		println("Bulk routine started.")
 		for {
+			println("Bulk routine waiting for objects.")
 			initialRequest := <-b.insert
 			b.objects = append(b.objects, initialRequest)
 			timer := time.NewTimer(b.routineDelay)
@@ -58,8 +60,10 @@ func NewBulkRoutine[T any](params BulkRoutineParams[T]) BulkRoutineInterface[T] 
 			for {
 				select {
 				case object := <-b.insert:
+					println("Bulk routine received object.")
 					b.objects = append(b.objects, object)
 				case <-timer.C: //wait duration.
+					println("Bulk routine processing objects.")
 					break inner
 				}
 			}

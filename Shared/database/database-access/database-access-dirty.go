@@ -81,6 +81,10 @@ func (d *EntityDataAccess[TEntity, TInterface]) GetByForeignID(foreignIDColumn s
 	return &converted, nil
 }
 
+func (d *EntityDataAccess[TEntity, TInterface]) CreateBulk(entities *[]TInterface) error {
+	panic("Not implemented")
+}
+
 func (d *EntityDataAccess[TEntity, TInterface]) Create(entity TInterface) (TInterface, error) {
 	err := d.EntityDataServiceTemp.Create(interface{}(entity).(TEntity))
 	if err != nil {

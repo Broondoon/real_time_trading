@@ -187,6 +187,22 @@ func (d *EntityDataAccessClient[TEntity, TInterface]) GetByForeignID(foreignIDCo
 	return &converted, nil
 }
 
+func (d *EntityDataAccessClient[TEntity, TInterface]) CreateBulk(entities *[]TInterface) error {
+	if d.PostRoute == "" {
+		d.PostRoute = d.DefaultRoute
+	}
+	var interfaces []interface{}
+	for _, v := range *entities {
+		interfaces = append(interfaces, v)
+	}
+	_, err := d._client.PostBulk(d.PostRoute, interfaces)
+	if err != nil {
+		fmt.Println("Failed to create entities: ", err)
+		return err
+	}
+	return nil
+}
+
 func (d *EntityDataAccessClient[TEntity, TInterface]) Create(entity TInterface) (TInterface, error) {
 	if d.PostRoute == "" {
 		d.PostRoute = d.DefaultRoute
