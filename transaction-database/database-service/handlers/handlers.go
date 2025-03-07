@@ -34,7 +34,6 @@ func InitalizeHandlers(
 }
 
 func healthHandler(w http.ResponseWriter, r *http.Request) {
-	// Simple check: you might expand this to test database connectivity, etc.
 	w.WriteHeader(http.StatusOK)
 	//fmt.Println(w, "OK")
 }
@@ -59,7 +58,7 @@ func GetStockTransactions(responseWriter http.ResponseWriter, data []byte, query
     }
 
 	
-	// Create formatted response structure
+	// Formatted response structure to match the expected output
 	type FormattedStockTransaction struct {
 		StockTxID       string    `json:"stock_tx_id"`
 		ParentStockTxID *string   `json:"parent_stock_tx_id"` // Using pointer for null values
@@ -152,7 +151,7 @@ func getWalletTransactions(responseWriter http.ResponseWriter, data []byte, quer
         fmt.Println(string(json))
     }
 
-    // Create formatted response structure
+    // Formatted response structure to match the expected output
     type FormattedWalletTransaction struct {
         WalletTxID string   `json:"wallet_tx_id"`
         StockTxID  string    `json:"stock_tx_id"`
@@ -166,12 +165,10 @@ func getWalletTransactions(responseWriter http.ResponseWriter, data []byte, quer
     for _, tx := range *walletTransactions {
         tx.SetWalletTXID() // ensure the wallet_tx_id is set
         
-        // Get the ID from the wallet transaction
-        id := tx.GetId()
 
         // Create formatted transaction
         formatted := FormattedWalletTransaction{
-            WalletTxID: id,  // Use the wallet transaction's ID
+            WalletTxID: tx.GetId(),  // Get the ID from the wallet transaction
             StockTxID:  tx.GetStockTransactionID(),
             IsDebit:    tx.GetIsDebit(),
             Amount:     tx.GetAmount(),
@@ -199,6 +196,7 @@ func getWalletTransactions(responseWriter http.ResponseWriter, data []byte, quer
 
     responseWriter.Write(transactionsJSON)
 }
+
 
 func cancelStockTransactionHandler(responseWriter http.ResponseWriter, data []byte, queryParams url.Values, requestType string) {
 	stockTransaction, err := _databaseManager.StockTransactions().GetByID(queryParams.Get("id"))

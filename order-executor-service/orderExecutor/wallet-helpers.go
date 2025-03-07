@@ -14,7 +14,7 @@ import (
 
 
 // Check if buyer has enough funds to afford the quantity*stockprice
-// If they dont, return to matching engine that the match was unsuccessful.
+// If they don't, return to matching engine that the match was unsuccessful.
 func validateBuyerWalletBalance(buyerWallet wallet.WalletInterface, totalCost float64) (bool, error) {
     if buyerWallet == nil {
         return false, errors.New("buyer wallet not found")

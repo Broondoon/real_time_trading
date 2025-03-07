@@ -12,7 +12,8 @@ import (
 	"strings"
 )
 
-// ProcessTrade
+
+
 func ProcessTrade(orderData network.MatchingEngineToExecutionJSON, databaseAccessTransact databaseAccessTransaction.DatabaseAccessInterface, databaseAccessUser databaseAccessUserManagement.DatabaseAccessInterface) (bool, bool, error) {
 
 	// Transfer Entity received from the Matching Engine //
@@ -69,8 +70,8 @@ func ProcessTrade(orderData network.MatchingEngineToExecutionJSON, databaseAcces
 		fmt.Printf("Transaction %d: %s\n", i, string(json))
 	}
 
-	// Validate we got both transactions
-	if len(*transactionList) != 2 {
+
+	if len(*transactionList) != 2 {	// Validate we got both transactions
 		return false, false, fmt.Errorf("expected 2 transactions, got %d", len(*transactionList))
 	}
 
@@ -95,8 +96,8 @@ func ProcessTrade(orderData network.MatchingEngineToExecutionJSON, databaseAcces
 	}
 
 
-	// Validate we got both wallets
-	if len(*walletList) != 2 {
+
+	if len(*walletList) != 2 {	// Validate we got both wallets
 		return false, false, fmt.Errorf("expected 2 wallets, got %d", len(*walletList))
 	}
 
@@ -123,7 +124,7 @@ func ProcessTrade(orderData network.MatchingEngineToExecutionJSON, databaseAcces
 	}
 
 
-	// Ask Kyle about the (*walletList)[0] and (*walletList)[0]
+
 	// 4. Update buyer and seller wallet balances and create wallet transactions for these changes
 	err = updateUserWallets(buyerWallet, sellerWallet, totalCost, stockTx, databaseAccessUser, databaseAccessTransact)
 	println("Done updating wallets")
@@ -142,19 +143,24 @@ func ProcessTrade(orderData network.MatchingEngineToExecutionJSON, databaseAcces
 	err = updateUserStocks(buyerID, sellerID, stockID, quantity, stockTx, databaseAccessUser, 
 		databaseAccessTransact, isBuyPartial, isSellPartial, stockPrice)
 		if err != nil {
+		// This error handling is pretty ugly but it works for now. It's just checking if this specific 
+		// string for this error was thrown in the handeSellerStock() function:
+
 		// Special case: if the seller doesn't have enough shares, the buy succeeds but sell fails
-		if err.Error() == "seller does not have enough shares of stock "+stockID ||  // Support old error format
+		if err.Error() == "seller does not have enough shares of stock "+stockID ||
 			strings.Contains(err.Error(), "seller does not have enough shares of stock "+stockID) { // Support new error format
 			println("Error:", err.Error())
 			return true, false, nil // Buy succeeds, sell fails
 		}
 		
+
 		// Any other error means the entire transaction failed
 		println("Error updating user stocks:", err.Error())
 		return false, false, fmt.Errorf("failed to update user stocks: %v", err)
 	}
-
 	println("Done updating user stocks")
+
+
 
 	println("Done processTrade")
 	// 6. Return true to the matching engine to indicate that the trade was successful.
@@ -163,7 +169,7 @@ func ProcessTrade(orderData network.MatchingEngineToExecutionJSON, databaseAcces
 }
 
 
-// Coordinates the wallet update process
+// Coordinates the wallet update process in wallet-helpers.go
 func updateUserWallets(
     buyerWallet wallet.WalletInterface,
     sellerWallet wallet.WalletInterface,
@@ -177,8 +183,7 @@ func updateUserWallets(
     println(fmt.Sprintf("Initial balances - Buyer: %.2f, Seller: %.2f", buyerWallet.GetBalance(), sellerWallet.GetBalance()))
 
 
-
-    // Update buyer's wallet (debit)
+    // Step 1: Update buyer's wallet (debit)
     if err := updateWalletBalance(buyerWallet, totalCost, true, databaseAccessUser); err != nil {
         return fmt.Errorf("buyer wallet update failed: %v", err)
     }
@@ -186,7 +191,7 @@ func updateUserWallets(
     buyerWallet.GetBalance(), totalCost))
 
 
-    // Update seller's wallet (credit)
+    // Step 2: Update seller's wallet (credit)
     if err := updateWalletBalance(sellerWallet, totalCost, false, databaseAccessUser); err != nil {
         // Rollback buyer's wallet if seller update fails
         updateWalletBalance(buyerWallet, totalCost, false, databaseAccessUser)
@@ -196,9 +201,7 @@ func updateUserWallets(
     sellerWallet.GetBalance(), totalCost))
 
 
-
-
-    // Create wallet transactions
+    // Step 3: Create wallet transactions for buyer
     buyerWalletTxID, err := createWalletTransaction(buyerWallet, stockTransaction, true, totalCost, databaseAccessTransact)
     if err != nil {
         return fmt.Errorf("buyer wallet transaction failed: %v", err)
@@ -207,7 +210,7 @@ func updateUserWallets(
         buyerWalletTxID, buyerWallet.GetUserID(), totalCost))
 
 
-	
+	// Step 4: Create wallet transactions for seller
     sellerWalletTxID, err := createWalletTransaction(sellerWallet, stockTransaction, false, totalCost, databaseAccessTransact)
     if err != nil {
         return fmt.Errorf("seller wallet transaction failed: %v", err)
@@ -217,6 +220,7 @@ func updateUserWallets(
 
 
 
+	// Wallets balances should now be updated and wallet transactions created //
     println(fmt.Sprintf("Final balances - Buyer: %.2f, Seller: %.2f",
         buyerWallet.GetBalance(),
         sellerWallet.GetBalance()))
@@ -228,7 +232,7 @@ func updateUserWallets(
 
 
 
-// Coordinates the stock update process
+// Coordinates the stock update process in stock-helpers.go
 func updateUserStocks(
     buyerID string,
     sellerID string,
@@ -243,6 +247,7 @@ func updateUserStocks(
 ) error {
 
 
+	// Step 1: Finds and validates user stock portfolios
     buyerPortfolio, sellerPortfolio, err := findUserStockPortfolios(buyerID, sellerID, databaseAccessUser)
     if err != nil {
         return err
@@ -251,6 +256,7 @@ func updateUserStocks(
 	buyerID, len(*buyerPortfolio), sellerID, len(*sellerPortfolio)))
 
 
+	// Step 2: Finds and validates seller's stock holding
     sellerStock, err := handleSellerStock(sellerPortfolio, stockID, quantity)
     if err != nil {
         return err
@@ -259,6 +265,7 @@ func updateUserStocks(
 	sellerStock.GetQuantity(), stockID))
 
 
+	// Step 3: Creates or retrieves buyer's stock holding
     buyerStock, err := handleBuyerStock(buyerPortfolio, buyerID, stockID, sellerStock, databaseAccessUser)
     if err != nil {
         return err
@@ -266,6 +273,8 @@ func updateUserStocks(
     println(fmt.Sprintf("Step 3: Successfully retrieved/created buyer's stock - Buyer initially has %d shares of %s", 
         buyerStock.GetQuantity(), stockID))
 
+
+	// Step 4: Update user stock quantities
     if err := updateUserStockQuantities(buyerStock, sellerStock, quantity, databaseAccessUser); err != nil {
         return err
     }
@@ -273,12 +282,16 @@ func updateUserStocks(
         quantity))
 
 
+	// Step 5: Update transaction status
     if err := updateTransactionStatus(stockTx, isBuyPartial, isSellPartial, stockPrice, databaseAccessTransact); err != nil {
         return err
     }
     println(fmt.Sprintf("Step 5: Successfully updated transaction status - Buy Partial: %t, Sell Partial: %t", 
         isBuyPartial, isSellPartial))
 
+
+
+	// All stock operations should now be completed //
 
 	println("All stock operations completed successfully")
     return nil
