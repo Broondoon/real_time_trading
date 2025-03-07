@@ -59,6 +59,15 @@ func NewBulkRoutine[T any](params BulkRoutineParams[T]) BulkRoutineInterface[T] 
 				select {
 				case object := <-b.insert:
 					b.objects = append(b.objects, object)
+					if len(b.objects) >= maxQueueSize {
+						if !timer.Stop() {
+							select {
+							case <-timer.C:
+							default:
+							}
+						}
+						break inner
+					}
 				case <-timer.C: //wait duration.
 					break inner
 				}
