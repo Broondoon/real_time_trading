@@ -167,13 +167,13 @@ services:
     networks:
       - go-network
 
-  frontend:
-    image: flutter-trading-app
-    build:
-      dockerfile: ./Dockerfile
-      context: ./flutter_frontend/
-    networks:
-      - go-network
+  # frontend:
+  #   image: flutter-trading-app
+  #   build:
+  #     dockerfile: ./Dockerfile
+  #     context: ./flutter_frontend/
+  #   networks:
+  #     - go-network
 
   nginx:
     image: nginx:latest
@@ -187,7 +187,7 @@ services:
     depends_on:
       - auth-service
       - auth-db
-      #- frontend
+      # - frontend
       - user-management-service
       - order-initiator-service
     networks:
