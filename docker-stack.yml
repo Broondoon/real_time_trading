@@ -13,9 +13,10 @@ services:
   #      condition: service_healthy
   # ---------------------- User Management Service ----------------------
   user-management-service:
-    build:
-      context: .
-      dockerfile: ./user-management-service/Dockerfile
+    # build:
+    #   context: .
+    #   dockerfile: ./user-management-service/Dockerfile
+    image: real_time_trading-user-management-service
     ports:
       - "${USER_MANAGEMENT_PORT}:${USER_MANAGEMENT_PORT}"
     env_file:
@@ -26,10 +27,10 @@ services:
     networks:
       - go-network
     depends_on:
-      user-management-database-service:
-        condition: service_healthy
-      stock-database-service:
-        condition: service_healthy
+      - user-management-database-service
+#        condition: service_healthy
+      - stock-database-service
+#        condition: service_healthy
     healthcheck:
       test:
         [
@@ -41,6 +42,7 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
+      start_period: 20s
 
   # ---------------------- Existing Services ----------------------
   # microservice-template:
@@ -65,9 +67,10 @@ services:
   #       condition: service_healthy
 
   matching-engine-service:
-    build:
-      context: .
-      dockerfile: ./${MATCHING_ENGINE_HOST}/Dockerfile
+    # build:
+    #   context: .
+    #   dockerfile: ./${MATCHING_ENGINE_HOST}/Dockerfile
+    image: real_time_trading-matching-engine-service
     ports:
       - "${MATCHING_ENGINE_PORT}:${MATCHING_ENGINE_PORT}"
     env_file:
@@ -76,17 +79,15 @@ services:
       DATABASE_URL: ${STOCK_ORDER_DATABASE_URL}
       PORT: ${MATCHING_ENGINE_PORT}
     depends_on:
-      stock-order-db:
-        condition: service_healthy
-      stock-database-service:
-        condition: service_healthy
-      order-executor-service:
-        condition: service_healthy
-      rabbitmq:
-        condition: service_healthy
-      
+      - stock-order-db
+#        condition: service_healthy
+      - stock-database-service
+#        condition: service_healthy
+      - order-executor-service
+#        condition: service_healthy
     networks:
       - go-network
+
     healthcheck:
       test:
         [
@@ -98,11 +99,13 @@ services:
       interval: ${HEALTHCHECK_INTERVAL}
       timeout: ${HEALTHCHECK_TIMEOUT}
       retries: ${HEALTHCHECK_RETRIES}
+      start_period: 20s
 
   order-initiator-service:
-    build:
-      context: .
-      dockerfile: ./${ORDER_INITIATOR_HOST}/Dockerfile
+    # build:
+    #   context: .
+    #   dockerfile: ./${ORDER_INITIATOR_HOST}/Dockerfile
+    image: real_time_trading-order-initiator-service
     ports:
       - "${ORDER_INITIATOR_PORT}:${ORDER_INITIATOR_PORT}"
     env_file:
@@ -111,11 +114,12 @@ services:
       PORT: ${ORDER_INITIATOR_PORT}
     networks:
       - go-network
+
     depends_on:
-      transaction-database-service:
-        condition: service_healthy
-      matching-engine-service:
-        condition: service_healthy
+      - transaction-database-service
+#        condition: service_healthy
+      - matching-engine-service
+#        condition: service_healthy
     healthcheck:
       test:
         [
@@ -127,11 +131,13 @@ services:
       interval: ${HEALTHCHECK_INTERVAL}
       timeout: ${HEALTHCHECK_TIMEOUT}
       retries: ${HEALTHCHECK_RETRIES}
+      start_period: 30s
 
   order-executor-service:
-    build:
-      context: .
-      dockerfile: ./${ORDER_EXECUTOR_HOST}/Dockerfile
+    # build:
+    #   context: .
+    #   dockerfile: ./${ORDER_EXECUTOR_HOST}/Dockerfile
+    image: real_time_trading-order-executor-service
     ports:
       - "${ORDER_EXECUTOR_PORT}:${ORDER_EXECUTOR_PORT}"
     env_file:
@@ -140,11 +146,12 @@ services:
       PORT: ${ORDER_EXECUTOR_PORT}
     networks:
       - go-network
+
     depends_on:
-      transaction-database-service:
-        condition: service_healthy
-      user-management-database-service:
-        condition: service_healthy
+      - transaction-database-service
+#        condition: service_healthy
+      - user-management-database-service
+#        condition: service_healthy
     healthcheck:
       test:
         [
@@ -156,24 +163,39 @@ services:
       interval: ${HEALTHCHECK_INTERVAL}
       timeout: ${HEALTHCHECK_TIMEOUT}
       retries: ${HEALTHCHECK_RETRIES}
+      start_period: 20s
 
   auth-service:
-    build: ./auth-service
+    # build: ./auth-service
+    image: real_time_trading-auth-service
     env_file:
       - .env
     depends_on:
-      auth-db:
-        condition: service_healthy
+      - auth-db
+    networks:
+      - go-network
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "curl",
+          "-f",
+          "http://${ORDER_EXECUTOR_HOST}:${ORDER_EXECUTOR_PORT}/health",
+        ]
+      interval: ${HEALTHCHECK_INTERVAL}
+      timeout: ${HEALTHCHECK_TIMEOUT}
+      retries: ${HEALTHCHECK_RETRIES}
+      start_period: 20s
+
+
+  frontend:
+    image: flutter-trading-app
+    # build:
+    #   dockerfile: ./Dockerfile
+    #   context: ./flutter_frontend/
     networks:
       - go-network
 
-  # frontend:
-  #   image: flutter-trading-app
-  #   build:
-  #     dockerfile: ./Dockerfile
-  #     context: ./flutter_frontend/
-  #   networks:
-  #     - go-network
 
   nginx:
     image: nginx:latest
@@ -187,28 +209,11 @@ services:
     depends_on:
       - auth-service
       - auth-db
-      # - frontend
+      - frontend
       - user-management-service
       - order-initiator-service
     networks:
       - go-network
-
-  stock-database-service:
-    build:
-      context: .
-      dockerfile: ./stock-database/database-service/Dockerfile
-    ports:
-      - "${STOCK_DATABASE_SERVICE_PORT}:${STOCK_DATABASE_SERVICE_PORT}"
-    env_file:
-      - .env
-    environment:
-      DATABASE_URL: ${STOCK_DATABASE_URL}
-      PORT: ${STOCK_DATABASE_SERVICE_PORT}
-    networks:
-      - go-network
-    depends_on:
-      stock-db:
-        condition: service_healthy
     healthcheck:
       test:
         [
@@ -220,11 +225,45 @@ services:
       interval: ${HEALTHCHECK_INTERVAL}
       timeout: ${HEALTHCHECK_TIMEOUT}
       retries: ${HEALTHCHECK_RETRIES}
+      start_period: 60s
+
+
+  stock-database-service:
+    # build:
+    #   context: .
+    #   dockerfile: ./stock-database/database-service/Dockerfile
+    image: real_time_trading-stock-database-service
+    ports:
+      - "${STOCK_DATABASE_SERVICE_PORT}:${STOCK_DATABASE_SERVICE_PORT}"
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: ${STOCK_DATABASE_URL}
+      PORT: ${STOCK_DATABASE_SERVICE_PORT}
+    networks:
+      - go-network
+
+    depends_on:
+      - stock-db
+#        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "curl",
+          "-f",
+          "http://stock-database-service:${STOCK_DATABASE_SERVICE_PORT}/health",
+        ]
+      interval: ${HEALTHCHECK_INTERVAL}
+      timeout: ${HEALTHCHECK_TIMEOUT}
+      retries: ${HEALTHCHECK_RETRIES}
+      start_period: 15s
 
   transaction-database-service:
-    build:
-      context: .
-      dockerfile: ./transaction-database/database-service/Dockerfile
+    # build:
+    #   context: .
+    #   dockerfile: ./transaction-database/database-service/Dockerfile
+    image: real_time_trading-transaction-database-service
     ports:
       - "${TRANSACTION_DATABASE_SERVICE_PORT}:${TRANSACTION_DATABASE_SERVICE_PORT}"
     env_file:
@@ -234,9 +273,10 @@ services:
       PORT: ${TRANSACTION_DATABASE_SERVICE_PORT}
     networks:
       - go-network
+
     depends_on:
-      transaction-db:
-        condition: service_healthy
+      - transaction-db
+#        condition: service_healthy
     healthcheck:
       test:
         [
@@ -248,11 +288,13 @@ services:
       interval: ${HEALTHCHECK_INTERVAL}
       timeout: ${HEALTHCHECK_TIMEOUT}
       retries: ${HEALTHCHECK_RETRIES}
+      start_period: 15s
 
   user-management-database-service:
-    build:
-      context: .
-      dockerfile: ./user-management-database/database-service/Dockerfile
+    # build:
+    #   context: .
+    #   dockerfile: ./user-management-database/database-service/Dockerfile
+    image: real_time_trading-user-management-database-service
     ports:
       - "${USER_MANAGEMENT_DATABASE_SERVICE_PORT}:${USER_MANAGEMENT_DATABASE_SERVICE_PORT}"
     env_file:
@@ -262,9 +304,10 @@ services:
       PORT: ${USER_MANAGEMENT_DATABASE_SERVICE_PORT}
     networks:
       - go-network
+
     depends_on:
-      user-management-db:
-        condition: service_healthy
+      - user-management-db
+#        condition: service_healthy
     healthcheck:
       test:
         [
@@ -276,10 +319,10 @@ services:
       interval: ${HEALTHCHECK_INTERVAL}
       timeout: ${HEALTHCHECK_TIMEOUT}
       retries: ${HEALTHCHECK_RETRIES}
+      start_period: 15s
 
   auth-db:
     image: postgres:latest
-    restart: always
     env_file:
       - .env
     environment:
@@ -298,9 +341,9 @@ services:
     networks:
       - go-network
 
+
   stock-order-db:
     image: postgres:latest
-    restart: always
     env_file:
       - .env
     environment:
@@ -322,9 +365,9 @@ services:
     networks:
       - go-network
 
+
   transaction-db:
     image: postgres:latest
-    restart: always
     env_file:
       - .env
     environment:
@@ -346,9 +389,9 @@ services:
     networks:
       - go-network
 
+
   stock-db:
     image: postgres:latest
-    restart: always
     env_file:
       - .env
     environment:
@@ -370,9 +413,9 @@ services:
     networks:
       - go-network
 
+
   user-management-db:
     image: postgres:latest
-    restart: always
     env_file:
       - .env
     environment:
@@ -394,22 +437,6 @@ services:
     networks:
       - go-network
 
-  rabbitmq:
-    image: rabbitmq:3-management
-    container_name: rabbitmq
-    ports:
-      - 5672:5672
-      - 15672:15672
-    volumes:
-      - rabbitmq_data:/var/lib/rabbitmq
-    healthcheck:
-      test: ["CMD", "rabbitmq-diagnostics", "ping"]
-      interval: ${HEALTHCHECK_INTERVAL}       # Check every 30 seconds
-      timeout: ${HEALTHCHECK_TIMEOUT}        # Fail if no response in 10 seconds
-      retries: ${HEALTHCHECK_RETRIES}          # Retry 5 times before marking as unhealthy
-      start_period: 10s   # Allow 30 seconds for initialization before starting health checks
-    networks:
-      - go-network
 
 # TODO: Actually fill this out properly
   # service-monitor:
@@ -427,9 +454,10 @@ volumes:
   auth-db-data:
   stock-order-db-data:
   transaction-db-data:
-  rabbitmq_data:
 
 # ---------------------- Networks ----------------------
 networks:
   go-network:
-    driver: bridge
+    # driver: bridge
+    driver: overlay
+    external: true
