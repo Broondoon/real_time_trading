@@ -50,7 +50,7 @@ func NewMatchingEngineForStock(params *NewMatchingEngineParams) MatchingEngineIn
 		StockId:             params.StockID,
 		BuyOrderBook:        matchingEngineStructures.DefaultBuyOrderBook(&marketOrders),
 		SellOrderBook:       matchingEngineStructures.DefaultSellOrderBook(&limitOrders),
-		orderChannel:        make(chan order.StockOrderInterface, 1),
+		orderChannel:        make(chan order.StockOrderInterface),
 		updateChannel:       make(chan *UpdateParams),
 		SendToOrderExection: params.SendToOrderExecutionFunc,
 		DatabaseManager:     params.DatabaseManager,
@@ -211,9 +211,7 @@ func (me *MatchingEngine) AddOrder(stockOrder order.StockOrderInterface) {
 	} else {
 		me.SellOrderBook.AddOrder(stockOrder)
 	}
-	if len(me.orderChannel) == 0 {
-		me.orderChannel <- stockOrder
-	}
+	me.orderChannel <- stockOrder
 }
 
 func (me *MatchingEngine) RemoveOrder(orderID string, priceKey float64) {

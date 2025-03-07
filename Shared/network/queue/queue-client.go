@@ -149,9 +149,27 @@ func (n *QueueClient) Get(route string, headers map[string]string) ([]byte, erro
 	})
 }
 
-func (n *QueueClient) Post(route string, payload interface{}) ([]byte, error) {
+func (n *QueueClient) PostBulk(route string, payload []interface{}) ([]byte, error) {
+	headers := map[string]string{"isBulk": "true"}
 	data := QueueJSONData{
-		Headers:     nil,
+		Headers:     headers,
+		MessageType: "POST",
+		Payload:     payload,
+	}
+	jsonData, err := json.Marshal(data)
+	if err != nil {
+		println("Error marshalling payload")
+		return nil, err
+	}
+	return n.SendWithReturn(route, jsonData, DefaultPublishParams(), func(response []byte) ([]byte, error) {
+		return response, nil
+	})
+}
+
+func (n *QueueClient) Post(route string, payload interface{}) ([]byte, error) {
+	headers := map[string]string{"isBulk": "false"}
+	data := QueueJSONData{
+		Headers:     headers,
 		MessageType: "POST",
 		Payload:     payload,
 	}

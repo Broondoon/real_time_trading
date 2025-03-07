@@ -137,7 +137,7 @@ type HandlerParams struct {
 	RequestType string
 }
 
-func CreateNetworkEntityHandlers[T entity.EntityInterface](network NetworkInterface, entityName string, databaseManager databaseService.EntityDataInterface[T], Parse func(jsonBytes []byte) (T, error)) {
+func CreateNetworkEntityHandlers[T entity.EntityInterface](network NetworkInterface, entityName string, databaseManager databaseService.EntityDataInterface[T], Parse func(jsonBytes []byte) (T, error), ParseList func(jsonBytes []byte) (*[]T, error)) {
 	defaults := func(responseWriter ResponseWriter, data []byte, queryParams url.Values, requestType string) {
 		fmt.Println("-----------------\nRequest:")
 		if requestType == "POST" || requestType == "PUT" {
@@ -212,19 +212,37 @@ func CreateNetworkEntityHandlers[T entity.EntityInterface](network NetworkInterf
 				responseWriter.Write(entitiesJSON)
 			}
 		} else if requestType == "POST" {
-			entity, err := Parse(data)
+			var entities *[]T
+			var entity T
+			var err error
+			isBulk := queryParams.Get("isBulk") == "true"
+
+			if isBulk {
+				entities, err = ParseList(data)
+			} else {
+				entity, err = Parse(data)
+			}
 			if err != nil {
 				fmt.Println("error: ", err.Error())
 				responseWriter.WriteHeader(http.StatusBadRequest)
 				return
 			}
-			err = databaseManager.Create(entity)
+			if isBulk {
+				err = databaseManager.CreateBulk(entities)
+			} else {
+				err = databaseManager.Create(entity)
+			}
 			if err != nil {
 				fmt.Println("error: ", err.Error())
 				responseWriter.WriteHeader(http.StatusInternalServerError)
 				return
 			}
-			entityJSON, err := entity.ToJSON()
+			var entityJSON []byte
+			if isBulk {
+				entityJSON, err = json.Marshal(entities)
+			} else {
+				entityJSON, err = entity.ToJSON()
+			}
 			if err != nil {
 				fmt.Println("error: ", err.Error())
 				responseWriter.WriteHeader(http.StatusInternalServerError)
