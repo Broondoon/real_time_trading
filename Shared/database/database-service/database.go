@@ -143,6 +143,7 @@ type EntityDataInterface[T entity.EntityInterface] interface {
 	GetByForeignID(foreignIDColumn string, foreignID string) (*[]T, error)
 	GetAll() (*[]T, error)
 	Create(entity T) error
+	CreateBulk(entities *[]T) error
 	Update(entity T) error
 	Delete(ID string) error
 	Exists(ID string) (bool, error)
@@ -233,9 +234,24 @@ func (d *EntityData[T]) GetAll() (*[]T, error) {
 	return &entities, nil
 }
 
+func (d *EntityData[T]) CreateBulk(entities *[]T) error {
+	maxInsertCount, err := strconv.Atoi(os.Getenv("MAX_DB_INSERT_COUNT"))
+	if err != nil {
+		fmt.Printf("error getting max insert count: %s", err.Error())
+		return err
+	}
+
+	result := d.GetNewDatabaseSession().CreateInBatches(&entities, maxInsertCount)
+	if result.Error != nil {
+		fmt.Printf("error creating entities in bulk: %s", result.Error.Error())
+		return result.Error
+	}
+	return nil
+}
+
 func (d *EntityData[T]) Create(entity T) error {
-	json, _ := entity.ToJSON()
-	print("Creating entity: ", string(json))
+	// json, _ := entity.ToJSON()
+	// print("Creating entity: ", string(json))
 	//candidateID := entity.GetId()
 	// if candidateID == "" {
 	// 	candidateID = generateRandomID()
@@ -296,10 +312,10 @@ func (d *EntityData[T]) Update(entity T) error {
 }
 
 func (d *EntityData[T]) Delete(id string) error {
-	_, err := d.GetByID(id)
-	if err != nil {
-		return err
-	}
+	// _, err := d.GetByID(id)
+	// if err != nil {
+	// 	return err
+	// }
 	var zero T
 	deleteResult := d.GetDatabaseSession().Delete(&zero, "id = ?", id)
 	if deleteResult.Error != nil {
