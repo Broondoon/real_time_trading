@@ -1,7 +1,7 @@
 package main
 
 import (
-	"Shared/network"
+	networkHttp "Shared/network/http"
 	"auth-service/handlers"
 	databaseAccessAuth "databaseAccessAuth"
 	"log"
@@ -10,7 +10,7 @@ import (
 
 func main() {
 	// Initialize the shared network manager.
-	networkManager := network.NewNetwork()
+	networkManager := networkHttp.NewNetworkHttp()
 
 	// Create the auth-database access dependency.
 	databaseAccess := databaseAccessAuth.NewDatabaseAccess(&databaseAccessAuth.NewDatabaseAccessParams{
@@ -28,5 +28,5 @@ func main() {
 
 	log.Printf("Auth-service listening on port %s", os.Getenv("AUTH_PORT"))
 	//	http.ListenAndServe(":"+port, router)
-	networkManager.Listen(network.ListenerParams{Handler: nil})
+	networkManager.Listen()
 }

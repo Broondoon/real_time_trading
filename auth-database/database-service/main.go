@@ -1,7 +1,7 @@
 package main
 
 import (
-	"Shared/network"
+	networkHttp "Shared/network/http"
 	databaseServiceAuth "databaseServiceAuth/database-connection"
 	authDatabaseHandlers "databaseServiceAuth/handlers"
 	"fmt"
@@ -10,7 +10,7 @@ import (
 func main() {
 	// Establish the database connection.
 	// databaseServiceAuth.ConnectDatabase()
-	_networkManager := network.NewNetwork()
+	_networkManager := networkHttp.NewNetworkHttp()
 	_databaseManager := databaseServiceAuth.NewDatabaseService(&databaseServiceAuth.NewDatabaseServiceParams{})
 
 	// Register the /users endpoint.
@@ -24,7 +24,5 @@ func main() {
 
 	fmt.Println("Auth Database Service Started")
 
-	_networkManager.Listen(network.ListenerParams{
-		Handler: nil,
-	})
+	_networkManager.Listen()
 }

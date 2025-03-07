@@ -75,7 +75,7 @@ func InitializeUser(db databaseAccessAuth.UserDataAccessInterface, networkManage
 
 // ---------- HTTP Handlers ----------
 // Register handles user registration.
-func Register(w http.ResponseWriter, data []byte, queryParams url.Values, requestType string) {
+func Register(w network.ResponseWriter, data []byte, queryParams url.Values, requestType string) {
 	log.Println("Register() called by handler in Auth-service.")
 
 	// Decode the JSON body into a User object.
@@ -145,7 +145,7 @@ func Register(w http.ResponseWriter, data []byte, queryParams url.Values, reques
 }
 
 // Login handles user login.
-func Login(w http.ResponseWriter, data []byte, queryParams url.Values, requestType string) {
+func Login(w network.ResponseWriter, data []byte, queryParams url.Values, requestType string) {
 	var input user.User
 	if err := json.Unmarshal(data, &input); err != nil {
 		RespondError(w, http.StatusBadRequest, fmt.Sprintf("Invalid JSON: %v", err))
