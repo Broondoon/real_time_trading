@@ -25,6 +25,7 @@ type BaseNetworkInterface interface {
 	Stocks() ClientInterface
 	Transactions() ClientInterface
 	UserManagementDatabase() ClientInterface
+	AuthDatabase() ClientInterface
 }
 
 type Network struct {
@@ -37,6 +38,7 @@ type Network struct {
 	StocksService                 ClientInterface
 	TransactionsService           ClientInterface
 	UserManagementDatabaseService ClientInterface
+	AuthDatabaseService           ClientInterface
 	serviceBuilder                func(serviceString string) ClientInterface
 }
 
@@ -101,6 +103,13 @@ func (n *Network) UserManagementDatabase() ClientInterface {
 		n.UserManagementDatabaseService = n.serviceBuilder(os.Getenv("USER_MANAGEMENT_DATABASE_SERVICE_HOST") + ":" + os.Getenv("USER_MANAGEMENT_DATABASE_SERVICE_PORT"))
 	}
 	return n.UserManagementDatabaseService
+}
+
+func (n *Network) AuthDatabase() ClientInterface {
+	if n.AuthDatabaseService == nil {
+		n.AuthDatabaseService = n.serviceBuilder(os.Getenv("AUTH_DATABASE_SERVICE_HOST") + ":" + os.Getenv("AUTH_DATABASE_SERVICE_PORT"))
+	}
+	return n.AuthDatabaseService
 }
 
 func NewNetwork(serviceBuilder func(serviceString string) ClientInterface) BaseNetworkInterface {

@@ -1,27 +1,32 @@
 package main
 
 import (
-	"auth-service/database"
-	"auth-service/handlers" // Import handlers package
-	"auth-service/middleware"
-	"github.com/gin-gonic/gin"
+	networkHttp "Shared/network/http"
+	"auth-service/handlers"
+	databaseAccessAuth "databaseAccessAuth"
+	"log"
+	"os"
 )
 
 func main() {
-	database.ConnectDatabase()
-	r := gin.Default()
+	// Initialize the shared network manager.
+	networkManager := networkHttp.NewNetworkHttp()
 
-	// Public Endpoints
-	auth := r.Group("/authentication")
-	auth.POST("/register", handlers.Register)
-	auth.POST("/login", handlers.Login)
+	// Create the auth-database access dependency.
+	databaseAccess := databaseAccessAuth.NewDatabaseAccess(&databaseAccessAuth.NewDatabaseAccessParams{
+		Network: networkManager,
+	})
 
-	// Protected Routes
-	protected := r.Group("/protected")
-	protected.Use(middleware.JWTMiddleware())
+	userAccess := databaseAccess.User()
+	// Inject it into the HTTP handlers.
+	handlers.InitializeUser(userAccess, networkManager)
 
-	// Add a protected /profile route
-	protected.GET("/test", handlers.Test)
+	//	router := gin.Default()
+	//	router.POST("/authentication/register", handlers.Register)
+	//	router.POST("/authentication/login", handlers.Login)
+	//	router.GET("/authentication/test", handlers.Test)
 
-	r.Run(":8000")
+	log.Printf("Auth-service listening on port %s", os.Getenv("AUTH_PORT"))
+	//	http.ListenAndServe(":"+port, router)
+	networkManager.Listen()
 }
