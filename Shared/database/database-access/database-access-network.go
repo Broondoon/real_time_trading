@@ -187,7 +187,31 @@ func (d *EntityDataAccessClient[TEntity, TInterface]) GetByForeignID(foreignIDCo
 	return &converted, nil
 }
 
-func (d *EntityDataAccessClient[TEntity, TInterface]) CreateBulk(entities *[]TInterface) error {
+func (d *EntityDataAccessClient[TEntity, TInterface]) GetByForeignIDBulk(foreignIDColumn string, foreignIDs []string) (*[]TInterface, error) {
+	if d.GetRoute == "" {
+		d.GetRoute = d.DefaultRoute
+	}
+	queryParams := map[string]string{"foreignKey": foreignIDColumn, "ids": strings.Join(foreignIDs, ",")}
+	jsonBytes, err := d._client.Get(d.GetRoute, queryParams)
+	if err != nil {
+		var zero []TInterface
+		fmt.Println("Failed to get entities by foreignKey: ", err)
+		return &zero, err
+	}
+	entities, err := d.ParserList(jsonBytes)
+	if err != nil {
+		var zero []TInterface
+		fmt.Println("Failed to unmarshal entities: ", err)
+		return &zero, err
+	}
+	converted := make([]TInterface, len(*entities))
+	for i, e := range *entities {
+		converted[i] = interface{}(e).(TInterface)
+	}
+	return &converted, nil
+}
+
+func (d *EntityDataAccessClient[TEntity, TInterface]) CreateBulk(entities *[]TInterface) (*[]TInterface, error) {
 	if d.PostRoute == "" {
 		d.PostRoute = d.DefaultRoute
 	}
@@ -195,12 +219,22 @@ func (d *EntityDataAccessClient[TEntity, TInterface]) CreateBulk(entities *[]TIn
 	for _, v := range *entities {
 		interfaces = append(interfaces, v)
 	}
-	_, err := d._client.PostBulk(d.PostRoute, interfaces)
+
+	jsonBytes, err := d._client.PostBulk(d.PostRoute, interfaces)
 	if err != nil {
 		fmt.Println("Failed to create entities: ", err)
-		return err
+		return nil, err
 	}
-	return nil
+	newEntities, err := d.ParserList(jsonBytes)
+	if err != nil {
+		fmt.Println("Failed to unmarshal entities: ", err)
+		return nil, err
+	}
+	converted := make([]TInterface, len(*newEntities))
+	for i, e := range *newEntities {
+		converted[i] = interface{}(e).(TInterface)
+	}
+	return &converted, nil
 }
 
 func (d *EntityDataAccessClient[TEntity, TInterface]) Create(entity TInterface) (TInterface, error) {
@@ -226,9 +260,34 @@ func (d *EntityDataAccessClient[TEntity, TInterface]) Update(entity TInterface) 
 	if d.PutRoute == "" {
 		d.PutRoute = d.DefaultRoute
 	}
-	_, err := d._client.Put(d.PutRoute, entity)
+
+	updates := entity.GetUpdates()
+	var updatesInterface []interface{}
+	for _, u := range updates {
+		updatesInterface = append(updatesInterface, u)
+	}
+
+	err := d._client.Put(d.PutRoute, updatesInterface)
 	if err != nil {
 		fmt.Println("Failed to update entity: ", err)
+		return err
+	}
+	return nil
+}
+
+func (d *EntityDataAccessClient[TEntity, TInterface]) UpdateBulk(entities *[]TInterface) error {
+	if d.PutRoute == "" {
+		d.PutRoute = d.DefaultRoute
+	}
+	var interfaces []interface{}
+	for _, v := range *entities {
+		for _, u := range v.GetUpdates() {
+			interfaces = append(interfaces, u)
+		}
+	}
+	err := d._client.Put(d.PutRoute, interfaces)
+	if err != nil {
+		fmt.Println("Failed to update entities: ", err)
 		return err
 	}
 	return nil
@@ -241,6 +300,18 @@ func (d *EntityDataAccessClient[TEntity, TInterface]) Delete(id string) error {
 	_, err := d._client.Delete(d.DeleteRoute + "/" + id)
 	if err != nil {
 		fmt.Println("Failed to delete entity: ", err)
+		return err
+	}
+	return nil
+}
+
+func (d *EntityDataAccessClient[TEntity, TInterface]) DeleteBulk(ids []string) error {
+	if d.DeleteRoute == "" {
+		d.DeleteRoute = d.DefaultRoute
+	}
+	_, err := d._client.DeleteBulk(d.DeleteRoute, ids)
+	if err != nil {
+		fmt.Println("Failed to delete entities: ", err)
 		return err
 	}
 	return nil

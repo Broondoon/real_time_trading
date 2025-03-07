@@ -81,8 +81,28 @@ func (d *EntityDataAccess[TEntity, TInterface]) GetByForeignID(foreignIDColumn s
 	return &converted, nil
 }
 
-func (d *EntityDataAccess[TEntity, TInterface]) CreateBulk(entities *[]TInterface) error {
-	panic("Not implemented")
+func (d *EntityDataAccess[TEntity, TInterface]) GetByForeignIDBulk(foreignIDColumn string, foreignIDs []string) (*[]TInterface, error) {
+	entities, err := d.EntityDataServiceTemp.GetByForeignIDBulk(foreignIDColumn, foreignIDs)
+	if err != nil {
+		log.Fatal("Failed to get entities by ForeignKey: ", err)
+	}
+	converted := make([]TInterface, len(*entities))
+	for i, e := range *entities {
+		converted[i] = interface{}(e).(TInterface)
+	}
+	return &converted, nil
+}
+
+func (d *EntityDataAccess[TEntity, TInterface]) CreateBulk(entities *[]TInterface) (*[]TInterface, error) {
+	entitiesTemp := make([]TEntity, len(*entities))
+	for i, e := range *entities {
+		entitiesTemp[i] = interface{}(e).(TEntity)
+	}
+	err := d.EntityDataServiceTemp.CreateBulk(&entitiesTemp)
+	if err != nil {
+		log.Fatal("Failed to create entities: ", err)
+	}
+	return entities, nil
 }
 
 func (d *EntityDataAccess[TEntity, TInterface]) Create(entity TInterface) (TInterface, error) {
@@ -94,9 +114,23 @@ func (d *EntityDataAccess[TEntity, TInterface]) Create(entity TInterface) (TInte
 }
 
 func (d *EntityDataAccess[TEntity, TInterface]) Update(entity TInterface) error {
-	err := d.EntityDataServiceTemp.Update(interface{}(entity).(TEntity))
+	err := d.EntityDataServiceTemp.Update(entity.GetUpdates())
 	if err != nil {
 		log.Fatal("Failed to update entity: ", err)
+	}
+	return nil
+}
+
+func (d *EntityDataAccess[TEntity, TInterface]) UpdateBulk(entities *[]TInterface) error {
+	updates := make([]*entity.EntityUpdateData, 0)
+	for _, v := range *entities {
+		for _, u := range v.GetUpdates() {
+			updates = append(updates, u)
+		}
+	}
+	err := d.EntityDataServiceTemp.Update(updates)
+	if err != nil {
+		log.Fatal("Failed to update entities: ", err)
 	}
 	return nil
 }
@@ -105,6 +139,14 @@ func (d *EntityDataAccess[TEntity, TInterface]) Delete(id string) error {
 	err := d.EntityDataServiceTemp.Delete(id)
 	if err != nil {
 		log.Fatal("Failed to delete entity: ", err)
+	}
+	return nil
+}
+
+func (d *EntityDataAccess[TEntity, TInterface]) DeleteBulk(ids []string) error {
+	err := d.EntityDataServiceTemp.DeleteBulk(ids)
+	if err != nil {
+		log.Fatal("Failed to delete entities: ", err)
 	}
 	return nil
 }

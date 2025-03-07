@@ -162,18 +162,110 @@ func (hc *HttpClient) Post(endpoint string, payload interface{}) ([]byte, error)
 	return hc.handleResponse(resp)
 }
 
-func (hc *HttpClient) Put(endpoint string, payload interface{}) ([]byte, error) {
+// func (hc *HttpClient) Put(endpoint string, payload interface{}) ([]byte, error) {
+// 	jsonData, err := json.Marshal(payload)
+// 	if err != nil {
+// 		return nil, err
+// 	}
+
+// 	req, err := http.NewRequest(http.MethodPut, hc.BaseURL+endpoint, bytes.NewBuffer(jsonData))
+// 	if err != nil {
+// 		return nil, err
+// 	}
+
+// 	req.Header.Set("Content-Type", "application/json")
+// 	// if err := hc.authenticate(req); err != nil {
+// 	// 	return nil, err
+// 	// }
+
+// 	resp, err := hc.Client.Do(req)
+// 	if err != nil {
+// 		return nil, err
+// 	}
+
+// 	return hc.handleResponse(resp)
+// }
+
+func (hc *HttpClient) Put(endpoint string, payload []interface{}) error {
 	jsonData, err := json.Marshal(payload)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	req, err := http.NewRequest(http.MethodPut, hc.BaseURL+endpoint, bytes.NewBuffer(jsonData))
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	req.Header.Set("Content-Type", "application/json")
+	// if err := hc.authenticate(req); err != nil {
+	// 	return nil, err
+	// }
+	req.Header.Set("isBulk", "true")
+
+	resp, err := hc.Client.Do(req)
+	if err != nil {
+		return err
+	}
+	_, err = hc.handleResponse(resp)
+	return err
+}
+
+func (hc *HttpClient) Patch(endpoint string, id string) error {
+	req, err := http.NewRequest(http.MethodPatch, hc.BaseURL+endpoint+"/"+id, nil)
+	if err != nil {
+		return err
+	}
+
+	// if err := hc.authenticate(req); err != nil {
+	// 	return err
+	// }
+
+	resp, err := hc.Client.Do(req)
+	if err != nil {
+		return err
+	}
+
+	_, err = hc.handleResponse(resp)
+	return err
+}
+
+func (hc *HttpClient) PatchBulk(endpoint string, ids []string) error {
+	url, err := url.Parse(hc.BaseURL + endpoint)
+	if err != nil {
+		return err
+	}
+	jsonData, err := json.Marshal(ids)
+	if err != nil {
+		return err
+	}
+	queryParams := map[string]string{"ids": strings.Join(ids, ",")}
+	q := url.Query()
+	for key, value := range queryParams {
+		q.Add(key, value)
+	}
+
+	url.RawQuery = q.Encode()
+	req, err := http.NewRequest(http.MethodPatch, url.String(), bytes.NewBuffer(jsonData))
+	req.Header.Set("isBulk", "true")
+	if err != nil {
+		return err
+	}
+	resp, err := hc.Client.Do(req)
+	if err != nil {
+		return err
+	}
+	_, err = hc.handleResponse(resp)
+	return err
+
+}
+
+func (hc *HttpClient) Delete(endpoint string) ([]byte, error) {
+	req, err := http.NewRequest(http.MethodDelete, hc.BaseURL+endpoint, nil)
+	if err != nil {
+		return nil, err
+	}
+
 	// if err := hc.authenticate(req); err != nil {
 	// 	return nil, err
 	// }
@@ -186,12 +278,32 @@ func (hc *HttpClient) Put(endpoint string, payload interface{}) ([]byte, error) 
 	return hc.handleResponse(resp)
 }
 
-func (hc *HttpClient) Delete(endpoint string) ([]byte, error) {
-	req, err := http.NewRequest(http.MethodDelete, hc.BaseURL+endpoint, nil)
+func (hc *HttpClient) DeleteBulk(endpoint string, payload []string) ([]byte, error) {
+	url, err := url.Parse(hc.BaseURL + endpoint)
+	if err != nil {
+		return nil, err
+	}
+	jsonData, err := json.Marshal(payload)
 	if err != nil {
 		return nil, err
 	}
 
+	//need to add ids to the IDs query param
+	queryParams := map[string]string{"ids": strings.Join(payload, ",")}
+	q := url.Query()
+	for key, value := range queryParams {
+		q.Add(key, value)
+	}
+
+	url.RawQuery = q.Encode()
+
+	req, err := http.NewRequest(http.MethodDelete, url.String(), bytes.NewBuffer(jsonData))
+	req.Header.Set("isBulk", "true")
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Set("Content-Type", "application/json")
 	// if err := hc.authenticate(req); err != nil {
 	// 	return nil, err
 	// }

@@ -28,8 +28,11 @@ type EntityDataAccessInterface[TEntity entity.EntityInterface, TInterface entity
 	GetAll() (*[]TInterface, error)
 	GetByIDs(ids []string) (*[]TInterface, error)
 	GetByForeignID(foreignIDColumn string, foreignID string) (*[]TInterface, error)
+	GetByForeignIDBulk(foreignIDColumn string, foreignIDs []string) (*[]TInterface, error)
 	Create(entity TInterface) (TInterface, error)
-	CreateBulk(entities *[]TInterface) error
+	CreateBulk(entities *[]TInterface) (*[]TInterface, error)
 	Update(entity TInterface) error
+	UpdateBulk(entities *[]TInterface) error
 	Delete(id string) error
+	DeleteBulk(ids []string) error
 }

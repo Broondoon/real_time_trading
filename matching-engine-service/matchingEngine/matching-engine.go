@@ -155,8 +155,8 @@ func (me *MatchingEngine) RunMatchingEngineOrders() {
 				sellOrder = nil
 			} else {
 				println("Cleaning up orders")
-				sellOrder.SetQuantity(sellOrder.GetQuantity() - buyOrderQuantity)
-				buyOrder.SetQuantity(buyOrder.GetQuantity() - sellOrderQuantity)
+				sellOrder.UpdateQuantity(-buyOrderQuantity)
+				buyOrder.UpdateQuantity(-sellOrderQuantity)
 				if sellOrder.GetQuantity() == 0 {
 					println("finishing sell Order: ", buyOrder.GetId())
 					_databaseManager.Delete(sellOrder.GetId())

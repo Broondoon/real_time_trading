@@ -183,20 +183,71 @@ func (n *QueueClient) Post(route string, payload interface{}) ([]byte, error) {
 	})
 }
 
-func (n *QueueClient) Put(route string, payload interface{}) ([]byte, error) {
+// func (n *QueueClient) Put(route string, payload interface{}) ([]byte, error) {
+// 	data := QueueJSONData{
+// 		Headers:     nil,
+// 		MessageType: "PUT",
+// 		Payload:     payload,
+// 	}
+// 	jsonData, err := json.Marshal(data)
+// 	if err != nil {
+// 		println("Error marshalling payload")
+// 		return nil, err
+// 	}
+// 	return n.SendWithReturn(route, jsonData, DefaultPublishParams(), func(response []byte) ([]byte, error) {
+// 		return response, nil
+// 	})
+// }
+
+func (n *QueueClient) Put(route string, payload []interface{}) error {
+	headers := map[string]string{"isBulk": "true"}
 	data := QueueJSONData{
-		Headers:     nil,
+		Headers:     headers,
 		MessageType: "PUT",
 		Payload:     payload,
 	}
 	jsonData, err := json.Marshal(data)
 	if err != nil {
-		println("Error marshalling payload")
-		return nil, err
+		return err
 	}
-	return n.SendWithReturn(route, jsonData, DefaultPublishParams(), func(response []byte) ([]byte, error) {
+	_, err = n.SendWithReturn(route, jsonData, DefaultPublishParams(), func(response []byte) ([]byte, error) {
 		return response, nil
 	})
+	return err
+}
+
+func (n *QueueClient) Patch(route string, id string) error {
+	headers := map[string]string{"id": id}
+	data := QueueJSONData{
+		Headers:     headers,
+		MessageType: "PATCH",
+		Payload:     nil,
+	}
+	jsonData, err := json.Marshal(data)
+	if err != nil {
+		return err
+	}
+	_, err = n.SendWithReturn(route, jsonData, DefaultPublishParams(), func(response []byte) ([]byte, error) {
+		return response, nil
+	})
+	return err
+}
+
+func (n *QueueClient) PatchBulk(route string, ids []string) error {
+	headers := map[string]string{"ids": strings.Join(ids, ",")}
+	data := QueueJSONData{
+		Headers:     headers,
+		MessageType: "PATCH",
+		Payload:     nil,
+	}
+	jsonData, err := json.Marshal(data)
+	if err != nil {
+		return err
+	}
+	_, err = n.SendWithReturn(route, jsonData, DefaultPublishParams(), func(response []byte) ([]byte, error) {
+		return response, nil
+	})
+	return err
 }
 
 func (n *QueueClient) Delete(route string) ([]byte, error) {
@@ -212,7 +263,22 @@ func (n *QueueClient) Delete(route string) ([]byte, error) {
 	}
 	jsonData, err := json.Marshal(data)
 	if err != nil {
-		println("Error marshalling payload")
+		return nil, err
+	}
+	return n.SendWithReturn(route, jsonData, DefaultPublishParams(), func(response []byte) ([]byte, error) {
+		return response, nil
+	})
+}
+
+func (n *QueueClient) DeleteBulk(route string, payload []string) ([]byte, error) {
+	headers := map[string]string{"ids": strings.Join(payload, ",")}
+	data := QueueJSONData{
+		Headers:     headers,
+		MessageType: "DELETE",
+		Payload:     nil,
+	}
+	jsonData, err := json.Marshal(data)
+	if err != nil {
 		return nil, err
 	}
 	return n.SendWithReturn(route, jsonData, DefaultPublishParams(), func(response []byte) ([]byte, error) {

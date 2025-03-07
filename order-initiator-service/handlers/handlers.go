@@ -5,6 +5,7 @@ import (
 	"Shared/entities/transaction"
 	userStock "Shared/entities/user-stock"
 	"Shared/network"
+	subfunctions "Shared/subfunctions/Multithreading"
 	"databaseAccessTransaction"
 	"databaseAccessUserManagement"
 	"encoding/json"
@@ -23,6 +24,17 @@ var _databaseAccessUser databaseAccessUserManagement.DatabaseAccessInterface
 var _networkHttpManager network.NetworkInterface
 var _networkQueueManager network.NetworkInterface
 
+var _bulkRoutineStockOrderCheckUserStocks subfunctions.BulkRoutineInterface[StockOrderBulk]
+var _bulkRoutineStockOrderUpdateUserStocks subfunctions.BulkRoutineInterface[StockOrderBulk]
+var _bulkRoutineCreateStockOrderTransactions subfunctions.BulkRoutineInterface[StockOrderBulk]
+
+type StockOrderBulk struct {
+	StockOrder     order.StockOrderInterface
+	UserStock      userStock.UserStockInterface
+	ResponseWriter network.ResponseWriter
+	userId         string
+}
+
 func InitalizeHandlers(
 	networkHttpManager network.NetworkInterface, networkQueueManager network.NetworkInterface, databaseAccess databaseAccessTransaction.DatabaseAccessInterface, databaseAccessUser databaseAccessUserManagement.DatabaseAccessInterface) {
 	_databaseAccess = databaseAccess
@@ -30,8 +42,17 @@ func InitalizeHandlers(
 	_networkHttpManager = networkHttpManager
 	_networkQueueManager = networkQueueManager
 
-	//listen for placeStockOrder. Create a new stock Transaction, updatet he stock order id, pass it to the matching engine.
-	//listen for cancelStockTransaction.
+	_bulkRoutineStockOrderCheckUserStocks = subfunctions.NewBulkRoutine[StockOrderBulk](subfunctions.BulkRoutineParams[StockOrderBulk]{
+		Routine: placeStockOrder,
+	})
+
+	_bulkRoutineStockOrderUpdateUserStocks = subfunctions.NewBulkRoutine[StockOrderBulk](subfunctions.BulkRoutineParams[StockOrderBulk]{
+		Routine: updateUserStocks,
+	})
+
+	_bulkRoutineCreateStockOrderTransactions = subfunctions.NewBulkRoutine[StockOrderBulk](subfunctions.BulkRoutineParams[StockOrderBulk]{
+		Routine: placeStockOrderResponse,
+	})
 
 	//Add handlers
 	_networkHttpManager.AddHandleFuncProtected(network.HandlerParams{Pattern: os.Getenv("engine_route") + "/placeStockOrder", Handler: placeStockOrderHandler})
@@ -54,76 +75,153 @@ func placeStockOrderHandler(responseWriter network.ResponseWriter, data []byte, 
 		return
 	}
 	stockOrder.SetUserID(queryParams.Get("userID"))
-	err = placeStockOrder(stockOrder)
-	if err != nil {
-		println("Error: ", err.Error())
-		responseWriter.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-	returnVal := network.ReturnJSON{
-		Success: true,
-		Data:    nil,
-	}
-	returnValJSON, err := json.Marshal(returnVal)
-	if err != nil {
-		responseWriter.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-	responseWriter.Write(returnValJSON)
+	_bulkRoutineStockOrderCheckUserStocks.Insert(StockOrderBulk{
+		StockOrder:     stockOrder,
+		ResponseWriter: responseWriter,
+		userId:         queryParams.Get("userID"),
+	})
 }
 
-func placeStockOrder(stockOrder order.StockOrderInterface) error {
-	var err error
-
-	if !stockOrder.GetIsBuy() {
-		// Get seller's current stock holdings
-		sellerStockPortfolio, err := _databaseAccessUser.UserStock().GetUserStocks(stockOrder.GetUserID())
-		if err != nil {
-			return fmt.Errorf("failed to get seller stocks: %v", err)
+func placeStockOrder(data []StockOrderBulk, TransferParams any) error {
+	// bul routine, taking in stock order.
+	//then we organize the stock order's by USer IDS
+	//then we run the bulk routine on user stocks. That will give us back
+	//map stock orders by user id.
+	ordersByUserId := make(map[string][]StockOrderBulk)
+	userIds := make([]string, 0)
+	for _, stockOrder := range data {
+		if stockOrder.StockOrder.GetIsBuy() {
+			_bulkRoutineCreateStockOrderTransactions.Insert(stockOrder)
+		} else {
+			ordersByUserId[stockOrder.userId] = append(ordersByUserId[stockOrder.userId], stockOrder)
+			userIds = append(userIds, stockOrder.userId)
 		}
+	}
 
-		// Find the stock in the seller's portfolio
-		var sellerStock userStock.UserStockInterface
-		for _, stock := range *sellerStockPortfolio {
-			if stock.GetStockID() == stockOrder.GetStockID() {
-				sellerStock = stock
-				break
+	handleSellOrders := func(userID string, sellerStockPortfolio *[]userStock.UserStockInterface) {
+		sellOrders := ordersByUserId[userID]
+		for _, stockOrder := range sellOrders {
+			// Find the stock in the seller's portfolio
+			var sellerStock userStock.UserStockInterface
+			for _, stock := range *sellerStockPortfolio {
+				if stock.GetStockID() == stockOrder.StockOrder.GetStockID() {
+					sellerStock = stock
+					break
+				}
+			}
+
+			// Verify seller has the stock and sufficient quantity
+			if sellerStock == nil {
+				fmt.Printf("seller does not own stock %s", stockOrder.StockOrder.GetStockID())
+				go func() { stockOrder.ResponseWriter.WriteHeader(http.StatusBadRequest) }()
+				continue
+			}
+			if sellerStock.GetQuantity() < stockOrder.StockOrder.GetQuantity() {
+				fmt.Printf("insufficient stock quantity: has %d, wants to sell %d\n",
+					sellerStock.GetQuantity(), stockOrder.StockOrder.GetQuantity())
+				go func() { stockOrder.ResponseWriter.WriteHeader(http.StatusBadRequest) }()
+				continue
+			}
+
+			// Deduct the quantity from seller's portfolio but keep the record
+			//need to bulkify this...
+			sellerStock.UpdateQuantity(-stockOrder.StockOrder.GetQuantity())
+			//what if we create a map of user to stock and subtract the quantity from the map, creatinga  subtraction value that we apply at the end.
+			stockOrder.UserStock = sellerStock
+			_bulkRoutineStockOrderUpdateUserStocks.Insert(stockOrder)
+		}
+	}
+	err := _databaseAccessUser.UserStock().GetUserStocksBulk(userIds, handleSellOrders)
+	if err != nil {
+		for _, responseWriter := range data {
+			go func(responseWriter network.ResponseWriter) {
+				responseWriter.WriteHeader(http.StatusInternalServerError)
+			}(responseWriter.ResponseWriter)
+		}
+		return fmt.Errorf("failed to get user stocks: %v", err)
+	}
+	return nil
+}
+
+func updateUserStocks(data []StockOrderBulk, TransferParams any) error {
+	//map user stocks by id and by stock id
+	//then map then map them to the stock orders
+	//then we
+	userStocks := []userStock.UserStockInterface{}
+	for _, stockOrder := range data {
+		userStocks = append(userStocks, stockOrder.UserStock)
+	}
+	//bulk update user stocks
+	//TODO create a setup that errors out only specific parts of the update, not the entire thing.
+	err := _databaseAccessUser.UserStock().UpdateBulk(&userStocks)
+	if err != nil {
+		for _, responseWriter := range data {
+			go func(responseWriter network.ResponseWriter) {
+				responseWriter.WriteHeader(http.StatusInternalServerError)
+			}(responseWriter.ResponseWriter)
+		}
+		return fmt.Errorf("failed to update user stocks: %v", err)
+	}
+	for _, stockOrder := range data {
+		_bulkRoutineCreateStockOrderTransactions.Insert(stockOrder)
+	}
+	return nil
+}
+
+func placeStockOrderResponse(data []StockOrderBulk, TransferParams any) error {
+
+	bulkTransactions := make([]transaction.StockTransactionInterface, len(data))
+	for _, stockOrder := range data {
+		newTransaction := transaction.NewStockTransaction(transaction.NewStockTransactionParams{
+			StockOrder:  stockOrder.StockOrder,
+			OrderStatus: "IN_PROGRESS",
+			TimeStamp:   time.Now(),
+		})
+		bulkTransactions = append(bulkTransactions, newTransaction)
+	}
+	createdTransactions, err := _databaseAccess.StockTransaction().CreateBulk(&bulkTransactions)
+	if err != nil {
+		for _, responseWriter := range data {
+			go func(responseWriter network.ResponseWriter) {
+				responseWriter.WriteHeader(http.StatusInternalServerError)
+			}(responseWriter.ResponseWriter)
+			return fmt.Errorf("failed to create transactions: %v", err)
+		}
+	}
+	for _, createdTransaction := range *createdTransactions {
+		reconstructedStockOrder := order.New(order.NewStockOrderParams{
+			StockID:   createdTransaction.GetStockID(),
+			IsBuy:     createdTransaction.GetIsBuy(),
+			OrderType: createdTransaction.GetOrderType(),
+			Quantity:  createdTransaction.GetQuantity(),
+			Price:     createdTransaction.GetStockPrice(),
+			UserID:    createdTransaction.GetUserID(),
+		})
+		_, err = _networkQueueManager.MatchingEngine().Post("placeStockOrder", reconstructedStockOrder)
+		if err != nil {
+			for _, responseWriter := range data {
+				go func(responseWriter network.ResponseWriter) {
+					responseWriter.WriteHeader(http.StatusInternalServerError)
+				}(responseWriter.ResponseWriter)
+				return fmt.Errorf("failed to send to matching engine: %v", err)
 			}
 		}
-
-		// Verify seller has the stock and sufficient quantity
-		if sellerStock == nil {
-			return fmt.Errorf("seller does not own stock %s", stockOrder.GetStockID())
-		}
-		if sellerStock.GetQuantity() < stockOrder.GetQuantity() {
-			return fmt.Errorf("insufficient stock quantity: has %d, wants to sell %d",
-				sellerStock.GetQuantity(), stockOrder.GetQuantity())
-		}
-
-		// Deduct the quantity from seller's portfolio but keep the record
-		newQuantity := sellerStock.GetQuantity() - stockOrder.GetQuantity()
-		sellerStock.SetQuantity(newQuantity)
-		err = _databaseAccessUser.UserStock().Update(sellerStock)
-		if err != nil {
-			return fmt.Errorf("failed to update seller stock quantity: %v", err)
-		}
 	}
-
-	transaction := transaction.NewStockTransaction(transaction.NewStockTransactionParams{
-		StockOrder:  stockOrder,
-		OrderStatus: "IN_PROGRESS",
-		TimeStamp:   time.Now(),
-	})
-
-	createdTransaction, err := _databaseAccess.StockTransaction().Create(transaction)
-	if err != nil {
-		println("Error: ", err.Error())
-		return err
+	for _, responseWriter := range data {
+		go func(responseWriter network.ResponseWriter) {
+			returnVal := network.ReturnJSON{
+				Success: true,
+				Data:    nil,
+			}
+			returnValJSON, err := json.Marshal(returnVal)
+			if err != nil {
+				responseWriter.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+			responseWriter.Write(returnValJSON)
+		}(responseWriter.ResponseWriter)
 	}
-	stockOrder.SetId(createdTransaction.GetId())
-	//pass to matching engine
-	_, err = _networkQueueManager.MatchingEngine().Post("placeStockOrder", stockOrder)
-	return err
+	return nil
 }
 
 func cancelStockTransactionHandler(responseWriter network.ResponseWriter, data []byte, queryParams url.Values, requestType string) {
@@ -159,7 +257,7 @@ func cancelStockTransactionHandler(responseWriter network.ResponseWriter, data [
 
 func cancelStockTransaction(id string) error {
 	//pass to matching engine
-	_, err := _networkHttpManager.Transactions().Put("cancelStockTransaction/"+id, nil)
+	err := _networkHttpManager.Transactions().Patch("cancelStockTransaction", id)
 	if err != nil {
 		println("Error: ", err.Error())
 		return err

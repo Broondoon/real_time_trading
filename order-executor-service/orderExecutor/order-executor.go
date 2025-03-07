@@ -102,19 +102,19 @@ func updateWalletBalances(
 	databaseAccessTransact databaseAccessTransaction.DatabaseAccessInterface) error {
 
 	// 1. Update wallet balances first
-	buyerWallet.SetBalance(buyerWallet.GetBalance() - totalCost)
+	buyerWallet.UpdateBalance(-totalCost)
 	err := databaseAccessUser.Wallet().Update(buyerWallet)
 	if err != nil {
 		println("Error: ", err.Error())
 		return fmt.Errorf("failed to update buyer wallet balance: %v", err)
 	}
 
-	sellerWallet.SetBalance(sellerWallet.GetBalance() + totalCost)
+	sellerWallet.UpdateBalance(totalCost)
 	err = databaseAccessUser.Wallet().Update(sellerWallet)
 	if err != nil {
 		println("Error: ", err.Error())
 		// Rollback buyer's wallet change if seller update fails
-		buyerWallet.SetBalance(buyerWallet.GetBalance() + totalCost)
+		buyerWallet.UpdateBalance(totalCost)
 
 		if rollbackErr := databaseAccessUser.Wallet().Update(buyerWallet); rollbackErr != nil {
 			return fmt.Errorf("failed to update seller wallet balance and rollback failed: %v, rollback error: %v", err, rollbackErr)
@@ -243,8 +243,8 @@ func updateUserStocks(
 	}
 
 	// Update Stock quantities in buyer and seller portfolios
-	sellerStock.SetQuantity(sellerStock.GetQuantity() - quantity)
-	buyerStock.SetQuantity(buyerStock.GetQuantity() + quantity)
+	sellerStock.UpdateQuantity(-quantity)
+	buyerStock.UpdateQuantity(quantity)
 
 	// Update in database
 	err = databaseAccessUser.UserStock().Update(sellerStock)
@@ -259,49 +259,47 @@ func updateUserStocks(
 		return fmt.Errorf("failed to update buyer stock: %v", err)
 	}
 
-	
-    // Update transaction status based on is_buy
-    if stockTx.GetIsBuy() {
-        // If it's a buy order, set to COMPLETED regardless of partial status
-        stockTx.SetOrderStatus("COMPLETED")
-    } else {
-        // For sell orders, use the existing partial/complete logic
-        if !isBuyPartial && !isSellPartial {
-            stockTx.SetOrderStatus("COMPLETED")
-        } else {
-            stockTx.SetOrderStatus("PARTIALLY_COMPLETE")
-        }
-    }
+	// Update transaction status based on is_buy
+	if stockTx.GetIsBuy() {
+		// If it's a buy order, set to COMPLETED regardless of partial status
+		stockTx.SetOrderStatus("COMPLETED")
+	} else {
+		// For sell orders, use the existing partial/complete logic
+		if !isBuyPartial && !isSellPartial {
+			stockTx.SetOrderStatus("COMPLETED")
+		} else {
+			stockTx.SetOrderStatus("PARTIALLY_COMPLETE")
+		}
+	}
 
-    // Update the transaction status in database
-    err = databaseAccessTransact.StockTransaction().Update(stockTx)
-    if err != nil {
-        println("Error: ", err.Error())
-        return fmt.Errorf("failed to update stock transaction status: %v", err)
-    }
+	// Update the transaction status in database
+	err = databaseAccessTransact.StockTransaction().Update(stockTx)
+	if err != nil {
+		println("Error: ", err.Error())
+		return fmt.Errorf("failed to update stock transaction status: %v", err)
+	}
 
-    // Create a filled transaction for partial orders only if it's not a buy order
-    if (isBuyPartial || isSellPartial) && !stockTx.GetIsBuy() {
-        filledTx := transaction.NewStockTransaction(transaction.NewStockTransactionParams{
-            NewEntityParams: entity.NewEntityParams{
-                DateCreated:  time.Now(),
-                DateModified: time.Now(),
-            },
-            ParentStockTransaction: stockTx,
-            OrderStatus:            "COMPLETED",
-            TimeStamp:             time.Now(),
-        })
+	// Create a filled transaction for partial orders only if it's not a buy order
+	if (isBuyPartial || isSellPartial) && !stockTx.GetIsBuy() {
+		filledTx := transaction.NewStockTransaction(transaction.NewStockTransactionParams{
+			NewEntityParams: entity.NewEntityParams{
+				DateCreated:  time.Now(),
+				DateModified: time.Now(),
+			},
+			ParentStockTransaction: stockTx,
+			OrderStatus:            "COMPLETED",
+			TimeStamp:              time.Now(),
+		})
 
-        _, err = databaseAccessTransact.StockTransaction().Create(filledTx)
-        if err != nil {
-            println("Error: ", err.Error())
-            return fmt.Errorf("failed to create filled stock transaction: %v", err)
-        }
-    }
+		_, err = databaseAccessTransact.StockTransaction().Create(filledTx)
+		if err != nil {
+			println("Error: ", err.Error())
+			return fmt.Errorf("failed to create filled stock transaction: %v", err)
+		}
+	}
 
-    return nil
+	return nil
 }
-
 
 // Calculates the total cost of a transaction given the quantity and stock price.
 func calculateTotalTransactionCost(quantity int, stockPrice float64) float64 {

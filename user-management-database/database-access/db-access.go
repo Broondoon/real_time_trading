@@ -13,6 +13,7 @@ import (
 type UserStocksDataAccessInterface interface {
 	databaseAccess.EntityDataAccessInterface[*userStock.UserStock, userStock.UserStockInterface]
 	GetUserStocks(userID string) (*[]userStock.UserStockInterface, error)
+	GetUserStocksBulk(userIDs []string, routine func(userID string, userStocks *[]userStock.UserStockInterface)) error
 }
 
 type UserStocksDataAccess struct {
@@ -123,6 +124,25 @@ func (d *UserStocksDataAccess) GetUserStocks(userID string) (*[]userStock.UserSt
 	return userStocks, nil
 }
 
+func (d *UserStocksDataAccess) GetUserStocksBulk(userIDs []string, routine func(userID string, userStocks *[]userStock.UserStockInterface)) error {
+	userStocks, err := d.GetByForeignIDBulk("user_id", userIDs)
+	//lets make a variant which is get by foregin ids. Get back multiple, then perform a function for each userId
+	if err != nil {
+		println("Error fetching user stocks by foreign ID for userIDs %s: %v\n", userIDs, err)
+		return err
+	}
+	for _, userID := range userIDs {
+		userStockslist := []userStock.UserStockInterface{}
+		for _, userStock := range *userStocks {
+			if userStock.GetUserID() == userID {
+				userStockslist = append(userStockslist, userStock)
+			}
+		}
+		go routine(userID, &userStockslist)
+	}
+	return nil
+}
+
 func (d *WalletDataAccess) AddMoneyToWallet(userID string, amount float64) error {
 	fmt.Printf("DEBUG: AddMoneyToWallet called for userID=%s with amount=%f\n", userID, amount)
 
@@ -143,7 +163,7 @@ func (d *WalletDataAccess) AddMoneyToWallet(userID string, amount float64) error
 	newBalance := oldBalance + amount
 	fmt.Printf("DEBUG: Updating wallet for userID=%s: old balance=%f, new balance=%f\n", userID, oldBalance, newBalance)
 
-	wallet.SetBalance(newBalance)
+	wallet.UpdateBalance(amount)
 	err = d.Update(wallet)
 	if err != nil {
 		fmt.Printf("DEBUG: Error updating wallet for userID=%s: %v\n", userID, err)

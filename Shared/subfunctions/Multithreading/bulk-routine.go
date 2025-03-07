@@ -58,14 +58,18 @@ func NewBulkRoutine[T any](params BulkRoutineParams[T]) BulkRoutineInterface[T] 
 		workerSemaphore: make(chan struct{}, concurrency),
 	}
 	go func(passParams any) {
+		println("Bulk routine started.")
 		for {
+			println("Bulk routine waiting for objects.")
 			initialRequest := <-b.insert
+			println("Bulk routine got initial request.")
 			b.objects = append(b.objects, initialRequest)
 			timer := time.NewTimer(b.routineDelay)
 		inner:
 			for {
 				select {
 				case object := <-b.insert:
+					println("Bulk routine got object.")
 					b.objects = append(b.objects, object)
 					if len(b.objects) >= maxQueueSize {
 						if !timer.Stop() {
@@ -77,13 +81,16 @@ func NewBulkRoutine[T any](params BulkRoutineParams[T]) BulkRoutineInterface[T] 
 						break inner
 					}
 				case <-timer.C: //wait duration.
+					println("Bulk routine got timer.")
 					break inner
 				}
 			}
 			if len(b.objects) > 0 {
 				batch := append([]T(nil), b.objects...)
+				println("Bulk routine executing routine. Checking semaphore.")
 				b.workerSemaphore <- struct{}{}
 				go func(batchCopy []T, passParams any) {
+					println("Bulk routine executing routine. locking semaphore.")
 					defer func() { <-b.workerSemaphore }()
 					if err := b.routine(batchCopy, passParams); err != nil {
 						println("Error in bulk routine:", err.Error())

@@ -180,7 +180,11 @@ func CreateNetworkEntityHandlers[T entity.EntityInterface](network NetworkInterf
 				var entities *[]T
 				var err error
 				if queryParams.Get("ids") != "" {
-					entities, err = databaseManager.GetByIDs(strings.Split(queryParams.Get("ids"), ","))
+					if queryParams.Get("foreignKey") != "" {
+						entities, err = databaseManager.GetByForeignIDBulk(queryParams.Get("foreignKey"), strings.Split(queryParams.Get("ids"), ","))
+					} else {
+						entities, err = databaseManager.GetByIDs(strings.Split(queryParams.Get("ids"), ","))
+					}
 				} else {
 					entities, err = databaseManager.GetAll()
 				}
@@ -241,13 +245,15 @@ func CreateNetworkEntityHandlers[T entity.EntityInterface](network NetworkInterf
 			}
 			responseWriter.Write(entityJSON)
 		} else if requestType == "PUT" {
-			entity, err := Parse(data)
+			var updates []*entity.EntityUpdateData
+			var err error
+			err = json.Unmarshal(data, &updates)
 			if err != nil {
 				fmt.Println("error: ", err.Error())
 				responseWriter.WriteHeader(http.StatusBadRequest)
 				return
 			}
-			err = databaseManager.Update(entity)
+			err = databaseManager.Update(updates)
 			if errors.Is(err, gorm.ErrRecordNotFound) {
 				responseWriter.WriteHeader(http.StatusNotFound)
 				return
@@ -257,15 +263,14 @@ func CreateNetworkEntityHandlers[T entity.EntityInterface](network NetworkInterf
 				responseWriter.WriteHeader(http.StatusInternalServerError)
 				return
 			}
-			entityJSON, err := entity.ToJSON()
-			if err != nil {
-				fmt.Println("error: ", err.Error())
-				responseWriter.WriteHeader(http.StatusInternalServerError)
-				return
-			}
-			responseWriter.Write(entityJSON)
+			responseWriter.WriteHeader(http.StatusOK)
 		} else if requestType == "DELETE" {
-			err := databaseManager.Delete(queryParams.Get("id"))
+			var err error
+			if queryParams.Get("ids") != "" {
+				err = databaseManager.DeleteBulk(strings.Split(queryParams.Get("ids"), ","))
+			} else {
+				err = databaseManager.Delete(queryParams.Get("id"))
+			}
 			if errors.Is(err, gorm.ErrRecordNotFound) {
 				responseWriter.WriteHeader(http.StatusNotFound)
 				return
