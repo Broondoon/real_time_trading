@@ -17,6 +17,7 @@ func InitalizeExecutorHandlers(
 	networkManager network.NetworkInterface,
 	databaseAccessTransact databaseAccessTransaction.DatabaseAccessInterface,
 	databaseAccessUser databaseAccessUserManagement.DatabaseAccessInterface) {
+
 	_databaseAccessTransact = databaseAccessTransact
 	_databaseAccessUser = databaseAccessUser
 
@@ -30,7 +31,7 @@ func healthHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintln(w, "OK")
 }
 
-func executorHandler(responseWriter http.ResponseWriter, data []byte, queryParams url.Values, requestType string) {
+func executorHandler(responseWriter network.ResponseWriter, data []byte, queryParams url.Values, requestType string) {
 	var orderData network.MatchingEngineToExecutionJSON
 	err := json.Unmarshal(data, &orderData)
 	if err != nil {

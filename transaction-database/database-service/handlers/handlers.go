@@ -11,6 +11,7 @@ import (
 	"net/url"
 	"os"
 	"sort"
+	"time"
 
 	"gorm.io/gorm"
 )
@@ -38,23 +39,63 @@ func healthHandler(w http.ResponseWriter, r *http.Request) {
 	//fmt.Println(w, "OK")
 }
 
-func GetStockTransactions(responseWriter http.ResponseWriter, data []byte, queryParams url.Values, requestType string) {
+func GetStockTransactions(responseWriter network.ResponseWriter, data []byte, queryParams url.Values, requestType string) {
 	transactions, err := _databaseManager.StockTransactions().GetAll()
 	if err != nil {
 		responseWriter.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	for _, transaction := range *transactions {
-		//making sure the stock_tx_id is set
-		transaction.SetStockTXID()
+	// Create formatted response structure
+	type FormattedStockTransaction struct {
+		StockTxID       string    `json:"stock_tx_id"`
+		ParentStockTxID *string   `json:"parent_stock_tx_id"` // Using pointer for null values
+		StockID         string    `json:"stock_id"`
+		WalletTxID      *string   `json:"wallet_tx_id"` // Using pointer for null values
+		OrderStatus     string    `json:"order_status"`
+		IsBuy           bool      `json:"is_buy"`
+		OrderType       string    `json:"order_type"`
+		StockPrice      float64   `json:"stock_price"`
+		Quantity        int       `json:"quantity"`
+		Timestamp       time.Time `json:"time_stamp"`
 	}
-	//sort transactions by timestamp. Oldest to newest
-	sort.SliceStable((*transactions), func(i, j int) bool {
-		return (*transactions)[i].GetTimestamp().Before((*transactions)[j].GetTimestamp())
+
+	// Format transactions
+	formattedTransactions := make([]FormattedStockTransaction, 0)
+	for _, tx := range *transactions {
+		tx.SetStockTXID() // Ensure ID is set
+
+		// Create formatted transaction
+		formatted := FormattedStockTransaction{
+			StockTxID:   tx.GetId(),
+			StockID:     tx.GetStockID(),
+			OrderStatus: tx.GetOrderStatus(),
+			IsBuy:       tx.GetIsBuy(),
+			OrderType:   tx.GetOrderType(),
+			StockPrice:  tx.GetStockPrice(),
+			Quantity:    tx.GetQuantity(),
+			Timestamp:   tx.GetTimestamp(),
+		}
+
+		// Handle nullable fields
+		if parentID := tx.GetParentStockTransactionID(); parentID != "" {
+			formatted.ParentStockTxID = &parentID
+		}
+		if walletID := tx.GetWalletTransactionID(); walletID != "" {
+			formatted.WalletTxID = &walletID
+		}
+
+		formattedTransactions = append(formattedTransactions, formatted)
+	}
+
+	// Sort by timestamp
+	sort.SliceStable(formattedTransactions, func(i, j int) bool {
+		return formattedTransactions[i].Timestamp.Before(formattedTransactions[j].Timestamp)
 	})
+
+	// Create response
 	returnVal := network.ReturnJSON{
 		Success: true,
-		Data:    transactions,
+		Data:    formattedTransactions,
 	}
 	transactionsJSON, err := json.Marshal(returnVal)
 	if err != nil {
@@ -67,7 +108,7 @@ func GetStockTransactions(responseWriter http.ResponseWriter, data []byte, query
 
 // Expected input is a stock ID in the body of the request
 // we're expecting {"StockID":"{id value}"}
-func getWalletTransactions(responseWriter http.ResponseWriter, data []byte, queryParams url.Values, requestType string) {
+func getWalletTransactions(responseWriter network.ResponseWriter, data []byte, queryParams url.Values, requestType string) {
 	transactions, err := _databaseManager.WalletTransactions().GetAll()
 	if err != nil {
 		fmt.Println("error: ", err.Error())
@@ -94,7 +135,7 @@ func getWalletTransactions(responseWriter http.ResponseWriter, data []byte, quer
 	responseWriter.Write(transactionsJSON)
 }
 
-func cancelStockTransactionHandler(responseWriter http.ResponseWriter, data []byte, queryParams url.Values, requestType string) {
+func cancelStockTransactionHandler(responseWriter network.ResponseWriter, data []byte, queryParams url.Values, requestType string) {
 	stockTransaction, err := _databaseManager.StockTransactions().GetByID(queryParams.Get("id"))
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		responseWriter.WriteHeader(http.StatusNotFound)
