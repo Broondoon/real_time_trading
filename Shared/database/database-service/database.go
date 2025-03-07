@@ -173,6 +173,7 @@ func NewEntityData[T entity.EntityInterface](params *NewEntityDataParams) Entity
 
 func (d *EntityData[T]) Exists(ID string) (bool, error) {
 	var ent T
+
 	result := d.GetNewDatabaseSession().First(&ent, "id = ?", ID)
 	if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 		return false, nil
@@ -240,26 +241,41 @@ func (d *EntityData[T]) Create(entity T) error {
 		candidateID = generateRandomID()
 	}
 	for {
-		result, err := d.Exists(candidateID)
-		if err != nil {
-			fmt.Printf("error checking existing: %s", err.Error())
-			return err
-		}
-
-		if !result {
+		newEnt := entity
+		newEnt.SetId(candidateID)
+		result := d.GetNewDatabaseSession().FirstOrCreate(&newEnt, "id = ?", candidateID)
+		if result.Error != nil {
+			if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+				candidateID = generateRandomID()
+				continue
+			}
+			fmt.Printf("error checking if entity exists: %s", result.Error.Error())
+			return result.Error
+		} else {
+			entity.SetId(candidateID)
+			entity.SetDateCreated(newEnt.GetDateCreated())
+			entity.SetDateModified(newEnt.GetDateModified())
 			break
 		}
 
-		candidateID = generateRandomID()
+		// result, err := d.Exists()
+		// if err != nil {
+		// 	fmt.Printf("error checking existing: %s", err.Error())
+		// 	return err
+		// }
+
+		// if !result {
+		// 	break
+		// }
 	}
 
-	entity.SetId(candidateID)
-	createResult := d.GetDatabaseSession().Create(entity)
+	// entity.SetId(candidateID)
+	// createResult := d.GetDatabaseSession().Create(entity)
 
-	if createResult.Error != nil {
-		fmt.Printf("error creating %s: %s", entity.GetId(), createResult.Error.Error())
-		return createResult.Error
-	}
+	// if createResult.Error != nil {
+	// 	fmt.Printf("error creating %s: %s", entity.GetId(), createResult.Error.Error())
+	// 	return createResult.Error
+	// }
 	return nil
 }
 
