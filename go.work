@@ -1,0 +1,23 @@
+go 1.23.5
+
+use (
+	./Shared
+	./Test_base
+	./auth-database/database-access
+	./auth-database/database-service
+	./auth-service
+	./matching-engine-service
+	./microservice-template
+	./order-executor-service
+	./order-initiator-service
+	./stock-database/database-access
+	./stock-database/database-service
+	./stock-order-database/database-access
+	./stock-order-database/database-service
+	./transaction-database/database-access
+	./transaction-database/database-service
+	./user-management-database/database-access
+	./user-management-database/database-service
+	./user-management-service
+	./user-management-tests
+)
