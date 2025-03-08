@@ -17,7 +17,7 @@ services:
       context: .
       dockerfile: ./user-management-service/Dockerfile
     ports:
-      - "${USER_MANAGEMENT_PORT}:${USER_MANAGEMENT_PORT}"
+      - "${USER_MANAGEMENT_PORT}"
     env_file:
       - .env
     environment:
@@ -36,11 +36,15 @@ services:
           "CMD",
           "curl",
           "-f",
-          "http://user-management-service:${USER_MANAGEMENT_PORT}/health",
+          "http://localhost:${USER_MANAGEMENT_PORT}/health",
         ]
       interval: ${HEALTHCHECK_INTERVAL}
       timeout: ${HEALTHCHECK_TIMEOUT}
       retries: ${HEALTHCHECK_RETRIES}
+    deploy:
+      replicas: 3
+      restart_policy:
+        condition: on-failure
 
   # ---------------------- Existing Services ----------------------
   # microservice-template:
@@ -69,7 +73,7 @@ services:
       context: .
       dockerfile: ./${MATCHING_ENGINE_HOST}/Dockerfile
     ports:
-      - "${MATCHING_ENGINE_PORT}:${MATCHING_ENGINE_PORT}"
+      - "${MATCHING_ENGINE_PORT}"
     env_file:
       - .env
     environment:
@@ -93,7 +97,7 @@ services:
           "CMD",
           "curl",
           "-f",
-          "http://${MATCHING_ENGINE_HOST}:${MATCHING_ENGINE_PORT}/health",
+          "http://localhost:${MATCHING_ENGINE_PORT}/health",
         ]
       interval: ${HEALTHCHECK_INTERVAL}
       timeout: ${HEALTHCHECK_TIMEOUT}
@@ -104,7 +108,7 @@ services:
       context: .
       dockerfile: ./${ORDER_INITIATOR_HOST}/Dockerfile
     ports:
-      - "${ORDER_INITIATOR_PORT}:${ORDER_INITIATOR_PORT}"
+      - "${ORDER_INITIATOR_PORT}"
     env_file:
       - .env
     environment:
@@ -122,18 +126,22 @@ services:
           "CMD",
           "curl",
           "-f",
-          "http://${ORDER_INITIATOR_HOST}:${ORDER_INITIATOR_PORT}/health",
+          "http://localhost:${ORDER_INITIATOR_PORT}/health",
         ]
       interval: ${HEALTHCHECK_INTERVAL}
       timeout: ${HEALTHCHECK_TIMEOUT}
       retries: ${HEALTHCHECK_RETRIES}
+    deploy:
+      replicas: 3
+      restart_policy:
+        condition: on-failure
 
   order-executor-service:
     build:
       context: .
       dockerfile: ./${ORDER_EXECUTOR_HOST}/Dockerfile
     ports:
-      - "${ORDER_EXECUTOR_PORT}:${ORDER_EXECUTOR_PORT}"
+      - "${ORDER_EXECUTOR_PORT}"
     env_file:
       - .env
     environment:
@@ -151,18 +159,22 @@ services:
           "CMD",
           "curl",
           "-f",
-          "http://${ORDER_EXECUTOR_HOST}:${ORDER_EXECUTOR_PORT}/health",
+          "http://localhost:${ORDER_EXECUTOR_PORT}/health",
         ]
       interval: ${HEALTHCHECK_INTERVAL}
       timeout: ${HEALTHCHECK_TIMEOUT}
       retries: ${HEALTHCHECK_RETRIES}
+    deploy:
+      replicas: 3
+      restart_policy:
+        condition: on-failure
 
   auth-service:
     build:
       context: .
       dockerfile: auth-service/Dockerfile
     ports:
-      - "${AUTH_PORT}:${AUTH_PORT}"
+      - "${AUTH_PORT}"
     env_file:
       - .env
     environment:
@@ -170,16 +182,20 @@ services:
     depends_on:
       auth-db:
         condition: service_healthy
+    deploy:
+      replicas: 3
+      restart_policy:
+        condition: on-failure
     networks:
       - go-network
 
-  frontend:
-    image: flutter-trading-app
-    build:
-      dockerfile: ./Dockerfile
-      context: ./flutter_frontend/
-    networks:
-      - go-network
+  # frontend:
+  #   image: flutter-trading-app
+  #   build:
+  #     dockerfile: ./Dockerfile
+  #     context: ./flutter_frontend/
+  #   networks:
+  #     - go-network
 
   nginx:
     image: nginx:latest
@@ -192,7 +208,7 @@ services:
       - ./reverse_proxy/nginx.conf:/etc/nginx/nginx.conf:ro
     depends_on:
       - auth-service
-      - frontend
+      # - frontend
       - user-management-service
       - order-initiator-service
     networks:
