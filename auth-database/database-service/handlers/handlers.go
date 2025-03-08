@@ -19,7 +19,7 @@ func InitializeHandlers(
 	_networkManager = networkManager
 
 	// Add handlers here
-	network.CreateNetworkEntityHandlers(_networkManager, os.Getenv("AUTH_SERVICE_USER_ROUTE"), _databaseManager.User(), user.Parse)
+	network.CreateNetworkEntityHandlers(_networkManager, os.Getenv("AUTH_SERVICE_USER_ROUTE"), _databaseManager.User(), user.Parse, user.ParseList)
 	http.HandleFunc("/health", healthHandler)
 }
 
