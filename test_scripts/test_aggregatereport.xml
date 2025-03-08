@@ -1,0 +1,30 @@
+timeStamp,elapsed,label,responseCode,responseMessage,threadName,dataType,success,failureMessage,bytes,sentBytes,grpThreads,allThreads,URL,Filename,Latency,Encoding,SampleCount,ErrorCount,Hostname,IdleTime,Connect
+1740880224685,55,1 Register Request,200,OK,User 1 Thread 1-1,text,true,,197,267,1,1,http://localhost:3001/authentication/register,,55,utf-8,1,0,tower-ubuntu,0,1
+1740880225241,2,2 Failed Register Request,400,Bad Request,User 1 Thread 1-1,text,true,,230,266,1,1,http://localhost:3001/authentication/register,,2,utf-8,1,0,tower-ubuntu,0,0
+1740880225743,44,3 Failed Login Request,400,Bad Request,User 1 Thread 1-1,text,true,,226,240,1,1,http://localhost:3001/authentication/login,,44,utf-8,1,0,tower-ubuntu,0,0
+1740880226288,44,4 Login Request,200,OK,User 1 Thread 1-1,text,true,,371,239,1,1,http://localhost:3001/authentication/login,,44,utf-8,1,0,tower-ubuntu,0,0
+1740880226833,9,5 Create Google Stock Request,200,OK,User 1 Thread 1-1,text,true,,238,383,1,1,http://localhost:3001/setup/createStock,,9,utf-8,1,0,tower-ubuntu,0,0
+1740880227343,6,6 Add Google Stock Request,201,Created,User 1 Thread 1-1,text,true,,187,431,1,1,http://localhost:3001/setup/addStockToUser,,6,UTF-8,1,0,tower-ubuntu,0,0
+1740880227850,7,7 Create Apple Stock Request,200,OK,User 1 Thread 1-1,text,true,,238,382,1,1,http://localhost:3001/setup/createStock,,7,utf-8,1,0,tower-ubuntu,0,0
+1740880228358,6,8 Add Apple Stock Request,201,Created,User 1 Thread 1-1,text,true,,187,431,1,1,http://localhost:3001/setup/addStockToUser,,6,UTF-8,1,0,tower-ubuntu,0,0
+1740880228865,3,9 Get Stock Portfolio Request,200,OK,User 1 Thread 1-1,text,false,,767,351,1,1,http://localhost:3001/transaction/getStockPortfolio,,3,utf-8,1,1,tower-ubuntu,0,0
+1740880229369,12,10 Place Stock Order Request,200,OK,User 1 Thread 1-1,text,true,,191,485,1,1,http://localhost:3001/engine/placeStockOrder,,12,utf-8,1,0,tower-ubuntu,0,0
+1740880229882,7,11 Place Stock Order Request,200,OK,User 1 Thread 1-1,text,true,,191,485,1,1,http://localhost:3001/engine/placeStockOrder,,7,utf-8,1,0,tower-ubuntu,0,0
+1740880230390,3,12 Get Stock Portfolio Request,200,OK,User 1 Thread 1-1,text,false,,767,351,1,1,http://localhost:3001/transaction/getStockPortfolio,,2,utf-8,1,1,tower-ubuntu,0,0
+1740880230893,2,13 Get Stock Transactions Request,200,OK,User 1 Thread 1-1,text,false,,1017,354,1,1,http://localhost:3001/transaction/getStockTransactions,,2,utf-8,1,1,tower-ubuntu,0,0
+1740880230897,0,Debug Sampler,200,OK,User 1 Thread 1-1,text,true,,1273,0,1,1,null,,0,UTF-8,1,0,tower-ubuntu,0,0
+1740880231398,50,14 Register Request,200,OK,User 1 Thread 1-1,text,true,,197,271,1,1,http://localhost:3001/authentication/register,,50,utf-8,1,0,tower-ubuntu,0,0
+1740880231949,44,15 Login Request,200,OK,User 1 Thread 1-1,text,true,,371,241,1,1,http://localhost:3001/authentication/login,,44,utf-8,1,0,tower-ubuntu,0,0
+1740880232494,2,16 Get Stock Prices Request,200,OK,User 1 Thread 1-1,text,true,,376,348,1,1,http://localhost:3001/transaction/getStockPrices,,2,utf-8,1,0,tower-ubuntu,0,0
+1740880232997,6,17 Add Money Request,200,OK,User 1 Thread 1-1,text,true,,191,387,1,1,http://localhost:3001/transaction/addMoneyToWallet,,6,utf-8,1,0,tower-ubuntu,0,0
+1740880233504,2,18 Get Wallet Balance Request,200,OK,User 1 Thread 1-1,text,true,,204,350,1,1,http://localhost:3001/transaction/getWalletBalance,,2,utf-8,1,0,tower-ubuntu,0,0
+1740880234006,9,19 Place Stock Order Request,200,OK,User 1 Thread 1-1,text,true,,191,470,1,1,http://localhost:3001/engine/placeStockOrder,,9,utf-8,1,0,tower-ubuntu,0,0
+1740880234515,2,20 Get Stock Transactions Request,200,OK,User 1 Thread 1-1,text,false,,1429,354,1,1,http://localhost:3001/transaction/getStockTransactions,,2,utf-8,1,1,tower-ubuntu,0,0
+1740880235018,2,21 Get Wallet Transactions Request,200,OK,User 1 Thread 1-1,text,false,,189,355,1,1,http://localhost:3001/transaction/getWalletTransactions,,2,utf-8,1,1,tower-ubuntu,0,0
+1740880235521,2,22 Get Wallet Balance Request,200,OK,User 1 Thread 1-1,text,false,,204,350,1,1,http://localhost:3001/transaction/getWalletBalance,,2,utf-8,1,1,tower-ubuntu,0,0
+1740880236024,1,23 Get Stock Portfolio Request,200,OK,User 1 Thread 1-1,text,false,,189,351,1,1,http://localhost:3001/transaction/getStockPortfolio,,1,utf-8,1,1,tower-ubuntu,0,0
+1740880236026,0,Debug Sampler,200,OK,User 1 Thread 1-1,text,true,,1528,0,1,1,null,,0,UTF-8,1,0,tower-ubuntu,0,0
+1740880236526,10011,24 Cancel Stock Order Request,500,Internal Server Error,User 1 Thread 1-1,,false,Response was null,140,426,1,1,http://localhost:3001/engine/cancelStockTransaction,,10011,UTF-8,1,1,tower-ubuntu,0,0
+1740880247038,2,25 Get Stock Transactions Request,200,OK,User 1 Thread 1-1,text,false,,1437,354,1,1,http://localhost:3001/transaction/getStockTransactions,,2,utf-8,1,1,tower-ubuntu,0,0
+1740880247541,1,26 Invalid Token,401,Unauthorized,User 1 Thread 1-1,text,true,,234,222,1,1,http://localhost:3001/transaction/getStockPortfolio,,1,utf-8,1,0,tower-ubuntu,0,0
+1740880248043,1,27 Invalid Payload Example,400,Bad Request,User 1 Thread 1-1,text,true,Expected to find an object with property ['success'] in path $ but found 'java.lang.String'. This is not a json object according to the JsonProvider: 'com.jayway.jsonpath.spi.json.JsonSmartJsonProvider'.,204,388,1,1,http://localhost:3001/transaction/addMoneyToWallet,,1,utf-8,1,0,tower-ubuntu,0,0

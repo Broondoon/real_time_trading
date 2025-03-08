@@ -21,7 +21,7 @@ func InitalizeHandlers(
 	//Add handlers
 	_networkManager.AddHandleFuncProtected(network.HandlerParams{Pattern: os.Getenv("setup_route") + "/createStock", Handler: AddNewStockHandler})
 	_networkManager.AddHandleFuncUnprotected(network.HandlerParams{Pattern: "getStockIDs", Handler: GetStockIDsHandler})
-	network.CreateNetworkEntityHandlers[*stock.Stock](_networkManager, os.Getenv("STOCK_DATABASE_SERVICE_ROUTE"), _databaseManager, stock.Parse)
+	network.CreateNetworkEntityHandlers[*stock.Stock](_networkManager, os.Getenv("STOCK_DATABASE_SERVICE_ROUTE"), _databaseManager, stock.Parse, stock.ParseList)
 	http.HandleFunc("/health", healthHandler)
 
 }
@@ -32,7 +32,7 @@ func healthHandler(w http.ResponseWriter, r *http.Request) {
 	////fmt.Println(w, "OK")
 }
 
-func GetStockIDsHandler(responseWriter http.ResponseWriter, data []byte, queryParams url.Values, requestType string) {
+func GetStockIDsHandler(responseWriter network.ResponseWriter, data []byte, queryParams url.Values, requestType string) {
 	stocks, err := _databaseManager.GetAll()
 	if err != nil {
 		println("Error: ", err.Error())
@@ -52,7 +52,7 @@ func GetStockIDsHandler(responseWriter http.ResponseWriter, data []byte, queryPa
 }
 
 // Expected input is a stock ID in the body of the request
-func AddNewStockHandler(responseWriter http.ResponseWriter, data []byte, queryParams url.Values, requestType string) {
+func AddNewStockHandler(responseWriter network.ResponseWriter, data []byte, queryParams url.Values, requestType string) {
 	newStock, err := stock.Parse(data)
 
 	println("Parsed Stock: ", newStock.GetId())

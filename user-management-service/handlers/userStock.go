@@ -69,7 +69,7 @@ func testFuncInsertUserStock(userID string) {
 }
 */
 
-func getStockPortfolioHandler(responseWriter http.ResponseWriter, data []byte, queryParams url.Values, requestType string) {
+func getStockPortfolioHandler(responseWriter network.ResponseWriter, data []byte, queryParams url.Values, requestType string) {
 	userID := queryParams.Get("userID")
 	if userID == "" {
 		log.Println("Error: missing userID in getStockPortfolioHandler")
@@ -93,17 +93,17 @@ func getStockPortfolioHandler(responseWriter http.ResponseWriter, data []byte, q
 	}
 
 	// Transform stocks into desired format
-    portfolioResponse := make([]StockPortfolioResponse, 0)
-    for _, stock := range *stocks {
-        if stock.GetQuantity() > 0 {  // Only include stocks with quantity > 0
-            portfolioResponse = append(portfolioResponse, StockPortfolioResponse{
-                StockID:       stock.GetStockID(),
-                StockName:     stock.GetStockName(),
-                QuantityOwned: stock.GetQuantity(),
-                UpdatedAt:     stock.GetUpdatedAt(),
-            })
-        }
-    }
+	portfolioResponse := make([]StockPortfolioResponse, 0)
+	for _, stock := range *stocks {
+		if stock.GetQuantity() > 0 { // Only include stocks with quantity > 0
+			portfolioResponse = append(portfolioResponse, StockPortfolioResponse{
+				StockID:       stock.GetStockID(),
+				StockName:     stock.GetStockName(),
+				QuantityOwned: stock.GetQuantity(),
+				UpdatedAt:     stock.GetUpdatedAt(),
+			})
+		}
+	}
 
 	// Sort by stock name (if still needed)
 	sort.SliceStable(portfolioResponse, func(i, j int) bool {
@@ -126,7 +126,7 @@ func getStockPortfolioHandler(responseWriter http.ResponseWriter, data []byte, q
 	responseWriter.Write(stocksJSON)
 }
 
-func addStockToUser(responseWriter http.ResponseWriter, data []byte, queryParams url.Values, requestType string) {
+func addStockToUser(responseWriter network.ResponseWriter, data []byte, queryParams url.Values, requestType string) {
 	log.Printf("DEBUG: addStockToUser invoked. Request Type: %s, Query Params: %v, Request Body: %s", requestType, queryParams, string(data))
 
 	userID := queryParams.Get("userID")
