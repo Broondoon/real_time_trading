@@ -38,7 +38,7 @@ func healthHandler(w http.ResponseWriter, r *http.Request) {
 	//fmt.Println(w, "OK")
 }
 
-func GetStockTransactions(responseWriter http.ResponseWriter, data []byte, queryParams url.Values, requestType string) {
+func GetStockTransactions(responseWriter network.ResponseWriter, data []byte, queryParams url.Values, requestType string) {
 	transactions, err := _databaseManager.StockTransactions().GetByForeignID("user_id", queryParams.Get("userID"))
 
 
@@ -133,7 +133,7 @@ alletTxId>,
 "is_debit":true, "amount":1350,
 "time_stamp":<timestamp>}]
 */
-func getWalletTransactions(responseWriter http.ResponseWriter, data []byte, queryParams url.Values, requestType string) {
+func getWalletTransactions(responseWriter network.ResponseWriter, data []byte, queryParams url.Values, requestType string) {
     walletTransactions, err := _databaseManager.WalletTransactions().GetByForeignID("user_id", queryParams.Get("userID"))
 
     if err != nil {
@@ -198,7 +198,7 @@ func getWalletTransactions(responseWriter http.ResponseWriter, data []byte, quer
 }
 
 
-func cancelStockTransactionHandler(responseWriter http.ResponseWriter, data []byte, queryParams url.Values, requestType string) {
+func cancelStockTransactionHandler(responseWriter network.ResponseWriter, data []byte, queryParams url.Values, requestType string) {
 	stockTransaction, err := _databaseManager.StockTransactions().GetByID(queryParams.Get("id"))
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		responseWriter.WriteHeader(http.StatusNotFound)
