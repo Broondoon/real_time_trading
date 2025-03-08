@@ -20,20 +20,22 @@ import (
 
 var _databaseAccess databaseAccessTransaction.DatabaseAccessInterface
 var _databaseAccessUser databaseAccessUserManagement.DatabaseAccessInterface
-var _networkManager network.NetworkInterface
+var _networkHttpManager network.NetworkInterface
+var _networkQueueManager network.NetworkInterface
 
 func InitalizeHandlers(
-	networkManager network.NetworkInterface, databaseAccess databaseAccessTransaction.DatabaseAccessInterface, databaseAccessUser databaseAccessUserManagement.DatabaseAccessInterface) {
+	networkHttpManager network.NetworkInterface, networkQueueManager network.NetworkInterface, databaseAccess databaseAccessTransaction.DatabaseAccessInterface, databaseAccessUser databaseAccessUserManagement.DatabaseAccessInterface) {
 	_databaseAccess = databaseAccess
 	_databaseAccessUser = databaseAccessUser
-	_networkManager = networkManager
+	_networkHttpManager = networkHttpManager
+	_networkQueueManager = networkQueueManager
 
 	//listen for placeStockOrder. Create a new stock Transaction, updatet he stock order id, pass it to the matching engine.
 	//listen for cancelStockTransaction.
 
 	//Add handlers
-	networkManager.AddHandleFuncProtected(network.HandlerParams{Pattern: os.Getenv("engine_route") + "/placeStockOrder", Handler: placeStockOrderHandler})
-	networkManager.AddHandleFuncProtected(network.HandlerParams{Pattern: os.Getenv("engine_route") + "/cancelStockTransaction", Handler: cancelStockTransactionHandler})
+	_networkHttpManager.AddHandleFuncProtected(network.HandlerParams{Pattern: os.Getenv("engine_route") + "/placeStockOrder", Handler: placeStockOrderHandler})
+	_networkHttpManager.AddHandleFuncProtected(network.HandlerParams{Pattern: os.Getenv("engine_route") + "/cancelStockTransaction", Handler: cancelStockTransactionHandler})
 	http.HandleFunc("/health", healthHandler)
 }
 
@@ -43,7 +45,7 @@ func healthHandler(w http.ResponseWriter, r *http.Request) {
 	//fmt.Println(w, "OK")
 }
 
-func placeStockOrderHandler(responseWriter http.ResponseWriter, data []byte, queryParams url.Values, requestType string) {
+func placeStockOrderHandler(responseWriter network.ResponseWriter, data []byte, queryParams url.Values, requestType string) {
 	println("Placing stock order")
 	stockOrder, err := order.Parse(data)
 	if err != nil {
@@ -73,7 +75,6 @@ func placeStockOrderHandler(responseWriter http.ResponseWriter, data []byte, que
 func placeStockOrder(stockOrder order.StockOrderInterface) error {
 	var err error
 
-
 	if !stockOrder.GetIsBuy() {
 		// Get seller's current stock holdings
 		sellerStockPortfolio, err := _databaseAccessUser.UserStock().GetUserStocks(stockOrder.GetUserID())
@@ -99,15 +100,14 @@ func placeStockOrder(stockOrder order.StockOrderInterface) error {
 				sellerStock.GetQuantity(), stockOrder.GetQuantity())
 		}
 
-        // Deduct the quantity from seller's portfolio but keep the record
-        newQuantity := sellerStock.GetQuantity() - stockOrder.GetQuantity()
-        sellerStock.SetQuantity(newQuantity)
-        err = _databaseAccessUser.UserStock().Update(sellerStock)
-        if err != nil {
-            return fmt.Errorf("failed to update seller stock quantity: %v", err)
-        }
-    }
-
+		// Deduct the quantity from seller's portfolio but keep the record
+		newQuantity := sellerStock.GetQuantity() - stockOrder.GetQuantity()
+		sellerStock.SetQuantity(newQuantity)
+		err = _databaseAccessUser.UserStock().Update(sellerStock)
+		if err != nil {
+			return fmt.Errorf("failed to update seller stock quantity: %v", err)
+		}
+	}
 
 	transaction := transaction.NewStockTransaction(transaction.NewStockTransactionParams{
 		StockOrder:  stockOrder,
@@ -122,11 +122,11 @@ func placeStockOrder(stockOrder order.StockOrderInterface) error {
 	}
 	stockOrder.SetId(createdTransaction.GetId())
 	//pass to matching engine
-	_, err = _networkManager.MatchingEngine().Post("placeStockOrder", stockOrder)
+	_, err = _networkQueueManager.MatchingEngine().Post("placeStockOrder", stockOrder)
 	return err
 }
 
-func cancelStockTransactionHandler(responseWriter http.ResponseWriter, data []byte, queryParams url.Values, requestType string) {
+func cancelStockTransactionHandler(responseWriter network.ResponseWriter, data []byte, queryParams url.Values, requestType string) {
 	println("Cancelling stock transaction")
 	var stockID network.StockTransactionID
 	err := json.Unmarshal(data, &stockID)
@@ -159,13 +159,13 @@ func cancelStockTransactionHandler(responseWriter http.ResponseWriter, data []by
 
 func cancelStockTransaction(id string) error {
 	//pass to matching engine
-	_, err := _networkManager.Transactions().Put("cancelStockTransaction/"+id, nil)
+	_, err := _networkHttpManager.Transactions().Put("cancelStockTransaction/"+id, nil)
 	if err != nil {
 		println("Error: ", err.Error())
 		return err
 	}
 
-	_, err = _networkManager.MatchingEngine().Delete("deleteOrder/" + id)
+	_, err = _networkQueueManager.MatchingEngine().Delete("deleteOrder/" + id)
 	if err != nil {
 		println("Error: ", err.Error())
 		return err
@@ -174,8 +174,7 @@ func cancelStockTransaction(id string) error {
 
 }
 
-
-/* 
+/*
 func cancelStockTransaction(id string) error {
     // Get the transaction details first
     transaction, err := _databaseAccess.StockTransaction().Get(id)
@@ -213,4 +212,4 @@ func cancelStockTransaction(id string) error {
     _, err = _networkManager.MatchingEngine().Delete("deleteOrder/" + id)
     return err
 }
- */
+*/

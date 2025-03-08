@@ -41,9 +41,9 @@ services:
           "-f",
           "http://user-management-service:${USER_MANAGEMENT_PORT}/health",
         ]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+      interval: ${HEALTHCHECK_INTERVAL}
+      timeout: ${HEALTHCHECK_TIMEOUT}
+      retries: ${HEALTHCHECK_RETRIES}
 
   # ---------------------- Redis Service ----------------------
   redis:
@@ -98,6 +98,9 @@ services:
         condition: service_healthy
       order-executor-service:
         condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
     networks:
       - go-network
     healthcheck:
@@ -171,9 +174,15 @@ services:
       retries: ${HEALTHCHECK_RETRIES}
 
   auth-service:
-    build: ./auth-service
+    build:
+      context: .
+      dockerfile: auth-service/Dockerfile
+    ports:
+      - "${AUTH_PORT}:${AUTH_PORT}"
     env_file:
       - .env
+    environment:
+      PORT: ${AUTH_PORT}
     depends_on:
       auth-db:
         condition: service_healthy
@@ -199,7 +208,6 @@ services:
       - ./reverse_proxy/nginx.conf:/etc/nginx/nginx.conf:ro
     depends_on:
       - auth-service
-      - auth-db
       - frontend
       - user-management-service
       - order-initiator-service
@@ -290,6 +298,34 @@ services:
       timeout: ${HEALTHCHECK_TIMEOUT}
       retries: ${HEALTHCHECK_RETRIES}
 
+  auth-database-service:
+    build:
+      context: .
+      dockerfile: ./auth-database/database-service/Dockerfile
+    ports:
+      - "${AUTH_DATABASE_SERVICE_PORT}:${AUTH_DATABASE_SERVICE_PORT}"
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: ${AUTH_DATABASE_URL}
+      PORT: ${AUTH_DATABASE_SERVICE_PORT}
+    networks:
+      - go-network
+    depends_on:
+      auth-db:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "curl",
+          "-f",
+          "http://auth-database-service:${AUTH_DATABASE_SERVICE_PORT}/health",
+        ]
+      interval: ${HEALTHCHECK_INTERVAL}
+      timeout: ${HEALTHCHECK_TIMEOUT}
+      retries: ${HEALTHCHECK_RETRIES}
+
   auth-db:
     image: postgres:latest
     restart: always
@@ -301,7 +337,7 @@ services:
       POSTGRES_DB: ${AUTH_POSTGRES_DB}
     volumes:
       - auth-db-data:/var/lib/postgresql/data
-      - ./auth-service/database/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./auth-database/init.sql:/docker-entrypoint-initdb.d/init.sql
     healthcheck:
       test:
         ["CMD-SHELL", "pg_isready -U $AUTH_POSTGRES_USER -d $AUTH_POSTGRES_DB"]
@@ -407,12 +443,30 @@ services:
     networks:
       - go-network
 
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq
+    ports:
+      - 5672:5672
+      - 15672:15672
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: ${HEALTHCHECK_INTERVAL} # Check every 30 seconds
+      timeout: ${HEALTHCHECK_TIMEOUT} # Fail if no response in 10 seconds
+      retries: ${HEALTHCHECK_RETRIES} # Retry 5 times before marking as unhealthy
+      start_period: 10s # Allow 30 seconds for initialization before starting health checks
+    networks:
+      - go-network
+
 volumes:
   user-management-db-data:
   stock-db-data:
   auth-db-data:
   stock-order-db-data:
   transaction-db-data:
+  rabbitmq_data:
 
 # ---------------------- Networks ----------------------
 networks:

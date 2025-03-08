@@ -1,14 +1,14 @@
 package main
 
 import (
-	"Shared/network"
+	networkHttp "Shared/network/http"
 	"encoding/json"
 	"testing"
 )
 
 var userID = "6fd2fc6b-9142-4777-8b30-575ff6fa2460"
 var stockId = "69e81793-1cc7-476f-a8ba-714fafcb3e5c"
-var client = network.NewNetwork().UserManagement()
+var client = networkHttp.NewNetworkHttp().UserManagement()
 
 func TestGetWalletBalance(t *testing.T) {
 	queryParams := map[string]string{"userID": userID}

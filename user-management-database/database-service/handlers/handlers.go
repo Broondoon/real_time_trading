@@ -18,8 +18,8 @@ func InitalizeHandlers(
 	_networkManager = networkManager
 
 	//Add handlers
-	network.CreateNetworkEntityHandlers[*userStock.UserStock](_networkManager, os.Getenv("USER_MANAGEMENT_SERVICE_USER_STOCK_ROUTE"), _databaseManager.UserStocks(), userStock.Parse)
-	network.CreateNetworkEntityHandlers[*wallet.Wallet](_networkManager, os.Getenv("USER_MANAGEMENT_SERVICE_WALLET_ROUTE"), _databaseManager.Wallets(), wallet.Parse)
+	network.CreateNetworkEntityHandlers[*userStock.UserStock](_networkManager, os.Getenv("USER_MANAGEMENT_SERVICE_USER_STOCK_ROUTE"), _databaseManager.UserStocks(), userStock.Parse, userStock.ParseList)
+	network.CreateNetworkEntityHandlers[*wallet.Wallet](_networkManager, os.Getenv("USER_MANAGEMENT_SERVICE_WALLET_ROUTE"), _databaseManager.Wallets(), wallet.Parse, wallet.ParseList)
 	http.HandleFunc("/health", healthHandler)
 }
 

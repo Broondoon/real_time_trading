@@ -1,6 +1,6 @@
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE TABLE stockOrder (
-    ID UUID PRIMARY KEY,
+    ID UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     StockID UUID,
     ParentStockOrderID UUID,
     DateCreated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
