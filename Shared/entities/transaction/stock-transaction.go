@@ -27,6 +27,8 @@ type StockTransactionInterface interface {
 	GetTimestamp() time.Time
 	SetTimestamp(timestamp time.Time)
 	SetStockTXID()
+	GetUserID() string
+	SetUserID(userID string)
 	ToParams() NewStockTransactionParams
 	entity.EntityInterface
 }
@@ -42,6 +44,7 @@ type StockTransaction struct {
 	StockPrice               float64   `json:"stock_price" gorm:"not null"`
 	Quantity                 int       `json:"quantity" gorm:"not null"`
 	Timestamp                time.Time `json:"time_stamp"`
+	UserID                   string    `json:"user_id" gorm:"not null"`
 	// Internal Functions (commented out)
 	// GetStockIDInternal                  func() string                         `gorm:"-"`
 	// SetStockIDInternal                  func(stockID string)                  `gorm:"-"`
@@ -148,6 +151,14 @@ func (st *StockTransaction) SetStockTXID() {
 	st.StockTXID = st.GetId()
 }
 
+func (st *StockTransaction) GetUserID() string {
+	return st.UserID
+}
+
+func (st *StockTransaction) SetUserID(userID string) {
+	st.UserID = userID
+}
+
 type NewStockTransactionParams struct {
 	entity.NewEntityParams   `json:"entity"`
 	StockID                  string    `json:"stock_id"`
@@ -159,6 +170,7 @@ type NewStockTransactionParams struct {
 	StockPrice               float64   `json:"stock_price"`
 	Quantity                 int       `json:"quantity"`
 	TimeStamp                time.Time `json:"time_stamp"`
+	UserID                   string    `json:"user_id"`
 
 	WalletTransaction WalletTransactionInterface // use this or WalletTransactionID or ParentStockTransaction
 	//use one of the following
@@ -179,6 +191,7 @@ func NewStockTransaction(params NewStockTransactionParams) *StockTransaction {
 	var orderType string
 	var stockPrice float64
 	var quantity int
+	var userID string
 	if params.ParentStockTransaction != nil {
 		stockID = params.ParentStockTransaction.GetStockID()
 		parentStockTransactionID = params.ParentStockTransaction.GetId()
@@ -187,6 +200,7 @@ func NewStockTransaction(params NewStockTransactionParams) *StockTransaction {
 		orderType = params.ParentStockTransaction.GetOrderType()
 		stockPrice = params.ParentStockTransaction.GetStockPrice()
 		quantity = params.ParentStockTransaction.GetQuantity()
+		userID = params.ParentStockTransaction.GetUserID()
 	} else {
 		parentStockTransactionID = params.ParentStockTransactionID
 		if params.StockOrder != nil {
@@ -196,6 +210,7 @@ func NewStockTransaction(params NewStockTransactionParams) *StockTransaction {
 			orderType = params.StockOrder.GetOrderType()
 			stockPrice = params.StockOrder.GetPrice()
 			quantity = params.StockOrder.GetQuantity()
+			userID = params.StockOrder.GetUserID()
 		} else {
 			if params.Stock != nil {
 				stockID = params.Stock.GetId()
@@ -206,6 +221,7 @@ func NewStockTransaction(params NewStockTransactionParams) *StockTransaction {
 			orderType = params.OrderType
 			stockPrice = params.StockPrice
 			quantity = params.Quantity
+			userID = params.UserID
 		}
 	}
 
@@ -225,6 +241,7 @@ func NewStockTransaction(params NewStockTransactionParams) *StockTransaction {
 		StockPrice:               stockPrice,
 		Quantity:                 quantity,
 		Timestamp:                params.TimeStamp,
+		UserID:                   userID,
 		Entity:                   *e,
 	}
 	return st
@@ -262,6 +279,7 @@ func (st *StockTransaction) ToParams() NewStockTransactionParams {
 		StockPrice:               st.GetStockPrice(),
 		Quantity:                 st.GetQuantity(),
 		TimeStamp:                st.GetTimestamp(),
+		UserID:                   st.GetUserID(),
 	}
 }
 
