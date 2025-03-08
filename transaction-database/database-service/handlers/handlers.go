@@ -39,8 +39,8 @@ func healthHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func GetStockTransactions(responseWriter network.ResponseWriter, data []byte, queryParams url.Values, requestType string) {
-	transactions, err := _databaseManager.StockTransactions().GetByForeignID("user_id", queryParams.Get("userID"))
 
+	transactions, err := _databaseManager.StockTransactions().GetByForeignID("user_id", queryParams.Get("userID"))
 
 	if err != nil {
         println("Had an error. Error: ", err.Error())
