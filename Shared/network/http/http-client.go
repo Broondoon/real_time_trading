@@ -95,6 +95,40 @@ func (hc *HttpClient) Get(endpoint string, queryParams map[string]string) ([]byt
 	return hc.handleResponse(resp)
 }
 
+func (hc *HttpClient) PostBulk(endpoint string, payload []interface{}) ([]byte, error) {
+	jsonData, err := json.Marshal(payload)
+	if err != nil {
+		fmt.Println("DEBUG: Error marshalling payload:", err.Error())
+		return nil, err
+	}
+	fmt.Printf("DEBUG: Payload marshalled successfully: %s\n", string(jsonData))
+
+	fullURL := hc.BaseURL + endpoint
+	req, err := http.NewRequest(http.MethodPost, fullURL, bytes.NewBuffer(jsonData))
+	if err != nil {
+		fmt.Println("DEBUG: Error creating POST request:", err.Error())
+		return nil, err
+	}
+	fmt.Printf("DEBUG: Created POST request for URL: %s\n", fullURL)
+
+	req.Header.Set("Content-Type", "application/json")
+	// if err := hc.authenticate(req); err != nil {
+	// 	return nil, err
+	// }
+	req.Header.Set("isBulk", "true")
+
+	fmt.Println("DEBUG: Sending POST request...")
+	resp, err := hc.Client.Do(req)
+	if err != nil {
+		fmt.Println("DEBUG: Error sending POST request:", err.Error())
+		return nil, err
+	}
+	fmt.Printf("DEBUG: Received response with status: %s\n", resp.Status)
+
+	return hc.handleResponse(resp)
+
+}
+
 func (hc *HttpClient) Post(endpoint string, payload interface{}) ([]byte, error) {
 	jsonData, err := json.Marshal(payload)
 	if err != nil {
@@ -112,6 +146,7 @@ func (hc *HttpClient) Post(endpoint string, payload interface{}) ([]byte, error)
 	fmt.Printf("DEBUG: Created POST request for URL: %s\n", fullURL)
 
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("isBulk", "false")
 	// if err := hc.authenticate(req); err != nil {
 	// 	return nil, err
 	// }

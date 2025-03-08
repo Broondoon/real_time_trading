@@ -1,18 +1,23 @@
 package handlers
 
 import (
-	"auth-service/database"
-	"auth-service/models"
+	user "Shared/entities/user"
+	"Shared/network"
+	databaseAccessAuth "databaseAccessAuth"
+	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"time"
 
-	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/crypto/bcrypt"
 )
+
+// ---------- Utility Functions ----------
 
 func HashPassword(password string) (string, error) {
 	bytes, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
@@ -30,123 +35,134 @@ func GenerateToken(userID string) (string, error) {
 		"sub": userID,
 		"exp": time.Now().Add(time.Hour * 1).Unix(),
 	})
-
 	return token.SignedString(jwtsecret)
 }
 
-func Register(c *gin.Context) {
-	// Bind incoming JSON to our User model.
-	var input models.User
-	if err := c.ShouldBindJSON(&input); err != nil {
-		RespondError(c, http.StatusBadRequest, err.Error())
+// ---------- Response Helpers ----------
+
+func RespondSuccess(w http.ResponseWriter, data interface{}) {
+	w.Header().Set("Content-Type", "application/json")
+	response := map[string]interface{}{
+		"success": true,
+		"data":    data,
+	}
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(response)
+}
+
+func RespondError(w http.ResponseWriter, statusCode int, errorMsg string) {
+	w.Header().Set("Content-Type", "application/json")
+	response := map[string]interface{}{
+		"success": false,
+		"error":   errorMsg,
+	}
+	w.WriteHeader(statusCode)
+	json.NewEncoder(w).Encode(response)
+}
+
+// ---------- Dependency Injection ----------
+
+// authDB is the dependency injected from main.go.
+// It implements databaseAccessAdduth.AuthDataAccessInterface.
+var _authDB databaseAccessAuth.UserDataAccessInterface
+
+// InitializeAuthHandlers sets up the dependency for the handlers.
+func InitializeUser(db databaseAccessAuth.UserDataAccessInterface, networkManager network.NetworkInterface) {
+	_authDB = db
+	networkManager.AddHandleFuncUnprotected(network.HandlerParams{Pattern: "authentication/register", Handler: Register})
+	networkManager.AddHandleFuncUnprotected(network.HandlerParams{Pattern: "authentication/login", Handler: Login})
+}
+
+// ---------- HTTP Handlers ----------
+// Register handles user registration.
+func Register(w network.ResponseWriter, data []byte, queryParams url.Values, requestType string) {
+	log.Println("Register() called by handler in Auth-service.")
+
+	// Decode the JSON body into a User object.
+	var input user.User
+	if err := json.Unmarshal(data, &input); err != nil {
+		RespondError(w, http.StatusBadRequest, fmt.Sprintf("Invalid JSON: %v", err))
 		return
 	}
+
 	// Check if the username already exists.
-	var existingUser models.User
-	if err := database.DB.Where("username = ?", input.Username).First(&existingUser).Error; err == nil {
-		RespondError(c, http.StatusBadRequest, "Username already exists.")
+	existingUser, err := _authDB.GetUserByUsername(input.GetUsername())
+	if existingUser != nil {
+		log.Printf("Username exists?: %s", existingUser)
+		RespondError(w, http.StatusBadRequest, "Username already exists.")
+		return
+	} else if err != nil && err.Error() != "user not found" {
+		// Unexpected error.
+		log.Printf("Couldn't find user? %s", err.Error())
+		RespondError(w, http.StatusInternalServerError, "Internal error")
 		return
 	}
 
 	// Hash the password.
-	hashedPassword, err := HashPassword(input.Password)
+	hashedPassword, err := HashPassword(input.GetPassword())
 	if err != nil {
-		RespondError(c, http.StatusInternalServerError, "Error hashing password.")
+		log.Printf("error hashing: %s", err)
+		RespondError(w, http.StatusInternalServerError, "Error hashing password.")
 		return
 	}
+	input.Password = hashedPassword
 
-	user := models.User{
-		Username: input.Username,
-		Password: hashedPassword,
-		Name:     input.Name,
-	}
-
-	// Add the user to the database.
-	if err := database.DB.Create(&user).Error; err != nil {
-		RespondError(c, http.StatusInternalServerError, "Failed to add user to database.")
+	// Create the user.
+	if err := _authDB.CreateUser(&input); err != nil {
+		log.Printf("Failed to add user to database: %s", err)
+		RespondError(w, http.StatusInternalServerError, "Failed to add user to database.")
 		return
 	}
+	//TODO: Checking if the user exists, then creating, and then fetching
+	// the user from the DB again is not very efficient.
+	getUser, err := _authDB.GetUserByUsername(input.Username)
 
-	// Construct the URL for the createWallet endpoint.
+	// Call the wallet creation endpoint.
 	umHost := os.Getenv("USER_MANAGEMENT_HOST")
 	umPort := os.Getenv("USER_MANAGEMENT_PORT")
 	if umHost == "" || umPort == "" {
-		RespondError(c, http.StatusInternalServerError, "User management service not found.")
+		log.Printf("Host and Port:: %s:%s", umHost, umPort)
+		RespondError(w, http.StatusInternalServerError, "User management service not found.")
 		return
 	}
-	fmt.Println("user before wallet creation: ", user)
-	//// Build the URL with a query parameter for the user ID.
-	walletURL := fmt.Sprintf("http://%s:%s/transaction/createWallet?userID=%s", umHost, umPort, user.ID)
-	// Send a GET request to create the wallet.
+
+	walletURL := fmt.Sprintf("http://%s:%s/transaction/createWallet?userID=%s", umHost, umPort, getUser.GetId())
+	log.Printf("This is the input obj: %s", getUser.GetId())
 	resp, err := http.Get(walletURL)
-	fmt.Println("Resp after wallet creation attempt: ", resp)
 	if err != nil {
-		RespondError(c, http.StatusInternalServerError, "Error with wallet creation request.")
+		RespondError(w, http.StatusInternalServerError, "Error with wallet creation request.")
 		return
 	}
 	defer resp.Body.Close()
-
-	// If the wallet creation didn't return a 200 OK, return its error message
-	fmt.Println("Resp:", resp)
 	if resp.StatusCode != http.StatusOK {
 		bodyBytes, _ := io.ReadAll(resp.Body)
-		// RespondError(c, http.StatusBadRequest, string(bodyBytes))
-		RespondError(c, resp.StatusCode, string(bodyBytes))
+		RespondError(w, resp.StatusCode, string(bodyBytes))
 		return
 	}
-	// Everything succeeded; return a success response.
-	RespondSuccess(c, nil)
+
+	// Return a success response.
+	RespondSuccess(w, nil)
 }
 
-func Login(c *gin.Context) {
-	var input models.User
-	if err := c.ShouldBindJSON(&input); err != nil {
-		RespondError(c, http.StatusBadRequest, err.Error())
+// Login handles user login.
+func Login(w network.ResponseWriter, data []byte, queryParams url.Values, requestType string) {
+	var input user.User
+	if err := json.Unmarshal(data, &input); err != nil {
+		RespondError(w, http.StatusBadRequest, fmt.Sprintf("Invalid JSON: %v", err))
 		return
 	}
 
-	var user models.User
-	database.DB.Where("username = ?", input.Username).First(&user)
-	if user.ID == "" || !CheckPasswordHash(input.Password, user.Password) {
-
-		RespondError(c, http.StatusBadRequest, "Invalid Credentials.")
+	u, err := _authDB.GetUserByUsername(input.GetUsername())
+	if err != nil || u == nil || !CheckPasswordHash(input.GetPassword(), u.GetPassword()) {
+		RespondError(w, http.StatusBadRequest, "Invalid Credentials.")
 		return
 	}
 
-	token, err := GenerateToken(user.ID)
+	token, err := GenerateToken(u.GetId())
 	if err != nil {
-		RespondError(c, http.StatusInternalServerError, "Token generation failed.")
+		RespondError(w, http.StatusInternalServerError, "Token generation failed.")
 		return
 	}
 
-	RespondSuccess(c, gin.H{
-		"token": token,
-	})
-}
-
-func RespondSuccess(c *gin.Context, data interface{}) {
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data":    data,
-	})
-}
-
-func RespondError(c *gin.Context, statusCode int, errorMsg string) {
-	c.JSON(statusCode, gin.H{
-		"success": false,
-		"error":   errorMsg,
-	})
-}
-
-func Test(c *gin.Context) {
-	userID, exists := c.Get("userID")
-	if !exists {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "User ID not found"})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{"message": "You have successfully queried a " +
-		"protected endpoint with your JWT token. Excellent!",
-		"userID": userID,
-	})
+	RespondSuccess(w, map[string]interface{}{"token": token})
 }
