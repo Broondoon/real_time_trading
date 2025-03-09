@@ -199,6 +199,9 @@ func cancelStockTransactionHandler(responseWriter network.ResponseWriter, data [
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		responseWriter.WriteHeader(http.StatusNotFound)
 		return
+	} else if err != nil {
+		responseWriter.WriteHeader(http.StatusInternalServerError)
+		return
 	}
 	stockTransaction.SetOrderStatus("CANCELLED")
 	errList := _databaseManager.StockTransactions().Update(*stockTransaction.Updates)

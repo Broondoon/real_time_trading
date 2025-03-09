@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"log"
 	"net/http"
 )
 
@@ -11,5 +10,5 @@ func InitializeHealth() {
 
 func healthHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
-	log.Println(w, "OK")
+	//log.Println(w, "OK")
 }

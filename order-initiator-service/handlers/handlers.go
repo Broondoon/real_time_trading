@@ -219,49 +219,40 @@ func placeStockOrderResponse(data *[]*StockOrderBulk, TransferParams any) error 
 			return fmt.Errorf("failed to create transactions: %v", err)
 		}
 	}
-	stockOrdersByTimeStamp := make(map[string][]*StockOrderBulk)
-	for _, stockOrder := range *data {
-		stockOrdersByTimeStamp[stockOrder.timeStamp] = append(stockOrdersByTimeStamp[stockOrder.timeStamp], stockOrder)
-	}
-	for timeStamp, err := range errList {
-		if err != 0 {
-			for _, stockOrder := range stockOrdersByTimeStamp[timeStamp] {
-				log.Printf("failed to create transaction %s", timeStamp)
-				stockOrder.ResponseWriter.WriteHeader(http.StatusInternalServerError)
-			}
-		}
-	}
 
-	for _, createdTransaction := range *createdTransactions {
-		reconstructedStockOrder := order.New(order.NewStockOrderParams{
-			StockID:   createdTransaction.GetStockID(),
-			IsBuy:     createdTransaction.GetIsBuy(),
-			OrderType: createdTransaction.GetOrderType(),
-			Quantity:  createdTransaction.GetQuantity(),
-			Price:     createdTransaction.GetStockPrice(),
-			UserID:    createdTransaction.GetUserID(),
-		})
-		_, err = _networkQueueManager.MatchingEngine().Post("placeStockOrder", reconstructedStockOrder)
-		if err != nil {
-			for _, responseWriter := range *data {
-				responseWriter.ResponseWriter.WriteHeader(http.StatusInternalServerError)
-				log.Printf("failed to send to matching engine: %v", err)
-				return fmt.Errorf("failed to send to matching engine: %v", err)
+	IdsByTimeStamp := make(map[string]string)
+	for _, createdcreatedTransaction := range *createdTransactions {
+		IdsByTimeStamp[createdcreatedTransaction.GetTimestamp().String()] = createdcreatedTransaction.GetId()
+	}
+	for _, stockOrder := range *data {
+		if _, ok := errList[stockOrder.timeStamp]; ok {
+			if errList[stockOrder.timeStamp] != 0 {
+				log.Printf("failed to create transaction %s", stockOrder.timeStamp)
+				stockOrder.ResponseWriter.WriteHeader(http.StatusInternalServerError)
+				continue
 			}
 		}
-	}
-	for _, responseWriter := range *data {
-		returnVal := network.ReturnJSON{
-			Success: true,
-			Data:    nil,
-		}
-		returnValJSON, err := json.Marshal(returnVal)
-		if err != nil {
-			log.Printf("failed to marshal return value: %v", err)
-			responseWriter.ResponseWriter.WriteHeader(http.StatusInternalServerError)
-			continue
-		}
-		responseWriter.ResponseWriter.Write(returnValJSON)
+		stockOrder.StockOrder.SetId(IdsByTimeStamp[stockOrder.timeStamp])
+		go func() {
+			_, err = _networkQueueManager.MatchingEngine().Post("placeStockOrder", stockOrder.StockOrder)
+			if err != nil {
+				log.Printf("failed to send to matching engine: %v", err)
+				stockOrder.ResponseWriter.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+			returnVal := network.ReturnJSON{
+				Success: true,
+				Data:    nil,
+			}
+			returnValJSON, err := json.Marshal(returnVal)
+			if err != nil {
+				log.Printf("failed to marshal return value: %v", err)
+				stockOrder.ResponseWriter.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+			log.Println("value return")
+			stockOrder.ResponseWriter.Write(returnValJSON)
+		}()
 	}
 	return nil
 }

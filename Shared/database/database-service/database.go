@@ -212,6 +212,7 @@ func NewEntityData[T entity.EntityInterface](params *NewEntityDataParams) Entity
 			FieldType:  fieldSchema.FieldType,
 		}
 	}
+	log.Println(ed.tableName, " ID Data type: ", ed.columnCache["ID"].FieldType)
 
 	return ed
 }
@@ -325,6 +326,11 @@ func (d *EntityData[T]) GetByForeignIDBulk(foreignIDKey string, foreignIDs []str
 	if !ok {
 		errors["transaction"] = fmt.Errorf("foreign key column %s not found", foreignIDKey)
 		log.Printf("error getting by foreignKey: %s", errors["transaction"].Error())
+		columns := make([]string, 0, len(d.columnCache))
+		for _, d := range d.columnCache {
+			columns = append(columns, d.ColumnName)
+		}
+		log.Println("avalaible columns: ", strings.Join(columns, ", "))
 		return nil, errors
 	}
 
@@ -367,21 +373,6 @@ func (d *EntityData[T]) GetAll() (*[]T, error) {
 	}
 	return &entities, nil
 }
-
-// func (d *EntityData[T]) CreateBulk(entities *[]T) map[string]error {
-// 	maxInsertCount, err := strconv.Atoi(os.Getenv("MAX_DB_INSERT_COUNT"))
-// 	if err != nil {
-// 		log.Printf("error getting max insert count: %s", err.Error())
-// 		return err
-// 	}
-
-// 	result := d.GetNewDatabaseSession().CreateInBatches(&entities, maxInsertCount)
-// 	if result.Error != nil {
-// 		log.Printf("error creating entities in bulk: %s", result.Error.Error())
-// 		return result.Error
-// 	}
-// 	return nil
-// }
 
 func (d *EntityData[T]) CreateBulk(entities *[]T) map[string]error {
 	if len(*entities) == 0 {
@@ -484,6 +475,7 @@ func (d *EntityData[T]) Update(updates []*entity.EntityUpdateData) map[string]er
 	if len(updates) == 0 {
 		return map[string]error{"transaction": errors.New("UPDATE: no updates provided")}
 	}
+
 	// errorMap will accumulate errors keyed by row ID.
 	errorMap := make(map[string]error)
 	// Aggregate new and alter updates.

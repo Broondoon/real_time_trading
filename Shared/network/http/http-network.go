@@ -30,7 +30,6 @@ func NewNetworkHttp() network.NetworkInterface {
 }
 
 func handleFunc(params network.HandlerParams, w http.ResponseWriter, r *http.Request) {
-	log.Println("Handling request for: ", r.URL.Path)
 	responseWriterWrapper := &responseWriterWrapper{ResponseWriter: w, currentCode: http.StatusOK, finished: make(chan bool, 1), channelHasClosed: false}
 	var body []byte
 	var err error
@@ -78,12 +77,10 @@ func handleFunc(params network.HandlerParams, w http.ResponseWriter, r *http.Req
 	go params.Handler(responseWriterWrapper, body, queryParams, r.Method)
 	select {
 	case <-responseWriterWrapper.finished:
-		log.Println("finished, closing channel")
 		close(responseWriterWrapper.finished)
 		responseWriterWrapper.channelHasClosed = true
 		break
 	case <-time.After(TIMEOUT):
-		log.Println("timed out, closing channel")
 		if !responseWriterWrapper.channelHasClosed {
 			responseWriterWrapper.ResponseWriter.WriteHeader(http.StatusRequestTimeout)
 			close(responseWriterWrapper.finished)
@@ -103,7 +100,6 @@ type responseWriterWrapper struct {
 
 func (rw *responseWriterWrapper) WriteHeader(statusCode int) {
 	rw.currentCode = statusCode
-	log.Println("Writing header: ", statusCode)
 	rw.ResponseWriter.WriteHeader(statusCode)
 	//check if finished is closed
 	if !rw.channelHasClosed {
@@ -112,7 +108,6 @@ func (rw *responseWriterWrapper) WriteHeader(statusCode int) {
 }
 
 func (rw *responseWriterWrapper) Write(data []byte) (int, error) {
-	log.Println("Writing data: ", string(data))
 	int, err := rw.ResponseWriter.Write(data)
 	if !rw.channelHasClosed {
 		rw.finished <- true
@@ -126,7 +121,6 @@ func (rw *responseWriterWrapper) Header() http.Header {
 }
 
 func (rw *responseWriterWrapper) EncodeResponse(statusCode int, response map[string]interface{}) {
-	log.Println("Encoding response with status code: ", statusCode)
 	//rw.Header().Set("Content-Type", "application/json")
 	rw.ResponseWriter.WriteHeader(statusCode)
 	j, _ := json.Marshal(response)
