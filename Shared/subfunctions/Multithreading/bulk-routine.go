@@ -1,6 +1,7 @@
 package subfunctions
 
 import (
+	"log"
 	"os"
 	"strconv"
 	"time"
@@ -38,12 +39,12 @@ type BulkRoutineParams[T any] struct {
 func NewBulkRoutine[T any](params *BulkRoutineParams[T]) BulkRoutineInterface[T] {
 	maxQueueSize, err := strconv.Atoi(os.Getenv("MAX_DB_INSERT_COUNT"))
 	if err != nil {
-		println("Error getting max insert count: ", err.Error())
+		log.Println("Error getting max insert count: ", err.Error())
 		maxQueueSize = 100
 	}
 	routineDelay, err := strconv.Atoi(os.Getenv("BULK_ROUTINE_DELAY"))
 	if err != nil {
-		println("Error getting bulk routine delay: ", err.Error())
+		log.Println("Error getting bulk routine delay: ", err.Error())
 		routineDelay = 500
 	}
 	concurrency := params.Concurrency
@@ -86,7 +87,7 @@ func NewBulkRoutine[T any](params *BulkRoutineParams[T]) BulkRoutineInterface[T]
 				go func(batchCopy []T, passParams any) {
 					defer func() { <-b.workerSemaphore }()
 					if err := b.routine(&batchCopy, passParams); err != nil {
-						println("Error in bulk routine:", err.Error())
+						log.Println("Error in bulk routine:", err.Error())
 					}
 				}(batch, passParams)
 				*b.objects = (*b.objects)[:0]

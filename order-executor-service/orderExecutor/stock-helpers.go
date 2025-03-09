@@ -7,6 +7,7 @@ import (
 	"databaseAccessTransaction"
 	"databaseAccessUserManagement"
 	"fmt"
+	"log"
 	"time"
 )
 
@@ -27,14 +28,14 @@ func findUserStockPortfolios(
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get buyer stocks: %v", err)
 	}
-	println(fmt.Sprintf("Retrieved buyer portfolio with %d stocks", len(*buyerStockPortfolio)))
+	log.Println(fmt.Sprintf("Retrieved buyer portfolio with %d stocks", len(*buyerStockPortfolio)))
 
 	// Get seller's current stock holdings
 	sellerStockPortfolio, err := databaseAccessUser.UserStock().GetUserStocks(sellerID)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get seller stocks: %v", err)
 	}
-	println(fmt.Sprintf("Retrieved seller portfolio with %d stocks", len(*sellerStockPortfolio)))
+	log.Println(fmt.Sprintf("Retrieved seller portfolio with %d stocks", len(*sellerStockPortfolio)))
 
 	return buyerStockPortfolio, sellerStockPortfolio, nil
 }
@@ -64,7 +65,7 @@ func handleSellerStock(
 			stockID, sellerQuantity, quantity)
 	}
 
-	println(fmt.Sprintf("Initially Seller has %d shares of StockID: %s", sellerQuantity, sellerStock.GetStockID()))
+	log.Println(fmt.Sprintf("Initially Seller has %d shares of StockID: %s", sellerQuantity, sellerStock.GetStockID()))
 	return sellerStock, nil
 }
 
@@ -85,7 +86,7 @@ func handleBuyerStock(
 			break
 		}
 	}
-	println(fmt.Sprintf("Initially Buyer has %d shares of StockID: %s", buyerStock.GetQuantity(), buyerStock.GetStockID()))
+	log.Println(fmt.Sprintf("Initially Buyer has %d shares of StockID: %s", buyerStock.GetQuantity(), buyerStock.GetStockID()))
 
 	// If the buyer doesn't have any of the stock, a new stock holding is created
 	// The quantity is originally set to zero and is updated after (otherwise there's an error where the quantity is double what it should be)
@@ -120,14 +121,14 @@ func updateUserStockQuantities(
 	if err := databaseAccessUser.UserStock().Update(sellerStock); err != nil {
 		return fmt.Errorf("failed to update seller stock: %v", err)
 	}
-	//println(fmt.Sprintf("Final -> Seller  has %d shares of StockID: %s", sellerStock.GetQuantity(), sellerStock.GetStockID()))
+	//log.Println(fmt.Sprintf("Final -> Seller  has %d shares of StockID: %s", sellerStock.GetQuantity(), sellerStock.GetStockID()))
 
 	if err := databaseAccessUser.UserStock().Update(buyerStock); err != nil {
 		return fmt.Errorf("failed to update buyer stock: %v", err)
 	}
-	//println(fmt.Sprintf("Final -> Buyer  has %d shares of StockID: %s", buyerStock.GetQuantity(), buyerStock.GetStockID()))
+	//log.Println(fmt.Sprintf("Final -> Buyer  has %d shares of StockID: %s", buyerStock.GetQuantity(), buyerStock.GetStockID()))
 
-	println("Final Buyer Quantity of StockID = %s is %d, Final Seller Quantity of StockID = %s is %d", buyerStock.GetStockID(), buyerStock.GetQuantity(), sellerStock.GetStockID(), sellerStock.GetQuantity())
+	log.Println("Final Buyer Quantity of StockID = %s is %d, Final Seller Quantity of StockID = %s is %d", buyerStock.GetStockID(), buyerStock.GetQuantity(), sellerStock.GetStockID(), sellerStock.GetQuantity())
 
 	return nil
 }
@@ -141,7 +142,7 @@ func updateTransactionStatus(
 	databaseAccessTransact databaseAccessTransaction.DatabaseAccessInterface,
 ) error {
 
-	println(fmt.Sprintf("BEFORE Update Status: %s", stockTx.GetOrderStatus()))
+	log.Println(fmt.Sprintf("BEFORE Update Status: %s", stockTx.GetOrderStatus()))
 
 	// Set the stock price in the transaction
 	stockTx.SetStockPrice(stockPrice)
@@ -167,7 +168,7 @@ func updateTransactionStatus(
 	if err := databaseAccessTransact.StockTransaction().Update(stockTx); err != nil {
 		return fmt.Errorf("failed to update transaction status: %v", err)
 	}
-	println(fmt.Sprintf("AFTER Update Status: %s", stockTx.GetOrderStatus()))
+	log.Println(fmt.Sprintf("AFTER Update Status: %s", stockTx.GetOrderStatus()))
 
 	// Create filled transaction for partial orders
 	if isBuyPartial || isSellPartial {
@@ -184,7 +185,7 @@ func updateTransactionStatus(
 			return fmt.Errorf("failed to create filled stock transaction: %v", err)
 		}
 
-		println(fmt.Sprintf("Created Filled Transaction with ID: %s", filledTx.GetId()))
+		log.Println(fmt.Sprintf("Created Filled Transaction with ID: %s", filledTx.GetId()))
 	}
 
 	return nil

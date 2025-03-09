@@ -80,7 +80,7 @@ func (hc *HttpClient) handleBulkResponse(resp *http.Response) (network.BulkRetur
 		fmt.Println("DEBUG: Error reading response body:", err.Error())
 		return network.BulkReturn{}, err
 	}
-	println("Body: ", string(body))
+	log.Println("Body: ", string(body))
 
 	var bulkReturn network.BulkReturn
 	err = json.Unmarshal(body, &bulkReturn)
@@ -94,7 +94,7 @@ func (hc *HttpClient) handleBulkResponse(resp *http.Response) (network.BulkRetur
 
 func (hc *HttpClient) Get(endpoint string, queryParams map[string]string) ([]byte, error) {
 	url, err := url.Parse(hc.BaseURL + endpoint)
-	fmt.Printf("[DEBUG] GET Request URL: %s\n", url.String())
+	log.Printf("[DEBUG] GET Request URL: %s\n", url.String())
 	if err != nil {
 		return nil, err
 	}

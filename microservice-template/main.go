@@ -3,6 +3,7 @@ package main
 import (
 	"Shared/entities/user"
 	networkHttp "Shared/network/http"
+	"log"
 	//"Shared/network"
 )
 
@@ -21,14 +22,19 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	println(string(test))
+	log.Println(string(test))
+	test, err = networkManager.Authentication().Post("authentication/login", testUser)
+	if err != nil {
+		panic(err)
+	}
+	log.Println(string(test))
 	// // {"user_name":"VanguardETF", "password":"Vang@123", "name":"Vanguard Corp."}
 	// // val, err = networkManager.Transactions().Get("transaction/getStockTransactions", nil)
 	// // if err != nil {
 	// // 	panic(err)
 	// // }
-	// // println(string(val))
-	// // println("Stock Transactions gotten")
+	// // log.Println(string(val))
+	// // log.Println("Stock Transactions gotten")
 
 	// ea := databaseAccessUserManagement.NewDatabaseAccess(&databaseAccessUserManagement.NewDatabaseAccessParams{
 	// 	Network: networkManager,
@@ -43,19 +49,19 @@ func main() {
 	// // 	Balance: 100000,
 	// // }))
 	// // if err != nil {
-	// // 	println("Error creating wallet: ", err)
+	// // 	log.Println("Error creating wallet: ", err)
 	// // 	panic(err)
 	// // }
 	// // walletOutput, err := test.ToJSON()
-	// // println("Wallet created: ", string(walletOutput))
+	// // log.Println("Wallet created: ", string(walletOutput))
 
 	// // testArray, err := ea.Wallet().GetByForeignID("UserID", "6fd2fc6b-9142-4777-8b30-575ff6fa2460")
 	// // if err != nil {
-	// // 	println("Error getting wallet: ", err)
+	// // 	log.Println("Error getting wallet: ", err)
 	// // 	panic(err)
 	// // }
-	// // println(testArray)
-	// // println("Wallet gotten")
+	// // log.Println(testArray)
+	// // log.Println("Wallet gotten")
 
 	// //Create a new Stock
 	// newStock1 := stock.New(stock.NewStockParams{
@@ -84,7 +90,7 @@ func main() {
 	// // if err != nil {
 	// // 	panic(err)
 	// // }
-	// // println("Stock Created")
+	// // log.Println("Stock Created")
 
 	// ea.UserStock().Create(userStock.New(userStock.NewUserStockParams{
 	// 	NewEntityParams: entity.NewEntityParams{
@@ -106,16 +112,16 @@ func main() {
 
 	// d, err := ea.UserStock().GetByForeignID("UserID", "6fd2fc6b-9142-4777-8b30-575ff6fa2460")
 	// if err != nil {
-	// 	println("Error getting user stock: ", err)
+	// 	log.Println("Error getting user stock: ", err)
 	// 	panic(err)
 	// }
 	// for _, us := range *d {
 	// 	da, err := us.ToJSON()
 	// 	if err != nil {
-	// 		println("Error converting user stock to json: ", err)
+	// 		log.Println("Error converting user stock to json: ", err)
 	// 		panic(err)
 	// 	}
-	// 	println("User Stock gotten: ", string(da))
+	// 	log.Println("User Stock gotten: ", string(da))
 	// 	us.UpdateQuantity(60)
 	// 	ea.UserStock().Update(us)
 	// }
@@ -205,15 +211,15 @@ func main() {
 	// 	if err != nil {
 	// 		panic(err)
 	// 	}
-	// 	println(string(val))
+	// 	log.Println(string(val))
 	// 	//check prices
 	// 	val, err = networkManager.MatchingEngine().Get("transaction/getStockPrices", nil)
 	// 	if err != nil {
 	// 		panic(err)
 	// 	}
-	// 	println(string(val))
+	// 	log.Println(string(val))
 	// }
-	// println("Stock Prices gotten")
+	// log.Println("Stock Prices gotten")
 
 	// // //cancel so3
 	// // stockTransactionIdObject := network.StockTransactionID{StockTransactionID: so3.GetId()}
@@ -221,7 +227,7 @@ func main() {
 	// // if err != nil {
 	// // 	panic(err)
 	// // }
-	// // println(string(val))
+	// // log.Println(string(val))
 
 	// // // fmt.Println the Stock Order
 	// // // fmt.Println("Stock Order: ")

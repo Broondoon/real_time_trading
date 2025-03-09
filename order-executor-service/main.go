@@ -5,6 +5,7 @@ import (
 	networkHttp "Shared/network/http"
 	"databaseAccessTransaction"
 	"databaseAccessUserManagement"
+	"log"
 )
 
 func main() {
@@ -21,7 +22,7 @@ func main() {
 
 	// Clarify what this is doing and why it is necessary
 	go OrderExecutorService.InitalizeExecutorHandlers(networkManager, databaseAccessTransaction, databaseAccessUserManagement)
-	println("Order Executor Service Started")
+	log.Println("Order Executor Service Started")
 
 	networkManager.Listen()
 

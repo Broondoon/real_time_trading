@@ -227,7 +227,7 @@ func (d *EntityData[T]) Exists(ID string) (bool, error) {
 		return false, nil
 	}
 	if result.Error != nil {
-		fmt.Printf("error checking if entity exists: %s", result.Error.Error())
+		log.Printf("error checking if entity exists: %s", result.Error.Error())
 		return false, result.Error
 	}
 	return true, nil
@@ -242,12 +242,12 @@ func (d *EntityData[T]) GetByID(id string) (T, error) {
 	result := d.GetDatabaseSession().First(&ent, "id = ?", id)
 	if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 		var zero T
-		fmt.Printf("record not found for id: %s", id)
+		log.Printf("record not found for id: %s", id)
 		return zero, result.Error
 	}
 	if result.Error != nil {
 		var zero T
-		fmt.Printf("error getting: %s", result.Error.Error())
+		log.Printf("error getting: %s", result.Error.Error())
 		return zero, result.Error
 	}
 	return ent, nil
@@ -262,7 +262,7 @@ func (d *EntityData[T]) GetByIDs(ids []string) (*[]T, map[string]error) {
 	results := d.GetDatabaseSession().Find(&entities, "id IN ?", ids)
 	if results.Error != nil {
 		errors["transaction"] = results.Error
-		fmt.Printf("error getting by ids: %s", results.Error.Error())
+		log.Printf("error getting by ids: %s", results.Error.Error())
 		return nil, errors
 	}
 	//get all ids in ids that are not in entities
@@ -283,12 +283,12 @@ func (d *EntityData[T]) GetByIDs(ids []string) (*[]T, map[string]error) {
 func (d *EntityData[T]) GetByForeignID(foreignIDKey string, foreignID string) (*[]T, error) {
 	if foreignIDKey == "" {
 		err := fmt.Errorf("foreign key column is empty")
-		fmt.Printf("error getting by foreignKey: %s", err.Error())
+		log.Printf("error getting by foreignKey: %s", err.Error())
 		return nil, err
 	}
 	if foreignID == "" {
 		err := fmt.Errorf("foreign key is empty")
-		fmt.Printf("error getting by foreignKey: %s", err.Error())
+		log.Printf("error getting by foreignKey: %s", err.Error())
 		return nil, err
 	}
 
@@ -296,12 +296,12 @@ func (d *EntityData[T]) GetByForeignID(foreignIDKey string, foreignID string) (*
 	foreignIDColumn, ok := d.columnCache[foreignIDKey]
 	if !ok {
 		err := fmt.Errorf("foreign key column %s not found", foreignIDKey)
-		fmt.Printf("error getting by foreignKey: %s", err.Error())
+		log.Printf("error getting by foreignKey: %s", err.Error())
 		return nil, err
 	}
 	results := d.GetDatabaseSession().Find(&entities, foreignIDColumn.ColumnName+" = ?", foreignID)
 	if results.Error != nil {
-		fmt.Printf("error getting by foreignKey: %s", results.Error.Error())
+		log.Printf("error getting by foreignKey: %s", results.Error.Error())
 		return nil, results.Error
 	}
 	return &entities, nil
@@ -310,12 +310,12 @@ func (d *EntityData[T]) GetByForeignID(foreignIDKey string, foreignID string) (*
 func (d *EntityData[T]) GetByForeignIDBulk(foreignIDKey string, foreignIDs []string) (*[]T, map[string]error) {
 	if foreignIDKey == "" {
 		err := fmt.Errorf("foreign key column is empty")
-		fmt.Printf("error getting by foreignKey: %s", err.Error())
+		log.Printf("error getting by foreignKey: %s", err.Error())
 		return nil, map[string]error{"transaction": err}
 	}
 	if len(foreignIDs) == 0 {
 		err := fmt.Errorf("foreign key is empty")
-		fmt.Printf("error getting by foreignKey: %s", err.Error())
+		log.Printf("error getting by foreignKey: %s", err.Error())
 		return nil, map[string]error{"transaction": err}
 	}
 
@@ -324,14 +324,14 @@ func (d *EntityData[T]) GetByForeignIDBulk(foreignIDKey string, foreignIDs []str
 	foreignIDColumn, ok := d.columnCache[foreignIDKey]
 	if !ok {
 		errors["transaction"] = fmt.Errorf("foreign key column %s not found", foreignIDKey)
-		fmt.Printf("error getting by foreignKey: %s", errors["transaction"].Error())
+		log.Printf("error getting by foreignKey: %s", errors["transaction"].Error())
 		return nil, errors
 	}
 
 	results := d.GetDatabaseSession().Find(&entities, foreignIDColumn.ColumnName+" IN ?", foreignIDs)
 	if results.Error != nil {
 		errors["transaction"] = results.Error
-		fmt.Printf("error getting by foreignKey: %s", results.Error.Error())
+		log.Printf("error getting by foreignKey: %s", results.Error.Error())
 		return nil, errors
 	}
 
@@ -362,7 +362,7 @@ func (d *EntityData[T]) GetAll() (*[]T, error) {
 	var entities []T
 	result := d.GetDatabaseSession().Find(&entities)
 	if result.Error != nil {
-		fmt.Printf("error getting all: %s", result.Error.Error())
+		log.Printf("error getting all: %s", result.Error.Error())
 		return nil, result.Error
 	}
 	return &entities, nil
@@ -371,13 +371,13 @@ func (d *EntityData[T]) GetAll() (*[]T, error) {
 // func (d *EntityData[T]) CreateBulk(entities *[]T) map[string]error {
 // 	maxInsertCount, err := strconv.Atoi(os.Getenv("MAX_DB_INSERT_COUNT"))
 // 	if err != nil {
-// 		fmt.Printf("error getting max insert count: %s", err.Error())
+// 		log.Printf("error getting max insert count: %s", err.Error())
 // 		return err
 // 	}
 
 // 	result := d.GetNewDatabaseSession().CreateInBatches(&entities, maxInsertCount)
 // 	if result.Error != nil {
-// 		fmt.Printf("error creating entities in bulk: %s", result.Error.Error())
+// 		log.Printf("error creating entities in bulk: %s", result.Error.Error())
 // 		return result.Error
 // 	}
 // 	return nil
@@ -393,7 +393,7 @@ func (d *EntityData[T]) CreateBulk(entities *[]T) map[string]error {
 
 	maxInsertCount, err := strconv.Atoi(os.Getenv("MAX_DB_INSERT_COUNT"))
 	if err != nil {
-		fmt.Printf("error getting max insert count: %s", err.Error())
+		log.Printf("error getting max insert count: %s", err.Error())
 		errorMap["transaction"] = err
 		return errorMap
 	}
@@ -463,7 +463,7 @@ func (d *EntityData[T]) Create(entity T) error {
 		entity.SetId("")
 		result = d.GetNewDatabaseSession().Create(&entity)
 		if result.Error != nil {
-			fmt.Printf("error creating %s: %s", entity.GetId(), result.Error.Error())
+			log.Printf("error creating %s: %s", entity.GetId(), result.Error.Error())
 			return result.Error
 		}
 	}
@@ -472,7 +472,7 @@ func (d *EntityData[T]) Create(entity T) error {
 	// createResult := d.GetDatabaseSession().Create(entity)
 
 	// if createResult.Error != nil {
-	// 	fmt.Printf("error creating %s: %s", entity.GetId(), createResult.Error.Error())
+	// 	log.Printf("error creating %s: %s", entity.GetId(), createResult.Error.Error())
 	// 	return createResult.Error
 	// }
 	return nil
@@ -726,7 +726,7 @@ func (d *EntityData[T]) Update(updates []*entity.EntityUpdateData) map[string]er
 	}
 	for id := range errorMap {
 		if _, ok := errorMap[id]; !ok {
-			fmt.Printf("error updating entity %s: %v", id, errorMap[id])
+			log.Printf("error updating entity %s: %v", id, errorMap[id])
 		}
 	}
 	return errorMap
@@ -740,7 +740,7 @@ func (d *EntityData[T]) Delete(id string) error {
 	var zero T
 	deleteResult := d.GetDatabaseSession().Delete(&zero, "id = ?", id)
 	if deleteResult.Error != nil {
-		fmt.Printf("error deleting %s: %s", id, deleteResult.Error.Error())
+		log.Printf("error deleting %s: %s", id, deleteResult.Error.Error())
 		return deleteResult.Error
 	}
 	return nil

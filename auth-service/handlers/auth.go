@@ -2,11 +2,11 @@ package handlers
 
 import (
 	"Shared/entities/entity"
-	user "Shared/entities/user"
+	"Shared/entities/user"
 	"Shared/entities/wallet"
 	"Shared/network"
 	subfunctions "Shared/subfunctions/Multithreading"
-	databaseAccessAuth "databaseAccessAuth"
+	"databaseAccessAuth"
 	"databaseAccessUserManagement"
 	"fmt"
 	"log"
@@ -51,8 +51,8 @@ func RespondSuccess(w network.ResponseWriter, data interface{}) {
 }
 
 func RespondError(w network.ResponseWriter, statusCode int, errorMsg string) {
-	println("RespondError: ", errorMsg)
-	println("RespondErrorCode: ", statusCode)
+	log.Println("RespondError: ", errorMsg)
+	log.Println("RespondErrorCode: ", statusCode)
 	response := map[string]interface{}{
 		"success": false,
 		"error":   errorMsg,
@@ -129,15 +129,13 @@ func Register(w network.ResponseWriter, data []byte, queryParams url.Values, req
 }
 
 func registerUsers(data *[]*UserBulk, TransferParams any) error {
-	println("registering users")
+	log.Println("registering users")
 	userMap := make(map[string]*UserBulk)
 	usernames := make([]string, len(*data))
 	for i, d := range *data {
 		username := d.UserEntity.GetUsername()
 		if _, ok := userMap[username]; ok {
-			go func(responseWriter network.ResponseWriter) {
-				RespondError(responseWriter, http.StatusBadRequest, "Username already exists.")
-			}(d.ResponseWriter)
+			RespondError(d.ResponseWriter, http.StatusBadRequest, "Username already exists.")
 			continue
 		}
 		userMap[username] = d
@@ -145,26 +143,22 @@ func registerUsers(data *[]*UserBulk, TransferParams any) error {
 	}
 	_, errorList, err := _authDB.GetByForeignIDBulk("Username", usernames)
 	if err != nil {
-		println("error getting users: ", err)
+		log.Println("error getting users: ", err)
 		for _, d := range userMap {
-			go func(responseWriter network.ResponseWriter) {
-				RespondError(responseWriter, http.StatusInternalServerError, "Internal error")
-			}(d.ResponseWriter)
+			RespondError(d.ResponseWriter, http.StatusInternalServerError, "Internal error")
 		}
 		return err
 	}
 
 	for _, d := range userMap {
-		println("checking user: ", d.UserEntity.GetUsername())
+		log.Println("checking user: ", d.UserEntity.GetUsername())
 		if errCode, exists := errorList[d.UserEntity.GetUsername()]; exists {
-			println("User has Error: ", errCode)
+			log.Println("User has Error: ", errCode, " for user: ", d.UserEntity.GetUsername(), ". If this is 404, this is desirable.")
 			if errorList[d.UserEntity.GetUsername()] == http.StatusNotFound {
 				hashedPassword, err := HashPassword(d.UserEntity.GetPassword())
 				if err != nil {
 					log.Printf("error hashing: %s", err)
-					go func(responseWriter network.ResponseWriter) {
-						RespondError(responseWriter, http.StatusInternalServerError, "Error hashing password.")
-					}(d.ResponseWriter)
+					RespondError(d.ResponseWriter, http.StatusInternalServerError, "Error hashing password.")
 					continue
 				}
 				d.UserEntity.SetPassword(hashedPassword)
@@ -172,22 +166,18 @@ func registerUsers(data *[]*UserBulk, TransferParams any) error {
 				continue
 			} else {
 				fmt.Println("Error checking user: ", errCode)
-				go func(responseWriter network.ResponseWriter) {
-					RespondError(responseWriter, http.StatusInternalServerError, "Internal error")
-				}(d.ResponseWriter)
+				RespondError(d.ResponseWriter, http.StatusInternalServerError, "Internal error")
 				continue
 			}
 		}
-		println("User already exists: ", d.UserEntity.GetUsername())
-		go func(responseWriter network.ResponseWriter) {
-			RespondError(responseWriter, http.StatusBadRequest, "Username already exists.")
-		}(d.ResponseWriter)
+		log.Println("User already exists: ", d.UserEntity.GetUsername())
+		RespondError(d.ResponseWriter, http.StatusBadRequest, "Username already exists.")
 	}
 	return nil
 }
 
 func createUser(data *[]*UserBulk, TransferParams any) error {
-	println("creating users")
+	log.Println("creating users")
 	userMap := make(map[string]*UserBulk)
 	usersToCreate := make([]user.UserInterface, len(*data))
 	for i, d := range *data {
@@ -196,19 +186,15 @@ func createUser(data *[]*UserBulk, TransferParams any) error {
 	}
 	users, errorList, err := _authDB.CreateBulk(&usersToCreate)
 	if err != nil {
-		println("error creating users: ", err)
+		log.Println("error creating users: ", err)
 		for _, d := range *users {
-			go func(responseWriter network.ResponseWriter) {
-				RespondError(responseWriter, http.StatusInternalServerError, "Internal error")
-			}(userMap[d.GetUsername()].ResponseWriter)
+			RespondError(userMap[d.GetUsername()].ResponseWriter, http.StatusInternalServerError, "Internal error")
 		}
 		return err
 	}
 	for username, d := range errorList {
 		fmt.Println("Error creating user: ", d)
-		go func(responseWriter network.ResponseWriter) {
-			RespondError(responseWriter, http.StatusInternalServerError, "Failed to add user to database.")
-		}(userMap[username].ResponseWriter)
+		RespondError(userMap[username].ResponseWriter, http.StatusInternalServerError, "Failed to add user to database.")
 	}
 	for _, d := range *users {
 		_bulkRoutineRegisterCreateWallet.Insert(&UserBulk{UserEntity: d, ResponseWriter: userMap[d.GetUsername()].ResponseWriter})
@@ -229,31 +215,25 @@ func createWallet(data *[]*UserBulk, TransferParams any) error {
 	}
 	newWallets, errorList, err := _walletAccess.CreateBulk(&wallets)
 	if err != nil {
-		fmt.Printf("Error creating wallet: %v\n", err.Error())
+		log.Printf("Error creating wallet: %v\n", err.Error())
 		for _, d := range *data {
-			go func(responseWriter network.ResponseWriter) {
-				RespondError(responseWriter, http.StatusInternalServerError, "Internal error")
-			}(d.ResponseWriter)
+			RespondError(d.ResponseWriter, http.StatusInternalServerError, "Internal error")
 		}
 		removeUser(data, nil)
 		return err
 	}
 	for userId := range errorList {
 		_bulkRoutineRegisterRemoveUser.Insert(users[userId])
-		go func(responseWriter network.ResponseWriter) {
-			RespondError(responseWriter, http.StatusInternalServerError, "Internal error")
-		}(users[userId].ResponseWriter)
+		RespondError(users[userId].ResponseWriter, http.StatusInternalServerError, "Internal error")
 	}
 	for _, d := range *newWallets {
-		go func(responseWriter network.ResponseWriter) {
-			RespondSuccess(responseWriter, nil)
-		}(users[d.GetUserID()].ResponseWriter)
+		RespondSuccess(users[d.GetUserID()].ResponseWriter, nil)
 	}
 	return nil
 }
 
 func removeUser(data *[]*UserBulk, TransferParams any) error {
-	fmt.Printf("Error creating wallets. We need to delete any users we created for this.\n")
+	log.Printf("Error creating wallets. We need to delete any users we created for this.\n")
 	userIDs := make([]string, len(*data))
 	for i, d := range *data {
 		userIDs[i] = d.UserEntity.GetId()
@@ -289,9 +269,7 @@ func loginUsers(data *[]*UserBulk, TransferParams any) error {
 	users, errorList, err := _authDB.GetByForeignIDBulk("Username", usernames)
 	if err != nil {
 		for _, d := range *users {
-			go func(responseWriter network.ResponseWriter) {
-				RespondError(responseWriter, http.StatusInternalServerError, "Internal error")
-			}(userMap[d.GetUsername()].ResponseWriter)
+			RespondError(userMap[d.GetUsername()].ResponseWriter, http.StatusInternalServerError, "Internal error")
 		}
 		return err
 	}
@@ -299,32 +277,26 @@ func loginUsers(data *[]*UserBulk, TransferParams any) error {
 	for _, user := range *users {
 		d := userMap[user.GetUsername()]
 		if errCode, exists := errorList[user.GetUsername()]; exists {
+			log.Println("User has Error: ", errCode)
 			if errorList[d.UserEntity.GetUsername()] == http.StatusNotFound {
-				go func(responseWriter network.ResponseWriter) {
-					RespondError(responseWriter, http.StatusBadRequest, "Invalid Credentials.")
-				}(d.ResponseWriter)
+				RespondError(d.ResponseWriter, http.StatusBadRequest, "Invalid Credentials.")
 				continue
 			} else {
 				fmt.Println("Error checking user: ", errCode)
-				go func(responseWriter network.ResponseWriter) {
-					RespondError(responseWriter, http.StatusBadRequest, "Invalid Credentials.")
-				}(d.ResponseWriter)
+				RespondError(d.ResponseWriter, http.StatusBadRequest, "Invalid Credentials.")
 				continue
 			}
 		}
-		if CheckPasswordHash(user.GetPassword(), d.UserEntity.GetPassword()) {
-			go func(responseWriter network.ResponseWriter) {
-				token, err := GenerateToken(user.GetId())
-				if err != nil {
-					RespondError(responseWriter, http.StatusInternalServerError, "Token generation failed.")
-					return
-				}
-				RespondSuccess(responseWriter, map[string]interface{}{"token": token})
-			}(d.ResponseWriter)
+		log.Println("Checking password for user: ", user.GetUsername(), " with password: ", d.UserEntity.GetPassword(), " and hash: ", user.GetPassword())
+		if CheckPasswordHash(d.UserEntity.GetPassword(), user.GetPassword()) {
+			token, err := GenerateToken(user.GetId())
+			if err != nil {
+				RespondError(d.ResponseWriter, http.StatusInternalServerError, "Token generation failed.")
+				continue
+			}
+			RespondSuccess(d.ResponseWriter, map[string]interface{}{"token": token})
 		} else {
-			go func(responseWriter network.ResponseWriter) {
-				RespondError(responseWriter, http.StatusBadRequest, "Invalid Credentials.")
-			}(d.ResponseWriter)
+			RespondError(d.ResponseWriter, http.StatusBadRequest, "Invalid Credentials.")
 		}
 	}
 	return nil

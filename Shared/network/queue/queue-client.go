@@ -4,6 +4,7 @@ import (
 	"Shared/network"
 	"context"
 	"encoding/json"
+	"log"
 	"os"
 	"strings"
 	"time"
@@ -39,7 +40,7 @@ func NewQueueClient(exchangeRoute string, params *NewQueueClientParams) QueueCli
 	if exchangeRoute == "" {
 		panic("Exchange route cannot be empty")
 	} else {
-		println("Exchange route for new client: ", exchangeRoute)
+		log.Println("Exchange route for new client: ", exchangeRoute)
 	}
 	return &QueueClient{
 		QueueConnectionInterface: NewNetworkQueueConnection(params.NewNetworkQueueConnectionParams),
@@ -63,12 +64,12 @@ func DefaultPublishParams() SendParams {
 }
 
 func (n *QueueClient) SendWithReturn(route string, message []byte, params SendParams, onReturn func([]byte) ([]byte, error)) ([]byte, error) {
-	println("######")
-	println("Sending with return")
-	println("Route: ", route)
-	println("ExchangeRoute: ", n.ExchangeRoute)
-	println("Message: ", string(message))
-	println("######")
+	log.Println("######")
+	log.Println("Sending with return")
+	log.Println("Route: ", route)
+	log.Println("ExchangeRoute: ", n.ExchangeRoute)
+	log.Println("Message: ", string(message))
+	log.Println("######")
 
 	exchangeParams := ExchangeParams{
 		Name:    n.ExchangeRoute,
@@ -90,7 +91,7 @@ func (n *QueueClient) SendWithReturn(route string, message []byte, params SendPa
 		nil,
 	)
 	failOnError(err, "Failed to declare a return queue")
-	println("Return queue declared")
+	log.Println("Return queue declared")
 	msg, err := ch.Consume(
 		returnQueue.Name,
 		"",
@@ -101,7 +102,7 @@ func (n *QueueClient) SendWithReturn(route string, message []byte, params SendPa
 		nil,
 	)
 	failOnError(err, "Failed to register a consumer")
-	println("Consumer registered")
+	log.Println("Consumer registered")
 	corrID := generateRandomID()
 	err = ch.PublishWithContext(
 		ctx,
@@ -116,14 +117,14 @@ func (n *QueueClient) SendWithReturn(route string, message []byte, params SendPa
 			Body:          message,
 		})
 	failOnError(err, "Failed to publish a message")
-	println("Message published")
+	log.Println("Message published")
 	for d := range msg {
 		if corrID == d.CorrelationId {
-			println("Response received")
+			log.Println("Response received")
 			return onReturn(d.Body)
 		}
 	}
-	println("No response received")
+	log.Println("No response received")
 	return nil, nil
 }
 
@@ -209,7 +210,7 @@ func (n *QueueClient) Post(route string, payload interface{}) ([]byte, error) {
 	}
 	jsonData, err := json.Marshal(data)
 	if err != nil {
-		println("Error marshalling payload")
+		log.Println("Error marshalling payload")
 		return nil, err
 	}
 	return n.SendWithReturn(route, jsonData, DefaultPublishParams(), func(response []byte) ([]byte, error) {
@@ -225,7 +226,7 @@ func (n *QueueClient) Post(route string, payload interface{}) ([]byte, error) {
 // 	}
 // 	jsonData, err := json.Marshal(data)
 // 	if err != nil {
-// 		println("Error marshalling payload")
+// 		log.Println("Error marshalling payload")
 // 		return nil, err
 // 	}
 // 	return n.SendWithReturn(route, jsonData, DefaultPublishParams(), func(response []byte) ([]byte, error) {

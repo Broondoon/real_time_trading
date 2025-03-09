@@ -2,6 +2,7 @@ package networkQueue
 
 import (
 	"Shared/network"
+	"log"
 
 	amqp "github.com/rabbitmq/amqp091-go"
 )
@@ -36,7 +37,7 @@ func (n *NetworkQueue) AddHandleFuncUnprotected(params network.HandlerParams) {
 	// 	Handler: params.Handler,
 	// }
 
-	println("Adding handle func unprotected: ", params.Pattern)
+	log.Println("Adding handle func unprotected: ", params.Pattern)
 	n.QueueClusters[params.Pattern] = NewQueueCluster(n.ExchangeKey, params, &NewQueueClusterParams{
 		NewNetworkQueueConnectionParams: &NewNetworkQueueConnectionParams{
 			Connection: n.GetConnection(),
@@ -52,8 +53,8 @@ func (n *NetworkQueue) AddHandleFuncUnprotected(params network.HandlerParams) {
 		ConsumeNoWait:    false,
 		ConsumeArgs:      nil,
 	})
-	println("Added handle func unprotected: ", params.Pattern)
-	println("Queue clusters: ", len(n.QueueClusters))
+	log.Println("Added handle func unprotected: ", params.Pattern)
+	log.Println("Queue clusters: ", len(n.QueueClusters))
 }
 
 func (n *NetworkQueue) AddHandleFuncProtected(params network.HandlerParams) {
@@ -61,12 +62,12 @@ func (n *NetworkQueue) AddHandleFuncProtected(params network.HandlerParams) {
 }
 
 func (n *NetworkQueue) Listen() {
-	println("Listening")
-	println("Queue clusters: ", len(n.QueueClusters))
+	log.Println("Listening")
+	log.Println("Queue clusters: ", len(n.QueueClusters))
 	for _, params := range n.QueueClusters {
-		println("Spawning queue")
+		log.Println("Spawning queue")
 		go params.SpawnQueue()
-		println("Spawned queue")
+		log.Println("Spawned queue")
 	}
 }
 

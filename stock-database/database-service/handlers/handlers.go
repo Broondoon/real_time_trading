@@ -5,6 +5,7 @@ import (
 	"Shared/network"
 	databaseServiceStock "databaseServiceStock/database-connection"
 	"encoding/json"
+	"log"
 	"net/http"
 	"net/url"
 	"os"
@@ -35,7 +36,7 @@ func healthHandler(w http.ResponseWriter, r *http.Request) {
 func GetStockIDsHandler(responseWriter network.ResponseWriter, data []byte, queryParams url.Values, requestType string) {
 	stocks, err := _databaseManager.GetAll()
 	if err != nil {
-		println("Error: ", err.Error())
+		log.Println("Error: ", err.Error())
 		responseWriter.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -55,23 +56,23 @@ func GetStockIDsHandler(responseWriter network.ResponseWriter, data []byte, quer
 func AddNewStockHandler(responseWriter network.ResponseWriter, data []byte, queryParams url.Values, requestType string) {
 	newStock, err := stock.Parse(data)
 
-	println("Parsed Stock: ", newStock.GetId())
+	log.Println("Parsed Stock: ", newStock.GetId())
 	if err != nil {
-		println("Error: ", err.Error())
+		log.Println("Error: ", err.Error())
 		responseWriter.WriteHeader(http.StatusBadRequest)
 		return
 	}
 	err = _databaseManager.Create(newStock)
-	println("Created Stock: ", newStock.GetId())
+	log.Println("Created Stock: ", newStock.GetId())
 	if err != nil {
-		println("Error: ", err.Error())
+		log.Println("Error: ", err.Error())
 		responseWriter.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 	stockIdObject := network.StockID{StockID: newStock.GetId()}
 	_, err = _networkManager.MatchingEngine().Post("createStock", stockIdObject)
 	if err != nil {
-		println("Error: ", err.Error())
+		log.Println("Error: ", err.Error())
 		responseWriter.WriteHeader(http.StatusInternalServerError)
 		return
 	}

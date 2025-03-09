@@ -49,7 +49,7 @@ func testFuncInsertUserStock(userID string) {
 	if err != nil {
 		log.Fatalf("Failed to create user stock 1: %v", err)
 	}
-	fmt.Printf("Created user stock for user %s with stockID %s and quantity %d\n",
+	log.Printf("Created user stock for user %s with stockID %s and quantity %d\n",
 		createdUserStock1.GetUserID(), stockID1, createdUserStock1.GetQuantity())
 
 	createdUserStock2, err := _userStockAccess.Create(userStock.New(userStock.NewUserStockParams{
@@ -64,7 +64,7 @@ func testFuncInsertUserStock(userID string) {
 	if err != nil {
 		log.Fatalf("Failed to create user stock 2: %v", err)
 	}
-	fmt.Printf("Created user stock for user %s with stockID %s and quantity %d\n",
+	log.Printf("Created user stock for user %s with stockID %s and quantity %d\n",
 		createdUserStock2.GetUserID(), stockID2, createdUserStock2.GetQuantity())
 }
 */

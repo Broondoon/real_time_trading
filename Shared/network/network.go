@@ -3,6 +3,7 @@ package network
 import (
 	databaseService "Shared/database/database-service"
 	"Shared/entities/entity"
+	"log"
 
 	"encoding/json"
 	"errors"
@@ -220,7 +221,7 @@ func CreateNetworkEntityHandlers[T entity.EntityInterface](network NetworkInterf
 		if errorsReceived != nil {
 			if _, ok := errorsReceived["transaction"]; !ok {
 				for id, err := range errorsReceived {
-					println("Transfer Error: ", err)
+					log.Println("Transfer Error: ", err)
 					if errors.Is(err, gorm.ErrRecordNotFound) {
 						errorList[id] = http.StatusNotFound
 					} else {
@@ -228,7 +229,7 @@ func CreateNetworkEntityHandlers[T entity.EntityInterface](network NetworkInterf
 					}
 				}
 			} else {
-				fmt.Printf("Transaction error: %v\n", errorsReceived["transaction"])
+				log.Printf("Transaction error: %v\n", errorsReceived["transaction"])
 				responseWriter.WriteHeader(http.StatusInternalServerError)
 				return
 			}

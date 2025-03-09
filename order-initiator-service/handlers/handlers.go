@@ -11,6 +11,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
 	"net/url"
 	"os"
@@ -70,10 +71,10 @@ func healthHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func placeStockOrderHandler(responseWriter network.ResponseWriter, data []byte, queryParams url.Values, requestType string) {
-	println("Placing stock order")
+	log.Println("Placing stock order")
 	stockOrder, err := order.Parse(data)
 	if err != nil {
-		println("Error: ", err.Error())
+		log.Println("Error: ", err.Error())
 		responseWriter.WriteHeader(http.StatusBadRequest)
 		return
 	}
@@ -87,7 +88,7 @@ func placeStockOrderHandler(responseWriter network.ResponseWriter, data []byte, 
 }
 
 func checkUserStocks(data *[]*StockOrderBulk, TransferParams any) error {
-	println("Checking user stocks")
+	log.Println("Checking user stocks")
 	// bul routine, taking in stock order.
 	//then we organize the stock order's by USer IDS
 	//then we run the bulk routine on user stocks. That will give us back
@@ -107,11 +108,11 @@ func checkUserStocks(data *[]*StockOrderBulk, TransferParams any) error {
 		if errorCode != 0 {
 			for _, stockOrder := range ordersByUserId[userID] {
 				if errorCode == http.StatusNotFound {
-					fmt.Printf("user %s not found", userID)
-					go func() { stockOrder.ResponseWriter.WriteHeader(http.StatusNotFound) }()
+					log.Printf("user %s not found", userID)
+					stockOrder.ResponseWriter.WriteHeader(http.StatusNotFound)
 				} else {
-					fmt.Printf("failed to get user stocks for user %s", userID)
-					go func() { stockOrder.ResponseWriter.WriteHeader(http.StatusInternalServerError) }()
+					log.Printf("failed to get user stocks for user %s", userID)
+					stockOrder.ResponseWriter.WriteHeader(http.StatusInternalServerError)
 				}
 			}
 			return
@@ -129,14 +130,14 @@ func checkUserStocks(data *[]*StockOrderBulk, TransferParams any) error {
 
 			// Verify seller has the stock and sufficient quantity
 			if sellerStock == nil {
-				fmt.Printf("seller does not own stock %s", stockOrder.StockOrder.GetStockID())
-				go func() { stockOrder.ResponseWriter.WriteHeader(http.StatusBadRequest) }()
+				log.Printf("seller does not own stock %s", stockOrder.StockOrder.GetStockID())
+				stockOrder.ResponseWriter.WriteHeader(http.StatusBadRequest)
 				continue
 			}
 			if sellerStock.GetQuantity() < stockOrder.StockOrder.GetQuantity() {
-				fmt.Printf("insufficient stock quantity: has %d, wants to sell %d\n",
+				log.Printf("insufficient stock quantity: has %d, wants to sell %d\n",
 					sellerStock.GetQuantity(), stockOrder.StockOrder.GetQuantity())
-				go func() { stockOrder.ResponseWriter.WriteHeader(http.StatusBadRequest) }()
+				stockOrder.ResponseWriter.WriteHeader(http.StatusBadRequest)
 				continue
 			}
 
@@ -151,18 +152,16 @@ func checkUserStocks(data *[]*StockOrderBulk, TransferParams any) error {
 	err := _databaseAccessUser.UserStock().GetUserStocksBulk(userIds, handleSellOrders)
 	if err != nil {
 		for _, responseWriter := range *data {
-			go func(responseWriter network.ResponseWriter) {
-				responseWriter.WriteHeader(http.StatusInternalServerError)
-			}(responseWriter.ResponseWriter)
+			responseWriter.ResponseWriter.WriteHeader(http.StatusInternalServerError)
 		}
-		fmt.Printf("failed to get user stocks: %v", err)
+		log.Printf("failed to get user stocks: %v", err)
 		return fmt.Errorf("failed to get user stocks: %v", err)
 	}
 	return nil
 }
 
 func updateUserStocks(data *[]*StockOrderBulk, TransferParams any) error {
-	println("Updating user stocks")
+	log.Println("Updating user stocks")
 	//map user stocks by id and by stock id
 	//then map then map them to the stock orders
 	//then we
@@ -175,25 +174,21 @@ func updateUserStocks(data *[]*StockOrderBulk, TransferParams any) error {
 	errorList, err := _databaseAccessUser.UserStock().UpdateBulk(&userStocks)
 	if err != nil {
 		for _, responseWriter := range *data {
-			go func(responseWriter network.ResponseWriter) {
-				responseWriter.WriteHeader(http.StatusInternalServerError)
-			}(responseWriter.ResponseWriter)
+			responseWriter.ResponseWriter.WriteHeader(http.StatusInternalServerError)
 		}
-		fmt.Printf("failed to update user stocks: %v", err)
+		log.Printf("failed to update user stocks: %v", err)
 		return fmt.Errorf("failed to update user stocks: %v", err)
 	}
 
 	for _, stockOrder := range *data {
 		if errorCode := errorList[stockOrder.UserStock.GetId()]; errorCode != 0 {
-			go func(responseWriter network.ResponseWriter) {
-				if errorCode == http.StatusNotFound {
-					fmt.Printf("user stock %s not found", stockOrder.UserStock.GetId())
-					responseWriter.WriteHeader(http.StatusNotFound)
-				} else {
-					fmt.Printf("failed to update user stock %s", stockOrder.UserStock.GetId())
-					responseWriter.WriteHeader(http.StatusInternalServerError)
-				}
-			}(stockOrder.ResponseWriter)
+			if errorCode == http.StatusNotFound {
+				log.Printf("user stock %s not found", stockOrder.UserStock.GetId())
+				stockOrder.ResponseWriter.WriteHeader(http.StatusNotFound)
+			} else {
+				log.Printf("failed to update user stock %s", stockOrder.UserStock.GetId())
+				stockOrder.ResponseWriter.WriteHeader(http.StatusInternalServerError)
+			}
 			continue
 		}
 		_bulkRoutineCreateStockOrderTransactions.Insert(stockOrder)
@@ -202,7 +197,7 @@ func updateUserStocks(data *[]*StockOrderBulk, TransferParams any) error {
 }
 
 func placeStockOrderResponse(data *[]*StockOrderBulk, TransferParams any) error {
-	println("Creating stock order transactions")
+	log.Println("Creating stock order transactions")
 	bulkTransactions := make([]transaction.StockTransactionInterface, len(*data))
 	for _, stockOrder := range *data {
 		newTransaction := transaction.NewStockTransaction(transaction.NewStockTransactionParams{
@@ -218,10 +213,8 @@ func placeStockOrderResponse(data *[]*StockOrderBulk, TransferParams any) error 
 	createdTransactions, errList, err := _databaseAccess.StockTransaction().CreateBulk(&bulkTransactions)
 	if err != nil {
 		for _, responseWriter := range *data {
-			go func(responseWriter network.ResponseWriter) {
-				responseWriter.WriteHeader(http.StatusInternalServerError)
-			}(responseWriter.ResponseWriter)
-			fmt.Printf("failed to create transactions: %v", err)
+			responseWriter.ResponseWriter.WriteHeader(http.StatusInternalServerError)
+			log.Printf("failed to create transactions: %v", err)
 			return fmt.Errorf("failed to create transactions: %v", err)
 		}
 	}
@@ -232,10 +225,8 @@ func placeStockOrderResponse(data *[]*StockOrderBulk, TransferParams any) error 
 	for timeStamp, err := range errList {
 		if err != 0 {
 			for _, stockOrder := range stockOrdersByTimeStamp[timeStamp] {
-				go func(responseWriter network.ResponseWriter) {
-					fmt.Printf("failed to create transaction %s", timeStamp)
-					responseWriter.WriteHeader(http.StatusInternalServerError)
-				}(stockOrder.ResponseWriter)
+				log.Printf("failed to create transaction %s", timeStamp)
+				stockOrder.ResponseWriter.WriteHeader(http.StatusInternalServerError)
 			}
 		}
 	}
@@ -252,38 +243,34 @@ func placeStockOrderResponse(data *[]*StockOrderBulk, TransferParams any) error 
 		_, err = _networkQueueManager.MatchingEngine().Post("placeStockOrder", reconstructedStockOrder)
 		if err != nil {
 			for _, responseWriter := range *data {
-				go func(responseWriter network.ResponseWriter) {
-					responseWriter.WriteHeader(http.StatusInternalServerError)
-				}(responseWriter.ResponseWriter)
-				fmt.Printf("failed to send to matching engine: %v", err)
+				responseWriter.ResponseWriter.WriteHeader(http.StatusInternalServerError)
+				log.Printf("failed to send to matching engine: %v", err)
 				return fmt.Errorf("failed to send to matching engine: %v", err)
 			}
 		}
 	}
 	for _, responseWriter := range *data {
-		go func(responseWriter network.ResponseWriter) {
-			returnVal := network.ReturnJSON{
-				Success: true,
-				Data:    nil,
-			}
-			returnValJSON, err := json.Marshal(returnVal)
-			if err != nil {
-				fmt.Printf("failed to marshal return value: %v", err)
-				responseWriter.WriteHeader(http.StatusInternalServerError)
-				return
-			}
-			responseWriter.Write(returnValJSON)
-		}(responseWriter.ResponseWriter)
+		returnVal := network.ReturnJSON{
+			Success: true,
+			Data:    nil,
+		}
+		returnValJSON, err := json.Marshal(returnVal)
+		if err != nil {
+			log.Printf("failed to marshal return value: %v", err)
+			responseWriter.ResponseWriter.WriteHeader(http.StatusInternalServerError)
+			continue
+		}
+		responseWriter.ResponseWriter.Write(returnValJSON)
 	}
 	return nil
 }
 
 func cancelStockTransactionHandler(responseWriter network.ResponseWriter, data []byte, queryParams url.Values, requestType string) {
-	println("Cancelling stock transaction")
+	log.Println("Cancelling stock transaction")
 	var stockID network.StockTransactionID
 	err := json.Unmarshal(data, &stockID)
 	if err != nil {
-		println("Error: ", err.Error())
+		log.Println("Error: ", err.Error())
 		responseWriter.WriteHeader(http.StatusBadRequest)
 		return
 	}
@@ -293,7 +280,7 @@ func cancelStockTransactionHandler(responseWriter network.ResponseWriter, data [
 		return
 	}
 	if err != nil {
-		println("Error: ", err.Error())
+		log.Println("Error: ", err.Error())
 		responseWriter.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -313,55 +300,15 @@ func cancelStockTransaction(id string) error {
 	//pass to matching engine
 	err := _networkHttpManager.Transactions().Patch("cancelStockTransaction", id)
 	if err != nil {
-		println("Error: ", err.Error())
+		log.Println("Error: ", err.Error())
 		return err
 	}
 
 	_, err = _networkQueueManager.MatchingEngine().Delete("deleteOrder/" + id)
 	if err != nil {
-		println("Error: ", err.Error())
+		log.Println("Error: ", err.Error())
 		return err
 	}
 	return nil
 
 }
-
-/*
-func cancelStockTransaction(id string) error {
-    // Get the transaction details first
-    transaction, err := _databaseAccess.StockTransaction().Get(id)
-    if err != nil {
-        return fmt.Errorf("failed to get transaction: %v", err)
-    }
-
-    // If it's a sell order, restore the seller's stock quantity
-    if !transaction.GetIsBuy() {
-        stockOrder := transaction.GetStockOrder()
-        sellerID := stockOrder.GetUserID()
-        stockID := stockOrder.GetStockID()
-        quantity := stockOrder.GetQuantity()
-
-        // Get seller's current stock holdings
-        sellerStock, err := _databaseAccessUser.UserStock().GetUserStock(sellerID, stockID)
-        if err != nil {
-            return fmt.Errorf("failed to get seller stock: %v", err)
-        }
-
-        // Restore the quantity
-        sellerStock.SetQuantity(sellerStock.GetQuantity() + quantity)
-        err = _databaseAccessUser.UserStock().Update(sellerStock)
-        if err != nil {
-            return fmt.Errorf("failed to restore seller stock quantity: %v", err)
-        }
-    }
-
-    // Continue with existing cancellation logic
-    _, err = _networkManager.Transactions().Put("cancelStockTransaction/"+id, nil)
-    if err != nil {
-        return err
-    }
-
-    _, err = _networkManager.MatchingEngine().Delete("deleteOrder/" + id)
-    return err
-}
-*/

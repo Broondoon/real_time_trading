@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"net/url"
 	"os"
@@ -77,12 +78,12 @@ func handleFunc(params network.HandlerParams, w http.ResponseWriter, r *http.Req
 	go params.Handler(responseWriterWrapper, body, queryParams, r.Method)
 	select {
 	case <-responseWriterWrapper.finished:
-		println("finished, closing channel")
+		log.Println("finished, closing channel")
 		close(responseWriterWrapper.finished)
 		responseWriterWrapper.channelHasClosed = true
 		break
 	case <-time.After(TIMEOUT):
-		println("timed out, closing channel")
+		log.Println("timed out, closing channel")
 		if !responseWriterWrapper.channelHasClosed {
 			responseWriterWrapper.ResponseWriter.WriteHeader(http.StatusRequestTimeout)
 			close(responseWriterWrapper.finished)
@@ -102,7 +103,7 @@ type responseWriterWrapper struct {
 
 func (rw *responseWriterWrapper) WriteHeader(statusCode int) {
 	rw.currentCode = statusCode
-	println("Writing header: ", statusCode)
+	log.Println("Writing header: ", statusCode)
 	rw.ResponseWriter.WriteHeader(statusCode)
 	//check if finished is closed
 	if !rw.channelHasClosed {
@@ -111,7 +112,7 @@ func (rw *responseWriterWrapper) WriteHeader(statusCode int) {
 }
 
 func (rw *responseWriterWrapper) Write(data []byte) (int, error) {
-	println("Writing data: ", string(data))
+	log.Println("Writing data: ", string(data))
 	int, err := rw.ResponseWriter.Write(data)
 	if !rw.channelHasClosed {
 		rw.finished <- true
@@ -125,7 +126,7 @@ func (rw *responseWriterWrapper) Header() http.Header {
 }
 
 func (rw *responseWriterWrapper) EncodeResponse(statusCode int, response map[string]interface{}) {
-	println("Encoding response with status code: ", statusCode)
+	log.Println("Encoding response with status code: ", statusCode)
 	//rw.Header().Set("Content-Type", "application/json")
 	rw.currentCode = statusCode
 	j, _ := json.Marshal(response)

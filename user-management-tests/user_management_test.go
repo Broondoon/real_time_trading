@@ -3,6 +3,7 @@ package main
 import (
 	networkHttp "Shared/network/http"
 	"encoding/json"
+	"log"
 	"testing"
 )
 
@@ -41,7 +42,7 @@ func TestAddMoneyToWallet(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to add money to wallet: %v", err)
 	}
-	println(string(response))
+	log.Println(string(response))
 
 	var result struct {
 		Success bool        `json:"success"`

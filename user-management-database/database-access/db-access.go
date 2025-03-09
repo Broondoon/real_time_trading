@@ -6,7 +6,7 @@ import (
 	"Shared/entities/wallet"
 	"Shared/network"
 	"errors"
-	"fmt"
+	"log"
 	"os"
 )
 
@@ -118,18 +118,18 @@ func (d *DatabaseAccess) Wallet() WalletDataAccessInterface {
 func (d *UserStocksDataAccess) GetUserStocks(userID string) (*[]userStock.UserStockInterface, error) {
 	userStocks, err := d.GetByForeignID("UserID", userID)
 	if err != nil {
-		println("Error fetching user stocks by foreign ID for userID %s: %v\n", userID, err)
+		log.Println("Error fetching user stocks by foreign ID for userID %s: %v\n", userID, err)
 		return nil, err
 	}
 	return userStocks, nil
 }
 
 func (d *UserStocksDataAccess) GetUserStocksBulk(userIDs []string, routine func(userID string, userStocks *[]userStock.UserStockInterface, errorCode int)) error {
-	println("DEBUG: GetUserStocksBulk called for userIDs %s\n", userIDs)
+	log.Println("DEBUG: GetUserStocksBulk called for userIDs %s\n", userIDs)
 	userStocks, errList, err := d.GetByForeignIDBulk("UserID", userIDs)
 	//lets make a variant which is get by foregin ids. Get back multiple, then perform a function for each userId
 	if err != nil {
-		println("Error fetching user stocks by foreign ID for userIDs %s: %v\n", userIDs, err)
+		log.Println("Error fetching user stocks by foreign ID for userIDs %s: %v\n", userIDs, err)
 		return err
 	}
 	for _, userID := range userIDs {
@@ -145,45 +145,45 @@ func (d *UserStocksDataAccess) GetUserStocksBulk(userIDs []string, routine func(
 }
 
 func (d *WalletDataAccess) AddMoneyToWallet(userID string, amount float64) error {
-	fmt.Printf("DEBUG: AddMoneyToWallet called for userID=%s with amount=%f\n", userID, amount)
+	log.Printf("DEBUG: AddMoneyToWallet called for userID=%s with amount=%f\n", userID, amount)
 
 	walletList, err := d.GetByForeignID("UserID", userID)
 	if err != nil {
-		fmt.Printf("DEBUG: Error retrieving wallet for userID=%s: %v\n", userID, err)
+		log.Printf("DEBUG: Error retrieving wallet for userID=%s: %v\n", userID, err)
 		return err
 	}
-	fmt.Printf("DEBUG: Retrieved %d wallet(s) for userID=%s\n", len(*walletList), userID)
+	log.Printf("DEBUG: Retrieved %d wallet(s) for userID=%s\n", len(*walletList), userID)
 
 	if len(*walletList) == 0 {
-		fmt.Printf("DEBUG: No wallet found for userID=%s\n", userID)
+		log.Printf("DEBUG: No wallet found for userID=%s\n", userID)
 		return errors.New("no wallet found for user")
 	}
 
 	wallet := (*walletList)[0]
 	oldBalance := wallet.GetBalance()
 	newBalance := oldBalance + amount
-	fmt.Printf("DEBUG: Updating wallet for userID=%s: old balance=%f, new balance=%f\n", userID, oldBalance, newBalance)
+	log.Printf("DEBUG: Updating wallet for userID=%s: old balance=%f, new balance=%f\n", userID, oldBalance, newBalance)
 
 	wallet.UpdateBalance(amount)
 	err = d.Update(wallet)
 	if err != nil {
-		fmt.Printf("DEBUG: Error updating wallet for userID=%s: %v\n", userID, err)
+		log.Printf("DEBUG: Error updating wallet for userID=%s: %v\n", userID, err)
 		return err
 	}
 
-	fmt.Printf("DEBUG: Successfully updated wallet for userID=%s\n", userID)
+	log.Printf("DEBUG: Successfully updated wallet for userID=%s\n", userID)
 	return nil
 }
 
 func (d *WalletDataAccess) GetWalletBalance(userID string) (float64, error) {
 	walletList, err := d.GetByForeignID("UserID", userID)
 	if err != nil {
-		fmt.Printf("[DEBUG] Error fetching wallet by foreign ID for userID %s: %v\n", userID, err)
+		log.Printf("[DEBUG] Error fetching wallet by foreign ID for userID %s: %v\n", userID, err)
 		return 0, err
 	}
-	fmt.Printf("[DEBUG] Retrieved walletList for userID %s: %v\n", userID, walletList)
+	log.Printf("[DEBUG] Retrieved walletList for userID %s: %v\n", userID, walletList)
 	if len(*walletList) == 0 {
-		fmt.Printf("[DEBUG] No wallet found for userID: %s\n", userID)
+		log.Printf("[DEBUG] No wallet found for userID: %s\n", userID)
 		return 0, errors.New("no wallet found for user")
 	}
 	wallet := (*walletList)[0]

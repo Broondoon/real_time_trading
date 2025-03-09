@@ -161,19 +161,19 @@ func (d *EntityDataAccessClient[TEntity, TInterface]) GetByIDs(ids []string) (*[
 }
 
 func (d *EntityDataAccessClient[TEntity, TInterface]) GetByForeignID(foreignIDColumn string, foreignID string) (*[]TInterface, error) {
-	println("Getting by foreign ID")
+	log.Println("Getting by foreign ID")
 	if d.GetRoute == "" {
 		d.GetRoute = d.DefaultRoute
-		fmt.Printf("[DEBUG] GetRoute was empty, set to DefaultRoute: %s\n", d.DefaultRoute)
+		log.Printf("[DEBUG] GetRoute was empty, set to DefaultRoute: %s\n", d.DefaultRoute)
 	}
 	queryParams := map[string]string{"foreignKey": foreignIDColumn, "id": foreignID}
 	jsonBytes, err := d._client.Get(d.GetRoute, queryParams)
 	if err != nil {
 		var zero []TInterface
-		fmt.Printf("[DEBUG] Failed to get entities by foreignKey: %v\n", err)
+		log.Printf("[DEBUG] Failed to get entities by foreignKey: %v\n", err)
 		return &zero, err
 	}
-	fmt.Printf("[DEBUG] Received JSON response: %s\n", string(jsonBytes))
+	log.Printf("[DEBUG] Received JSON response: %s\n", string(jsonBytes))
 	entities, err := d.ParserList(jsonBytes)
 
 	if err != nil {
@@ -181,7 +181,7 @@ func (d *EntityDataAccessClient[TEntity, TInterface]) GetByForeignID(foreignIDCo
 		fmt.Println("Failed to unmarshal entities: ", err)
 		return &zero, err
 	}
-	fmt.Printf("[DEBUG] Parsed entities: %v\n", *entities)
+	log.Printf("[DEBUG] Parsed entities: %v\n", *entities)
 	converted := make([]TInterface, len(*entities))
 	for i, e := range *entities {
 		converted[i] = interface{}(e).(TInterface)

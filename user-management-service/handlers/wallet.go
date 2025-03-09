@@ -5,6 +5,7 @@ import (
 	"databaseAccessUserManagement"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"net/url"
 )
@@ -40,7 +41,7 @@ func InitializeWallet(walletAccess databaseAccessUserManagement.WalletDataAccess
 	if err != nil {
 		log.Fatalf("Failed to create wallet: %v", err)
 	}
-	fmt.Printf("Created wallet for user %s with balance: %.2f\n", createdWallet.GetUserID(), createdWallet.GetBalance())
+	log.Printf("Created wallet for user %s with balance: %.2f\n", createdWallet.GetUserID(), createdWallet.GetBalance())
 }*/
 
 func getWalletBalanceHandler(responseWriter network.ResponseWriter, data []byte, queryParams url.Values, requestType string) {
@@ -49,12 +50,12 @@ func getWalletBalanceHandler(responseWriter network.ResponseWriter, data []byte,
 		// Fallback if "userID" isn’t provided.
 		userID = queryParams.Get("id")
 	}
-	fmt.Printf("Received request to get wallet balance. userID=%s\n", userID)
+	log.Printf("Received request to get wallet balance. userID=%s\n", userID)
 
-	fmt.Printf("Request Type: %s\n", requestType)
-	fmt.Printf("Query Params: %v\n", queryParams)
-	fmt.Printf("Request Body: %s\n", string(data))
-	fmt.Printf("Extracted userID: %s\n", userID)
+	log.Printf("Request Type: %s\n", requestType)
+	log.Printf("Query Params: %v\n", queryParams)
+	log.Printf("Request Body: %s\n", string(data))
+	log.Printf("Extracted userID: %s\n", userID)
 
 	if userID == "" {
 		fmt.Println("Error: Missing userID in query parameters.")
@@ -65,7 +66,7 @@ func getWalletBalanceHandler(responseWriter network.ResponseWriter, data []byte,
 
 	balance, err := _walletAccess.GetWalletBalance(userID)
 	if err != nil {
-		fmt.Printf("Error: Failed to get wallet balance for userID=%s. Reason: %v\n", userID, err)
+		log.Printf("Error: Failed to get wallet balance for userID=%s. Reason: %v\n", userID, err)
 		responseWriter.WriteHeader(http.StatusBadRequest)
 		fmt.Println("===== [END] getWalletBalanceHandler - Failed: Database Error =====")
 		return
@@ -90,10 +91,10 @@ func getWalletBalanceHandler(responseWriter network.ResponseWriter, data []byte,
 
 func addMoneyToWalletHandler(responseWriter network.ResponseWriter, data []byte, queryParams url.Values, requestType string) {
 
-	fmt.Printf("DEBUG: Received addMoneyToWallet request. Request Type: %s, Query Params: %v\n", requestType, queryParams)
+	log.Printf("DEBUG: Received addMoneyToWallet request. Request Type: %s, Query Params: %v\n", requestType, queryParams)
 
 	userID := queryParams.Get("userID")
-	fmt.Printf("DEBUG: Extracted userID: %s\n", userID)
+	log.Printf("DEBUG: Extracted userID: %s\n", userID)
 	if userID == "" {
 		fmt.Println("DEBUG: userID is missing, returning 400 Bad Request")
 		responseWriter.WriteHeader(http.StatusBadRequest)
@@ -101,7 +102,7 @@ func addMoneyToWalletHandler(responseWriter network.ResponseWriter, data []byte,
 		return
 	}
 
-	fmt.Printf("DEBUG: Raw request data: %s\n", string(data))
+	log.Printf("DEBUG: Raw request data: %s\n", string(data))
 	var request struct {
 		Amount float64 `json:"amount"`
 	}
@@ -112,7 +113,7 @@ func addMoneyToWalletHandler(responseWriter network.ResponseWriter, data []byte,
 		responseWriter.Write([]byte("Invalid request body"))
 		return
 	}
-	fmt.Printf("DEBUG: Parsed request amount: %f\n", request.Amount)
+	log.Printf("DEBUG: Parsed request amount: %f\n", request.Amount)
 
 	if request.Amount <= 0 {
 		fmt.Println("DEBUG: Request amount is invalid (<= 0), returning 400 Bad Request")
@@ -121,9 +122,9 @@ func addMoneyToWalletHandler(responseWriter network.ResponseWriter, data []byte,
 		return
 	}
 
-	fmt.Printf("DEBUG: Calling _walletAccess.AddMoneyToWallet for userID %s with amount %f\n", userID, request.Amount)
+	log.Printf("DEBUG: Calling _walletAccess.AddMoneyToWallet for userID %s with amount %f\n", userID, request.Amount)
 	if err := _walletAccess.AddMoneyToWallet(userID, request.Amount); err != nil {
-		fmt.Printf("DEBUG: Error adding money to wallet: %v\n", err)
+		log.Printf("DEBUG: Error adding money to wallet: %v\n", err)
 		responseWriter.WriteHeader(http.StatusInternalServerError)
 		responseWriter.Write([]byte("Failed to add money to wallet"))
 		return
@@ -146,7 +147,7 @@ func addMoneyToWalletHandler(responseWriter network.ResponseWriter, data []byte,
 }
 
 // func createWalletHandler(responseWriter network.ResponseWriter, data []byte, queryParams url.Values, requestType string) {
-// 	fmt.Printf("DEBUG: createWalletHandler invoked. Request Type: %s, Query Params: %v, Request Body: %s\n", requestType, queryParams, string(data))
+// 	log.Printf("DEBUG: createWalletHandler invoked. Request Type: %s, Query Params: %v, Request Body: %s\n", requestType, queryParams, string(data))
 
 // 	userID := queryParams.Get("userID")
 // 	if userID == "" {
@@ -154,7 +155,7 @@ func addMoneyToWalletHandler(responseWriter network.ResponseWriter, data []byte,
 // 		responseWriter.WriteHeader(http.StatusBadRequest)
 // 		return
 // 	}
-// 	fmt.Printf("DEBUG: Extracted userID: %s\n", userID)
+// 	log.Printf("DEBUG: Extracted userID: %s\n", userID)
 
 // 	params := wallet.NewWalletParams{
 // 		NewEntityParams: entity.NewEntityParams{},
@@ -162,15 +163,15 @@ func addMoneyToWalletHandler(responseWriter network.ResponseWriter, data []byte,
 // 		Balance:         0.0,
 // 	}
 // 	newWallet := wallet.New(params)
-// 	fmt.Printf("DEBUG: Created wallet object for userID: %s\n", userID)
+// 	log.Printf("DEBUG: Created wallet object for userID: %s\n", userID)
 
 // 	createdWallet, err := _walletAccess.Create(newWallet)
 // 	if err != nil {
-// 		fmt.Printf("DEBUG: Failed to create wallet for userID: %s, error: %v\n", userID, err)
+// 		log.Printf("DEBUG: Failed to create wallet for userID: %s, error: %v\n", userID, err)
 // 		responseWriter.WriteHeader(http.StatusInternalServerError)
 // 		return
 // 	}
-// 	fmt.Printf("DEBUG: Successfully created wallet for userID: %s. Wallet details: %+v\n", userID, createdWallet)
+// 	log.Printf("DEBUG: Successfully created wallet for userID: %s. Wallet details: %+v\n", userID, createdWallet)
 
 // 	responseWriter.WriteHeader(http.StatusOK)
 // 	fmt.Println("DEBUG: createWalletHandler completed successfully.")

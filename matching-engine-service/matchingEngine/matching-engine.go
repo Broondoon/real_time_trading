@@ -6,6 +6,7 @@ import (
 	"Shared/network"
 	"databaseAccessStockOrder"
 	"fmt"
+	"log"
 )
 
 // https://gobyexample.com/channels
@@ -59,61 +60,61 @@ func NewMatchingEngineForStock(params *NewMatchingEngineParams) MatchingEngineIn
 }
 
 func (me *MatchingEngine) RunMatchingEngineOrders() {
-	println("Running Matching Engine Orders")
+	log.Println("Running Matching Engine Orders")
 	var buyOrder order.StockOrderInterface
 	var sellOrder order.StockOrderInterface
 	for {
 		//dequeue the top of the buy order book and sell order book
 		if buyOrder == nil {
-			println("Getting best buy order")
+			log.Println("Getting best buy order")
 			buyOrder = me.BuyOrderBook.GetBestOrder()
 			if buyOrder != nil {
 				temp, err := buyOrder.ToJSON()
 				if err != nil {
-					println("Error: ", err.Error())
+					log.Println("Error: ", err.Error())
 				}
 				print("Buy Order: ", string(temp))
 			}
 		}
 		if sellOrder == nil {
-			println("Getting best sell order")
+			log.Println("Getting best sell order")
 			sellOrder = me.SellOrderBook.GetBestOrder()
 			if sellOrder != nil {
 				temp, err := sellOrder.ToJSON()
 				if err != nil {
-					println("Error: ", err.Error())
+					log.Println("Error: ", err.Error())
 				}
 				print("Sell Order: ", string(temp))
 			}
 		}
 		if buyOrder == nil || sellOrder == nil {
 			if buyOrder == nil {
-				println("Buy Order is nil")
+				log.Println("Buy Order is nil")
 				if sellOrder != nil {
-					println("Returning sell order")
+					log.Println("Returning sell order")
 					me.SellOrderBook.AddOrder(sellOrder)
 					sellOrder = nil
 				}
 			} else if sellOrder == nil {
-				println("Sell Order is nil")
-				println("Returning buy order")
+				log.Println("Sell Order is nil")
+				log.Println("Returning buy order")
 				me.BuyOrderBook.ReturnOrder(buyOrder)
 				buyOrder = nil
 			}
 		}
-		println("Starting Match")
+		log.Println("Starting Match")
 		if buyOrder != nil && sellOrder != nil {
-			println("Matching Orders. Buy Order: ", buyOrder.GetId(), " Sell Order: ", sellOrder.GetId())
+			log.Println("Matching Orders. Buy Order: ", buyOrder.GetId(), " Sell Order: ", sellOrder.GetId())
 			buyIsChild := false
 			sellIsChild := false
 			var parentOrder order.StockOrderInterface
 			if buyOrder.GetQuantity() < sellOrder.GetQuantity() {
-				println("Creating sell child order for: ", sellOrder.GetId())
+				log.Println("Creating sell child order for: ", sellOrder.GetId())
 				parentOrder = sellOrder
 				sellIsChild = true
 				sellOrder = sellOrder.CreateChildOrder(sellOrder, buyOrder)
-				println("Parent Order Quantity: ", parentOrder.GetQuantity())
-				println("Child Order Quantity: ", sellOrder.GetQuantity())
+				log.Println("Parent Order Quantity: ", parentOrder.GetQuantity())
+				log.Println("Child Order Quantity: ", sellOrder.GetQuantity())
 				if sellOrder.GetQuantity() == parentOrder.GetQuantity() {
 					close(me.orderChannel)
 					close(me.updateChannel)
@@ -121,18 +122,18 @@ func (me *MatchingEngine) RunMatchingEngineOrders() {
 				}
 			}
 			if buyOrder.GetQuantity() > sellOrder.GetQuantity() {
-				println("Creating buy child order for: ", buyOrder.GetId())
+				log.Println("Creating buy child order for: ", buyOrder.GetId())
 				parentOrder = buyOrder
 				buyIsChild = true
 				buyOrder = buyOrder.CreateChildOrder(buyOrder, sellOrder)
-				println("Parent Order Quantity: ", parentOrder.GetQuantity())
-				println("Child Order Quantity: ", buyOrder.GetQuantity())
+				log.Println("Parent Order Quantity: ", parentOrder.GetQuantity())
+				log.Println("Child Order Quantity: ", buyOrder.GetQuantity())
 				if sellOrder.GetQuantity() == parentOrder.GetQuantity() {
 					panic("Child order quantity is equal to parent order quantity. This should not happen")
 				}
 			}
 			result, err := me.SendToOrderExection(buyOrder, sellOrder)
-			println("Order Executed: ")
+			log.Println("Order Executed: ")
 			sellOrderQuantity := sellOrder.GetQuantity()
 			buyOrderQuantity := buyOrder.GetQuantity()
 			if sellIsChild {
@@ -148,17 +149,17 @@ func (me *MatchingEngine) RunMatchingEngineOrders() {
 				close(me.updateChannel)
 				panic("Error in order execution")
 			} else if result.IsBuyFailure {
-				println("Buy Order Failed: ", buyOrder.GetId())
+				log.Println("Buy Order Failed: ", buyOrder.GetId())
 				buyOrder = nil
 			} else if result.IsSellFailure {
-				println("Sell Order Failed: ", sellOrder.GetId())
+				log.Println("Sell Order Failed: ", sellOrder.GetId())
 				sellOrder = nil
 			} else {
-				println("Cleaning up orders")
+				log.Println("Cleaning up orders")
 				sellOrder.UpdateQuantity(-buyOrderQuantity)
 				buyOrder.UpdateQuantity(-sellOrderQuantity)
 				if sellOrder.GetQuantity() == 0 {
-					println("finishing sell Order: ", buyOrder.GetId())
+					log.Println("finishing sell Order: ", buyOrder.GetId())
 					_databaseManager.Delete(sellOrder.GetId())
 					sellOrder = nil
 				} else {
@@ -166,7 +167,7 @@ func (me *MatchingEngine) RunMatchingEngineOrders() {
 				}
 
 				if buyOrder.GetQuantity() == 0 {
-					println("finishing buy Order: ", buyOrder.GetId())
+					log.Println("finishing buy Order: ", buyOrder.GetId())
 					_databaseManager.Delete(buyOrder.GetId())
 					buyOrder = nil
 				} else {
@@ -183,7 +184,7 @@ func (me *MatchingEngine) RunMatchingEngineOrders() {
 				fmt.Println("Error: ", err.Error())
 				continue
 			}
-			println("Order: ", string(temp))
+			log.Println("Order: ", string(temp))
 		}
 	}
 }
@@ -205,7 +206,7 @@ func (me *MatchingEngine) RunMatchingEngineUpdates() {
 }
 
 func (me *MatchingEngine) AddOrder(stockOrder order.StockOrderInterface) {
-	println("Adding Order")
+	log.Println("Adding Order")
 	if stockOrder.GetOrderType() == order.OrderTypeMarket {
 		me.BuyOrderBook.AddOrder(stockOrder)
 	} else {
