@@ -29,7 +29,7 @@ func InitalizeExecutorHandlers(
 
 func healthHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
-	log.Println(w, "OK")
+	//log.Println(w, "OK")
 }
 
 func executorHandler(responseWriter network.ResponseWriter, data []byte, queryParams url.Values, requestType string) {
