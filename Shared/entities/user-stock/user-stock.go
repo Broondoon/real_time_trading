@@ -27,8 +27,8 @@ type UserStockInterface interface {
 }
 
 type UserStock struct {
-	UserID        string `json:"user_id" gorm:"not null"`
-	StockID       string `json:"stock_id" gorm:"not null"`
+	UserID        string `json:"user_id" gorm:"type:text;column:user_id;not null"`
+	StockID       string `json:"stock_id" gorm:"type:text;not null"`
 	StockName     string `json:"stock_name" gorm:"not null"`
 	Quantity      int    `json:"quantity_owned" gorm:"not null"`
 	entity.Entity `json:"Entity" gorm:"embedded"`
@@ -40,7 +40,7 @@ func (us *UserStock) GetQuantity() int {
 
 func (us *UserStock) UpdateQuantity(quantityToAdd int) {
 	us.Quantity += quantityToAdd
-	*us.Updates = append(*us.Updates, &entity.EntityUpdateData{
+	*us.GetUpdates() = append(*us.Updates, &entity.EntityUpdateData{
 		ID:         us.GetId(),
 		Field:      "Quantity",
 		AlterValue: func() *string { s := strconv.Itoa(quantityToAdd); return &s }(),
@@ -69,7 +69,7 @@ func (us *UserStock) GetStockName() string {
 
 func (us *UserStock) SetStockName(stockName string) {
 	us.StockName = stockName
-	*us.Updates = append(*us.Updates, &entity.EntityUpdateData{
+	*us.GetUpdates() = append(*us.Updates, &entity.EntityUpdateData{
 		ID:       us.GetId(),
 		Field:    "StockName",
 		NewValue: &stockName,

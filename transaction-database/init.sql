@@ -1,32 +1,32 @@
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE TABLE stockTransactions (
-    ID UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    Stock_ID UUID,
-    Parent_StockTransaction_ID UUID,
-    User_Stock_Transaction_ID UUID,
-    Wallet_Transaction_ID UUID,
-    Date_Created TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    Date_Modified TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    Order_Status TEXT NOT NULL,
-    Is_Buy BOOLEAN NOT NULL,
-    Order_Type TEXT NOT NULL,
-    Stock_Price DECIMAL NOT NULL,
-    Quantity INT NOT NULL,
-    User_ID UUID NOT NULL,
-    Timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (ParentStockTransactionID) REFERENCES stockTransactions(ID)
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    stock_id UUID,
+    parent_stock_transaction_id UUID,
+    user_stock_transaction_id UUID,
+    wallet_transaction_id UUID,
+    date_created TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    date_modified TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    order_status TEXT NOT NULL,
+    is_buy BOOLEAN NOT NULL,
+    order_type TEXT NOT NULL,
+    stock_price DECIMAL NOT NULL,
+    quantity INT NOT NULL,
+    user_id UUID NOT NULL,
+    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (parent_stock_transaction_id) REFERENCES stock_transactions(id)
 );
 
 CREATE TABLE walletTransactions (
-    ID UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    Stock_Transaction_ID UUID,
-    Wallet_ID UUID,
-    User_Stock_Transaction_ID UUID,
-    Date_Created TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    Date_Modified TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    Is_Debit BOOLEAN NOT NULL,
-    Amount DECIMAL NOT NULL,
-    User_ID UUID NOT NULL,
-    Timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (StockTransactionID) REFERENCES stockTransactions(ID)
+    id uuid primary key default uuid_generate_v4(),
+    stock_transaction_id uuid,
+    wallet_id uuid,
+    user_stock_transaction_id uuid,
+    date_created timestamp default current_timestamp,
+    date_modified timestamp default current_timestamp,
+    is_debit boolean not null,
+    amount decimal not null,
+    user_id uuid not null,
+    timestamp timestamp default current_timestamp,
+    foreign key (stock_transaction_id) references stock_transactions(id)
 );

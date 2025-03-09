@@ -58,7 +58,7 @@ func (e *Entity) GetDateModified() time.Time {
 
 func (e *Entity) SetDateModified(dateModified time.Time) {
 	e.DateModified = dateModified
-	*e.Updates = append(*e.Updates, &EntityUpdateData{
+	*e.GetUpdates() = append(*e.Updates, &EntityUpdateData{
 		ID:       e.GetId(),
 		Field:    "DateModified",
 		NewValue: func() *string { s := dateModified.Format(time.RFC3339); return &s }(),
@@ -66,6 +66,10 @@ func (e *Entity) SetDateModified(dateModified time.Time) {
 }
 
 func (e *Entity) GetUpdates() *[]*EntityUpdateData {
+	if e.Updates == nil {
+		tmp := make([]*EntityUpdateData, 0)
+		e.Updates = &tmp
+	}
 	return e.Updates
 }
 

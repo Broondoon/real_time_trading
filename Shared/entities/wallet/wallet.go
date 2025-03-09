@@ -17,7 +17,7 @@ type WalletInterface interface {
 }
 
 type Wallet struct {
-	UserID        string  `json:"user_id" gorm:"not null"`
+	UserID        string  `json:"user_id" gorm:"type:text;column:user_id;not null"`
 	Balance       float64 `json:"balance" gorm:"not null"`
 	entity.Entity `json:"Entity" gorm:"embedded"`
 }
@@ -28,7 +28,7 @@ func (w *Wallet) GetBalance() float64 {
 
 func (w *Wallet) UpdateBalance(balanceToAdd float64) {
 	w.Balance += balanceToAdd
-	*w.Updates = append(*w.Updates, &entity.EntityUpdateData{
+	*w.GetUpdates() = append(*w.Updates, &entity.EntityUpdateData{
 		ID:         w.GetId(),
 		Field:      "Balance",
 		AlterValue: func() *string { s := strconv.FormatFloat(balanceToAdd, 'f', -1, 64); return &s }(),

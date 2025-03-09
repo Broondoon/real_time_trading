@@ -50,7 +50,7 @@ type StockOrder struct {
 	OrderType          string  `json:"order_type" gorm:"not null"` // MARKET or LIMIT. This can't be changed later.
 	Quantity           int     `json:"quantity" gorm:"not null"`
 	Price              float64 `json:"price" gorm:"not null"`
-	UserID             string  `json:"user_id" gorm:"not null"`
+	UserID             string  `json:"user_id" gorm:"type:text;column:user_id;not null"`
 	entity.Entity      `json:"Entity" gorm:"embedded"`
 }
 
@@ -60,7 +60,7 @@ func (so *StockOrder) GetIsBuy() bool {
 
 func (so *StockOrder) SetIsBuy(isBuy bool) {
 	so.IsBuy = isBuy
-	*so.Updates = append(*so.Updates, &entity.EntityUpdateData{
+	*so.GetUpdates() = append(*so.Updates, &entity.EntityUpdateData{
 		ID:         so.GetId(),
 		Field:      "IsBuy",
 		AlterValue: func() *string { s := strconv.FormatBool(isBuy); return &s }(),
@@ -77,7 +77,7 @@ func (so *StockOrder) GetQuantity() int {
 
 func (so *StockOrder) UpdateQuantity(quantityToAdd int) {
 	so.Quantity += quantityToAdd
-	*so.Updates = append(*so.Updates, &entity.EntityUpdateData{
+	*so.GetUpdates() = append(*so.Updates, &entity.EntityUpdateData{
 		ID:         so.GetId(),
 		Field:      "Quantity",
 		AlterValue: func() *string { s := strconv.Itoa(quantityToAdd); return &s }(),
@@ -89,7 +89,7 @@ func (so *StockOrder) GetPrice() float64 {
 }
 func (so *StockOrder) SetPrice(price float64) {
 	so.Price = price
-	*so.Updates = append(*so.Updates, &entity.EntityUpdateData{
+	*so.GetUpdates() = append(*so.Updates, &entity.EntityUpdateData{
 		ID:         so.GetId(),
 		Field:      "Price",
 		AlterValue: func() *string { s := strconv.FormatFloat(price, 'f', -1, 64); return &s }(),

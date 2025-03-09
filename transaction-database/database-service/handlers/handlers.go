@@ -40,7 +40,12 @@ func healthHandler(w http.ResponseWriter, r *http.Request) {
 
 func GetStockTransactions(responseWriter network.ResponseWriter, data []byte, queryParams url.Values, requestType string) {
 
-	transactions, err := _databaseManager.StockTransactions().GetByForeignID("user_id", queryParams.Get("userID"))
+	transactions, err := _databaseManager.StockTransactions().GetByForeignID("UserID", queryParams.Get("userID"))
+
+	if transactions == nil {
+		responseWriter.WriteHeader(http.StatusNotFound)
+		return
+	}
 
 	if err != nil {
 		log.Println("Had an error. Error: ", err.Error())
@@ -132,7 +137,7 @@ alletTxId>,
 "time_stamp":<timestamp>}]
 */
 func getWalletTransactions(responseWriter network.ResponseWriter, data []byte, queryParams url.Values, requestType string) {
-	walletTransactions, err := _databaseManager.WalletTransactions().GetByForeignID("user_id", queryParams.Get("userID"))
+	walletTransactions, err := _databaseManager.WalletTransactions().GetByForeignID("UserID", queryParams.Get("userID"))
 
 	if err != nil {
 		log.Println("Had an error. Error: ", err.Error())

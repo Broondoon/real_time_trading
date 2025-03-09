@@ -36,16 +36,16 @@ type StockTransactionInterface interface {
 
 type StockTransaction struct {
 	StockTXID                string    `json:"stock_tx_id" gorm:"-"` // Stock Transaction ID
-	StockID                  string    `json:"stock_id" gorm:"not null"`
-	ParentStockTransactionID string    `json:"parent_stock_tx_id"`
-	WalletTransactionID      string    `json:"wallet_tx_id"`
+	StockID                  string    `json:"stock_id" gorm:"type:text;not null"`
+	ParentStockTransactionID string    `json:"parent_stock_tx_id" gorm:"type:text"`
+	WalletTransactionID      string    `json:"wallet_tx_id" gorm:"type:text"`
 	OrderStatus              string    `json:"order_status" gorm:"not null"`
 	IsBuy                    bool      `json:"is_buy" gorm:"not null"`
 	OrderType                string    `json:"order_type" gorm:"not null"`
 	StockPrice               float64   `json:"stock_price" gorm:"not null"`
 	Quantity                 int       `json:"quantity" gorm:"not null"`
 	Timestamp                time.Time `json:"time_stamp"`
-	UserID                   string    `json:"user_id" gorm:"not null"`
+	UserID                   string    `json:"user_id" gorm:"type:text;column:user_id;not null"`
 	entity.Entity            `json:"entity" gorm:"embedded"`
 }
 
@@ -71,7 +71,7 @@ func (st *StockTransaction) GetWalletTransactionID() string {
 
 func (st *StockTransaction) SetWalletTransactionID(walletTransactionID string) {
 	st.WalletTransactionID = walletTransactionID
-	*st.Updates = append(*st.Updates, &entity.EntityUpdateData{
+	*st.GetUpdates() = append(*st.Updates, &entity.EntityUpdateData{
 		ID:       st.GetId(),
 		Field:    "WalletTransactionID",
 		NewValue: &walletTransactionID,
@@ -84,7 +84,7 @@ func (st *StockTransaction) GetOrderStatus() string {
 
 func (st *StockTransaction) SetOrderStatus(orderStatus string) {
 	st.OrderStatus = orderStatus
-	*st.Updates = append(*st.Updates, &entity.EntityUpdateData{
+	*st.GetUpdates() = append(*st.Updates, &entity.EntityUpdateData{
 		ID:       st.GetId(),
 		Field:    "OrderStatus",
 		NewValue: &orderStatus,
@@ -97,7 +97,7 @@ func (st *StockTransaction) GetIsBuy() bool {
 
 func (st *StockTransaction) SetIsBuy(isBuy bool) {
 	st.IsBuy = isBuy
-	*st.Updates = append(*st.Updates, &entity.EntityUpdateData{
+	*st.GetUpdates() = append(*st.Updates, &entity.EntityUpdateData{
 		ID:       st.GetId(),
 		Field:    "IsBuy",
 		NewValue: func() *string { s := strconv.FormatBool(isBuy); return &s }(),
@@ -114,7 +114,7 @@ func (st *StockTransaction) GetStockPrice() float64 {
 
 func (st *StockTransaction) SetStockPrice(stockPrice float64) {
 	st.StockPrice = stockPrice
-	*st.Updates = append(*st.Updates, &entity.EntityUpdateData{
+	*st.GetUpdates() = append(*st.Updates, &entity.EntityUpdateData{
 		ID:       st.GetId(),
 		Field:    "StockPrice",
 		NewValue: func() *string { s := strconv.FormatFloat(stockPrice, 'f', -1, 64); return &s }(),
@@ -127,7 +127,7 @@ func (st *StockTransaction) GetQuantity() int {
 
 func (st *StockTransaction) SetQuantity(quantity int) {
 	st.Quantity = quantity
-	*st.Updates = append(*st.Updates, &entity.EntityUpdateData{
+	*st.GetUpdates() = append(*st.Updates, &entity.EntityUpdateData{
 		ID:       st.GetId(),
 		Field:    "Quantity",
 		NewValue: func() *string { s := strconv.Itoa(quantity); return &s }(),
@@ -140,7 +140,7 @@ func (st *StockTransaction) GetTimestamp() time.Time {
 
 func (st *StockTransaction) SetTimestamp(timestamp time.Time) {
 	st.Timestamp = timestamp
-	*st.Updates = append(*st.Updates, &entity.EntityUpdateData{
+	*st.GetUpdates() = append(*st.Updates, &entity.EntityUpdateData{
 		ID:       st.GetId(),
 		Field:    "Timestamp",
 		NewValue: func() *string { s := timestamp.Format(time.RFC3339); return &s }(),
@@ -149,7 +149,7 @@ func (st *StockTransaction) SetTimestamp(timestamp time.Time) {
 
 func (st *StockTransaction) SetStockTXID() {
 	st.StockTXID = st.GetId()
-	*st.Updates = append(*st.Updates, &entity.EntityUpdateData{
+	*st.GetUpdates() = append(*st.Updates, &entity.EntityUpdateData{
 		ID:       st.GetId(),
 		Field:    "StockTXID",
 		NewValue: &st.StockTXID,

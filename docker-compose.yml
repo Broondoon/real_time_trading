@@ -29,7 +29,7 @@ services:
   #   depends_on:
   #     user-management-service:
   #      condition: service_healthy
-  # ---------------------- User Management Service ----------------------
+  # ---------------------- User Management Service ------------------
   user-management-service:
     build:
       context: .

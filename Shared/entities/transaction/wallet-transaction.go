@@ -27,13 +27,13 @@ type WalletTransactionInterface interface {
 }
 
 type WalletTransaction struct {
-	WalletID           string    `json:"wallet_id" gorm:"not null"`
+	WalletID           string    `json:"wallet_id" gorm:"type:text;not null"`
 	WalletTXID         string    `json:"wallet_tx_id" gorm:"-"`
-	StockTransactionID string    `json:"stock_tx_id" gorm:"not null"`
+	StockTransactionID string    `json:"stock_tx_id" gorm:"type:text;not null"`
 	IsDebit            bool      `json:"is_debit" gorm:"not null"`
 	Amount             float64   `json:"amount" gorm:"not null"`
 	Timestamp          time.Time `json:"time_stamp"`
-	UserID             string    `json:"user_id" gorm:"not null"`
+	UserID             string    `json:"user_id" gorm:"type:text;column:user_id;not null"`
 	entity.Entity      `json:"Entity" gorm:"embedded"`
 }
 
@@ -51,7 +51,7 @@ func (wt *WalletTransaction) GetStockTransactionID() string {
 
 func (wt *WalletTransaction) SetStockTransactionID(stockTransactionID string) {
 	wt.StockTransactionID = stockTransactionID
-	*wt.Updates = append(*wt.Updates, &entity.EntityUpdateData{
+	*wt.GetUpdates() = append(*wt.Updates, &entity.EntityUpdateData{
 		ID:       wt.GetId(),
 		Field:    "StockTransactionID",
 		NewValue: &stockTransactionID,
@@ -64,7 +64,7 @@ func (wt *WalletTransaction) GetIsDebit() bool {
 
 func (wt *WalletTransaction) SetIsDebit(isDebit bool) {
 	wt.IsDebit = isDebit
-	*wt.Updates = append(*wt.Updates, &entity.EntityUpdateData{
+	*wt.GetUpdates() = append(*wt.Updates, &entity.EntityUpdateData{
 		ID:       wt.GetId(),
 		Field:    "IsDebit",
 		NewValue: func() *string { s := strconv.FormatBool(isDebit); return &s }(),
@@ -77,7 +77,7 @@ func (wt *WalletTransaction) GetAmount() float64 {
 
 func (wt *WalletTransaction) SetAmount(amount float64) {
 	wt.Amount = amount
-	*wt.Updates = append(*wt.Updates, &entity.EntityUpdateData{
+	*wt.GetUpdates() = append(*wt.Updates, &entity.EntityUpdateData{
 		ID:       wt.GetId(),
 		Field:    "Amount",
 		NewValue: func() *string { s := strconv.FormatFloat(amount, 'f', -1, 64); return &s }(),
@@ -90,7 +90,7 @@ func (wt *WalletTransaction) GetTimestamp() time.Time {
 
 func (wt *WalletTransaction) SetTimestamp(timestamp time.Time) {
 	wt.Timestamp = timestamp
-	*wt.Updates = append(*wt.Updates, &entity.EntityUpdateData{
+	*wt.GetUpdates() = append(*wt.Updates, &entity.EntityUpdateData{
 		ID:       wt.GetId(),
 		Field:    "Timestamp",
 		NewValue: func() *string { s := timestamp.Format(time.RFC3339); return &s }(),
@@ -99,7 +99,7 @@ func (wt *WalletTransaction) SetTimestamp(timestamp time.Time) {
 
 func (wt *WalletTransaction) SetWalletTXID() {
 	wt.WalletTXID = wt.GetId()
-	*wt.Updates = append(*wt.Updates, &entity.EntityUpdateData{
+	*wt.GetUpdates() = append(*wt.Updates, &entity.EntityUpdateData{
 		ID:       wt.GetId(),
 		Field:    "WalletTXID",
 		NewValue: &wt.WalletTXID,

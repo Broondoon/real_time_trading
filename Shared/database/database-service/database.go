@@ -206,9 +206,17 @@ func NewEntityData[T entity.EntityInterface](params *NewEntityDataParams) Entity
 	}
 
 	// Cache the column names for each struct field.
-	for fieldName, fieldSchema := range sch.FieldsByName {
+	for _, fieldSchema := range sch.Fields {
+		colName := fieldSchema.DBName // e.g. "user_id"
+		fieldName := fieldSchema.Name // e.g. "UserID"
+
+		// Instead of indexing by fieldName, index by DBName
+		ed.columnCache[colName] = columnCacheEntry{
+			ColumnName: colName,
+			FieldType:  fieldSchema.FieldType,
+		}
 		ed.columnCache[fieldName] = columnCacheEntry{
-			ColumnName: fieldSchema.DBName,
+			ColumnName: colName,
 			FieldType:  fieldSchema.FieldType,
 		}
 	}
@@ -298,6 +306,11 @@ func (d *EntityData[T]) GetByForeignID(foreignIDKey string, foreignID string) (*
 	if !ok {
 		err := fmt.Errorf("foreign key column %s not found", foreignIDKey)
 		log.Printf("error getting by foreignKey: %s", err.Error())
+		columns := make([]string, 0, len(d.columnCache))
+		for _, d := range d.columnCache {
+			columns = append(columns, d.ColumnName)
+		}
+		log.Println("avalaible columns: ", strings.Join(columns, ", "))
 		return nil, err
 	}
 	results := d.GetDatabaseSession().Find(&entities, foreignIDColumn.ColumnName+" = ?", foreignID)
