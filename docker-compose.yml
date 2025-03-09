@@ -42,7 +42,7 @@ services:
       timeout: ${HEALTHCHECK_TIMEOUT}
       retries: ${HEALTHCHECK_RETRIES}
     deploy:
-      replicas: 3
+      replicas: ${REPLICATIONS}
       restart_policy:
         condition: on-failure
 
@@ -132,7 +132,7 @@ services:
       timeout: ${HEALTHCHECK_TIMEOUT}
       retries: ${HEALTHCHECK_RETRIES}
     deploy:
-      replicas: 3
+      replicas: ${REPLICATIONS}
       restart_policy:
         condition: on-failure
 
@@ -165,7 +165,7 @@ services:
       timeout: ${HEALTHCHECK_TIMEOUT}
       retries: ${HEALTHCHECK_RETRIES}
     deploy:
-      replicas: 3
+      replicas: ${REPLICATIONS}
       restart_policy:
         condition: on-failure
 
@@ -183,7 +183,7 @@ services:
       auth-db:
         condition: service_healthy
     deploy:
-      replicas: 3
+      replicas: ${REPLICATIONS}
       restart_policy:
         condition: on-failure
     networks:
