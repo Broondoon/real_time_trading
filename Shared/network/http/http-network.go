@@ -2,6 +2,7 @@ package networkHttp
 
 import (
 	"Shared/network"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -122,6 +123,17 @@ func (rw *responseWriterWrapper) Write(data []byte) (int, error) {
 
 func (rw *responseWriterWrapper) Header() http.Header {
 	return rw.ResponseWriter.Header()
+}
+
+func (rw *responseWriterWrapper) EncodeResponse(statusCode int, response map[string]interface{}) {
+	rw.Header().Set("Content-Type", "application/json")
+	rw.WriteHeader(statusCode)
+	rw.ResponseWriter.WriteHeader(statusCode)
+	json.NewEncoder(rw).Encode(response)
+	if !rw.channelHasClosed {
+		rw.finished <- true
+		rw.channelHasClosed = true
+	}
 }
 
 // For Internal handlers

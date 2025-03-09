@@ -216,3 +216,13 @@ func (n *QueueResponseHandler) Header() http.Header {
 	}
 	return header
 }
+
+func (n *QueueResponseHandler) EncodeResponse(statusCode int, data map[string]interface{}) {
+	jsonData, err := json.Marshal(data)
+	if err != nil {
+		n.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	n.WriteHeader(statusCode)
+	n.Write(jsonData)
+}

@@ -4,6 +4,7 @@ import (
 	networkHttp "Shared/network/http"
 	"auth-service/handlers"
 	databaseAccessAuth "databaseAccessAuth"
+	"databaseAccessUserManagement"
 	"log"
 	"os"
 )
@@ -16,10 +17,13 @@ func main() {
 	databaseAccess := databaseAccessAuth.NewDatabaseAccess(&databaseAccessAuth.NewDatabaseAccessParams{
 		Network: networkManager,
 	})
+	databaseAccessWallet := databaseAccessUserManagement.NewDatabaseAccess(&databaseAccessUserManagement.NewDatabaseAccessParams{
+		Network: networkManager,
+	}).Wallet()
 
 	userAccess := databaseAccess.User()
 	// Inject it into the HTTP handlers.
-	handlers.InitializeUser(userAccess, networkManager)
+	handlers.InitializeUser(userAccess, networkManager, databaseAccessWallet)
 
 	//	router := gin.Default()
 	//	router.POST("/authentication/register", handlers.Register)

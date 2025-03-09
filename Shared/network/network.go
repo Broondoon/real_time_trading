@@ -129,6 +129,7 @@ type ResponseWriter interface {
 	WriteHeader(statusCode int)
 	Write([]byte) (int, error)
 	Header() http.Header
+	EncodeResponse(statusCode int, response map[string]interface{})
 }
 
 type HandlerParams struct {

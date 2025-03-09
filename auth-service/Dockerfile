@@ -5,6 +5,7 @@ WORKDIR /app
 # Copy the necessary directories.
 COPY auth-service/ ./auth-service
 COPY auth-database/ ./auth-database
+COPY user-management-database/database-access ./databaseAccessUserManagement
 COPY Shared/ ./Shared
 
 # Initialize Go workspace for auth-service.
@@ -12,7 +13,8 @@ COPY Shared/ ./Shared
 RUN go work init ./auth-service
 RUN go work use ./Shared
 RUN go work use ./auth-database/database-access
-RUN go work use ./auth-database/database-service
+# RUN go work use ./auth-database/database-service
+RUN go work use ./databaseAccessUserManagement
 
 WORKDIR /app/auth-service
 
