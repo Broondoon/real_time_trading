@@ -580,3 +580,22 @@ func (c *CachedEntityData[T]) Delete(id string) error {
 	}
 	return nil
 }
+
+func (c *CachedEntityData[T]) CreateBulk(entities *[]T) error {
+	if err := c.underlying.CreateBulk(entities); err != nil {
+		return err
+	}
+
+	ctx := context.Background()
+	for _, entity := range *entities {
+		if jsonBytes, err := json.Marshal(entity); err == nil {
+			key := c.redisKey(entity.GetId())
+			if err := c.redisClient.Set(ctx, key, jsonBytes, c.defaultTTL).Err(); err != nil {
+				fmt.Println("Error caching entity in CreateBulk for ID:", entity.GetId(), err)
+			}
+		} else {
+			fmt.Println("Error marshaling entity in CreateBulk for ID:", entity.GetId(), err)
+		}
+	}
+	return nil
+}

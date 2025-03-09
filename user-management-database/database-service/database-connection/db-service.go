@@ -66,12 +66,11 @@ func NewDatabaseService(params *NewDatabaseServiceParams) DatabaseServiceInterfa
 	underlyingUserStock := databaseService.NewEntityData[*userStock.UserStock](params.UserStockParams)
 	underlyingWallet := databaseService.NewEntityData[*wallet.Wallet](params.WalletParams)
 
-	// Wrap the underlying services with the caching layer.
 	cachedUserStock := databaseService.NewCachedEntityData[*userStock.UserStock](
 		underlyingUserStock,
-		os.Getenv("REDIS_ADDR"),     // e.g., "redis:6379" from your Docker Compose network
-		os.Getenv("REDIS_PASSWORD"), // leave empty if no password
-		5*time.Minute,               // default TTL for cache entries
+		os.Getenv("REDIS_ADDR"),
+		os.Getenv("REDIS_PASSWORD"),
+		5*time.Minute,
 	)
 	cachedWallet := databaseService.NewCachedEntityData[*wallet.Wallet](
 		underlyingWallet,
