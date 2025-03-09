@@ -20,6 +20,8 @@ type WalletTransactionInterface interface {
 	GetTimestamp() time.Time
 	SetTimestamp(timestamp time.Time)
 	SetWalletTXID()
+	GetUserID() string
+	SetUserID(userID string)
 	ToParams() NewWalletTransactionParams
 	entity.EntityInterface
 }
@@ -31,6 +33,7 @@ type WalletTransaction struct {
 	IsDebit            bool      `json:"is_debit" gorm:"not null"`
 	Amount             float64   `json:"amount" gorm:"not null"`
 	Timestamp          time.Time `json:"time_stamp"`
+	UserID             string    `json:"user_id" gorm:"not null"`
 	entity.Entity      `json:"Entity" gorm:"embedded"`
 }
 
@@ -103,6 +106,14 @@ func (wt *WalletTransaction) SetWalletTXID() {
 	})
 }
 
+func (st *WalletTransaction) GetUserID() string {
+	return st.UserID
+}
+
+func (st *WalletTransaction) SetUserID(userID string) {
+	st.UserID = userID
+}
+
 type NewWalletTransactionParams struct {
 	entity.NewEntityParams `json:"Entity"`
 	WalletID               string    `json:"wallet_id" gorm:"not null"`
@@ -112,6 +123,7 @@ type NewWalletTransactionParams struct {
 	Timestamp              time.Time `json:"time_stamp"`
 	Wallet                 wallet.WalletInterface
 	StockTransaction       StockTransactionInterface
+	UserID                 string `json:"user_id"`
 }
 
 func NewWalletTransaction(params NewWalletTransactionParams) *WalletTransaction {
@@ -121,6 +133,7 @@ func NewWalletTransaction(params NewWalletTransactionParams) *WalletTransaction 
 		IsDebit:   params.IsDebit,
 		Amount:    params.Amount,
 		Timestamp: params.Timestamp,
+		UserID:    params.UserID,
 	}
 	if params.Wallet != nil {
 		wt.WalletID = params.Wallet.GetId()
@@ -165,6 +178,7 @@ func (wt *WalletTransaction) ToParams() NewWalletTransactionParams {
 		IsDebit:            wt.GetIsDebit(),
 		Amount:             wt.GetAmount(),
 		Timestamp:          wt.GetTimestamp(),
+		UserID:             wt.GetUserID(),
 	}
 }
 
