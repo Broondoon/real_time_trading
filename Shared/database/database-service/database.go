@@ -569,7 +569,7 @@ func (d *EntityData[T]) Update(updates []*entity.EntityUpdateData) map[string]er
 				if err != nil {
 					return fmt.Errorf("field %s for id %s: %v", field, id, err)
 				}
-				valueTuples = append(valueTuples, fmt.Sprintf("(?::text, ?::%s)", castType))
+				valueTuples = append(valueTuples, fmt.Sprintf("(?::uuid, ?::%s)", castType))
 				uid, err := uuid.Parse(id)
 				if err != nil {
 					return fmt.Errorf("failed to parse id %s: %v", id, err)
@@ -600,7 +600,7 @@ func (d *EntityData[T]) Update(updates []*entity.EntityUpdateData) map[string]er
 				if err != nil {
 					return fmt.Errorf("field %s for id %s: %v", field, id, err)
 				}
-				valueTuples = append(valueTuples, fmt.Sprintf("(?::text, ?::%s)", castType))
+				valueTuples = append(valueTuples, fmt.Sprintf("(?::uuid, ?::%s)", castType))
 				uid, err := uuid.Parse(id)
 				if err != nil {
 					return fmt.Errorf("failed to parse id %s: %v", id, err)
