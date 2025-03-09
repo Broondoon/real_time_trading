@@ -532,16 +532,26 @@ func (c *CachedEntityData[T]) GetByForeignID(foreignIDColumn string, foreignID s
 	} else {
 		log.Printf("[Cache] GetByForeignID: Cache miss for key %s", cacheKey)
 	}
+
 	dbEntities, err := c.underlying.GetByForeignID(foreignIDColumn, foreignID)
 	if err != nil {
 		log.Printf("[Cache] GetByForeignID: DB error for foreign id %s: %v", foreignID, err)
 		return &zero, err
 	}
-	if jsonBytes, err := json.Marshal(dbEntities); err == nil {
-		_ = c.redisClient.Set(ctx, cacheKey, jsonBytes, c.defaultTTL).Err()
-		log.Printf("[Cache] GetByForeignID: Cached DB result for key %s", cacheKey)
+
+	if len(*dbEntities) > 0 {
+		if jsonBytes, err := json.Marshal(dbEntities); err == nil {
+			if err := c.redisClient.Set(ctx, cacheKey, jsonBytes, c.defaultTTL).Err(); err == nil {
+				log.Printf("[Cache] GetByForeignID: Cached DB result for key %s", cacheKey)
+			} else {
+				log.Printf("[Cache] GetByForeignID: Error setting cache for key %s: %v", cacheKey, err)
+			}
+		} else {
+			log.Printf("[Cache] GetByForeignID: Error marshaling DB result for key %s: %v", cacheKey, err)
+		}
+		// not caching the db results if the db result is empty
 	} else {
-		log.Printf("[Cache] GetByForeignID: Error marshaling DB result for key %s: %v", cacheKey, err)
+		log.Printf("[Cache] GetByForeignID: DB result is empty; not caching for key %s", cacheKey)
 	}
 	return dbEntities, nil
 }
@@ -550,6 +560,7 @@ func (c *CachedEntityData[T]) GetAll() (*[]T, error) {
 	ctx := context.Background()
 	cacheKey := "all_entities"
 	log.Printf("[Cache] GetAll: Looking for key %s", cacheKey)
+
 	var zero []T
 	data, err := c.redisClient.Get(ctx, cacheKey).Result()
 	if err == nil {
@@ -565,14 +576,21 @@ func (c *CachedEntityData[T]) GetAll() (*[]T, error) {
 	} else {
 		log.Printf("[Cache] GetAll: Cache miss for key %s", cacheKey)
 	}
+
+	// Fallback to the underlying database if cache miss or error.
 	dbEntities, err := c.underlying.GetAll()
 	if err != nil {
 		log.Printf("[Cache] GetAll: DB error: %v", err)
 		return &zero, err
 	}
+
+	// Cache the result from the database.
 	if jsonBytes, err := json.Marshal(dbEntities); err == nil {
-		_ = c.redisClient.Set(ctx, cacheKey, jsonBytes, c.defaultTTL).Err()
-		log.Printf("[Cache] GetAll: Cached DB result for key %s", cacheKey)
+		if err := c.redisClient.Set(ctx, cacheKey, jsonBytes, c.defaultTTL).Err(); err != nil {
+			log.Printf("[Cache] GetAll: Error caching DB result for key %s: %v", cacheKey, err)
+		} else {
+			log.Printf("[Cache] GetAll: Cached DB result for key %s", cacheKey)
+		}
 	} else {
 		log.Printf("[Cache] GetAll: Error marshaling DB result for key %s: %v", cacheKey, err)
 	}
