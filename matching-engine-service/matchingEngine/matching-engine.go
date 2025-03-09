@@ -5,7 +5,6 @@ import (
 	"Shared/entities/order"
 	"Shared/network"
 	"databaseAccessStockOrder"
-	"fmt"
 	"log"
 )
 
@@ -175,13 +174,13 @@ func (me *MatchingEngine) RunMatchingEngineOrders() {
 				}
 			}
 		} else {
-			fmt.Println("No orders to match")
-			fmt.Println("Waiting for order")
+			log.Println("No orders to match")
+			log.Println("Waiting for order")
 			stockOrder := <-me.orderChannel
-			fmt.Println("Order received")
+			log.Println("Order received")
 			temp, err := stockOrder.ToJSON()
 			if err != nil {
-				fmt.Println("Error: ", err.Error())
+				log.Println("Error: ", err.Error())
 				continue
 			}
 			log.Println("Order: ", string(temp))
@@ -197,7 +196,7 @@ type UpdateParams struct {
 func (me *MatchingEngine) RunMatchingEngineUpdates() {
 	for {
 		updateParams := <-me.updateChannel
-		fmt.Println("Removing Order")
+		log.Println("Removing Order")
 		me.SellOrderBook.RemoveOrder(&matchingEngineStructures.RemoveParams{
 			OrderID:  updateParams.OrderID,
 			PriceKey: updateParams.PriceKey,

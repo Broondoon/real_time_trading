@@ -6,7 +6,7 @@ import (
 	networkQueue "Shared/network/queue"
 	"databaseAccessStock"
 	"databaseAccessStockOrder"
-	"fmt"
+	"log"
 	"os"
 )
 
@@ -27,7 +27,7 @@ func main() {
 	}
 
 	go matchingEngine.InitalizeHandlers(stockList, networkHttpManager, networkQueueManager, _databaseManager, _databaseAccess)
-	fmt.Println("Matching Engine Service Started")
+	log.Println("Matching Engine Service Started")
 
 	networkHttpManager.Listen()
 }

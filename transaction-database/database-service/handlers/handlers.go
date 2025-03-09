@@ -6,7 +6,6 @@ import (
 	databaseServiceTransaction "databaseServiceTransaction/database-connection"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"log"
 	"net/http"
 	"net/url"
@@ -36,7 +35,7 @@ func InitalizeHandlers(
 
 func healthHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
-	//fmt.Println(w, "OK")
+	//log.Println(w, "OK")
 }
 
 func GetStockTransactions(responseWriter network.ResponseWriter, data []byte, queryParams url.Values, requestType string) {
@@ -55,7 +54,7 @@ func GetStockTransactions(responseWriter network.ResponseWriter, data []byte, qu
 			responseWriter.WriteHeader(http.StatusInternalServerError)
 			return
 		}
-		fmt.Println(string(json))
+		log.Println(string(json))
 	}
 
 	// Formatted response structure to match the expected output
@@ -147,7 +146,7 @@ func getWalletTransactions(responseWriter network.ResponseWriter, data []byte, q
 			responseWriter.WriteHeader(http.StatusInternalServerError)
 			return
 		}
-		fmt.Println(string(json))
+		log.Println(string(json))
 	}
 
 	// Formatted response structure to match the expected output

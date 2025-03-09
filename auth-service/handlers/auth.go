@@ -111,7 +111,7 @@ func InitializeUser(db databaseAccessAuth.DatabaseAccessInterface, networkManage
 func healthHandler(w http.ResponseWriter, r *http.Request) {
 	// Simple check: you might expand this to test database connectivity, etc.
 	w.WriteHeader(http.StatusOK)
-	//fmt.Println(w, "OK")
+	//log.Println(w, "OK")
 }
 
 // Register handles user registration.
@@ -165,7 +165,7 @@ func registerUsers(data *[]*UserBulk, TransferParams any) error {
 				_bulkRoutineRegisterCreateUser.Insert(d)
 				continue
 			} else {
-				fmt.Println("Error checking user: ", errCode)
+				log.Println("Error checking user: ", errCode)
 				RespondError(d.ResponseWriter, http.StatusInternalServerError, "Internal error")
 				continue
 			}
@@ -193,7 +193,7 @@ func createUser(data *[]*UserBulk, TransferParams any) error {
 		return err
 	}
 	for username, d := range errorList {
-		fmt.Println("Error creating user: ", d)
+		log.Println("Error creating user: ", d)
 		RespondError(userMap[username].ResponseWriter, http.StatusInternalServerError, "Failed to add user to database.")
 	}
 	for _, d := range *users {
@@ -243,7 +243,7 @@ func removeUser(data *[]*UserBulk, TransferParams any) error {
 		return err
 	}
 	for _, d := range errorList {
-		fmt.Println("WARNING WARNING: Error deleting user: ", d)
+		log.Println("WARNING WARNING: Error deleting user: ", d)
 	}
 	return nil
 }
@@ -282,7 +282,7 @@ func loginUsers(data *[]*UserBulk, TransferParams any) error {
 				RespondError(d.ResponseWriter, http.StatusBadRequest, "Invalid Credentials.")
 				continue
 			} else {
-				fmt.Println("Error checking user: ", errCode)
+				log.Println("Error checking user: ", errCode)
 				RespondError(d.ResponseWriter, http.StatusBadRequest, "Invalid Credentials.")
 				continue
 			}

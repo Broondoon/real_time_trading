@@ -72,13 +72,13 @@ func (n *NetworkQueue) Listen() {
 }
 
 // func handleFunc(params network.HandlerParams, w http.ResponseWriter, r *http.Request) {
-// 	// fmt.Println("Handling request for: ", r.URL.Path)
+// 	// log.Println("Handling request for: ", r.URL.Path)
 // 	var body []byte
 // 	var err error
 // 	queryParams := make(url.Values)
 // 	queryParams, err = url.ParseQuery(r.URL.RawQuery)
 // 	if err != nil {
-// 		fmt.Println("Error, there was an issue with reading the message:", err)
+// 		log.Println("Error, there was an issue with reading the message:", err)
 // 		w.WriteHeader(http.StatusBadRequest)
 // 		return
 // 	}
@@ -94,7 +94,7 @@ func (n *NetworkQueue) Listen() {
 // 	if r.Method == http.MethodPost || r.Method == http.MethodPut {
 // 		body, err = io.ReadAll(r.Body)
 // 		if err != nil {
-// 			fmt.Println("Error, there was an issue with reading the message:", err)
+// 			log.Println("Error, there was an issue with reading the message:", err)
 // 			w.WriteHeader(http.StatusInternalServerError)
 // 			return
 // 		}

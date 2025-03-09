@@ -77,7 +77,7 @@ func (hc *HttpClient) handleBulkResponse(resp *http.Response) (network.BulkRetur
 	defer resp.Body.Close()
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		fmt.Println("DEBUG: Error reading response body:", err.Error())
+		log.Println("DEBUG: Error reading response body:", err.Error())
 		return network.BulkReturn{}, err
 	}
 	log.Println("Body: ", string(body))
@@ -85,7 +85,7 @@ func (hc *HttpClient) handleBulkResponse(resp *http.Response) (network.BulkRetur
 	var bulkReturn network.BulkReturn
 	err = json.Unmarshal(body, &bulkReturn)
 	if err != nil {
-		fmt.Println("DEBUG: Error unmarsheling response body:", err.Error())
+		log.Println("DEBUG: Error unmarsheling response body:", err.Error())
 		return network.BulkReturn{}, err
 	}
 
@@ -152,14 +152,14 @@ func (hc *HttpClient) GetBulk(endpoint string, ids []string, queryParams map[str
 func (hc *HttpClient) PostBulk(endpoint string, payload []interface{}) (network.BulkReturn, error) {
 	jsonData, err := json.Marshal(payload)
 	if err != nil {
-		fmt.Println("DEBUG: Error marshalling payload:", err.Error())
+		log.Println("DEBUG: Error marshalling payload:", err.Error())
 		return network.BulkReturn{}, err
 	}
 
 	fullURL := hc.BaseURL + endpoint
 	req, err := http.NewRequest(http.MethodPost, fullURL, bytes.NewBuffer(jsonData))
 	if err != nil {
-		fmt.Println("DEBUG: Error creating POST request:", err.Error())
+		log.Println("DEBUG: Error creating POST request:", err.Error())
 		return network.BulkReturn{}, err
 	}
 
@@ -171,7 +171,7 @@ func (hc *HttpClient) PostBulk(endpoint string, payload []interface{}) (network.
 
 	resp, err := hc.Client.Do(req)
 	if err != nil {
-		fmt.Println("DEBUG: Error sending POST request:", err.Error())
+		log.Println("DEBUG: Error sending POST request:", err.Error())
 		return network.BulkReturn{}, err
 	}
 
@@ -182,14 +182,14 @@ func (hc *HttpClient) PostBulk(endpoint string, payload []interface{}) (network.
 func (hc *HttpClient) Post(endpoint string, payload interface{}) ([]byte, error) {
 	jsonData, err := json.Marshal(payload)
 	if err != nil {
-		fmt.Println("DEBUG: Error marshalling payload:", err.Error())
+		log.Println("DEBUG: Error marshalling payload:", err.Error())
 		return nil, err
 	}
 
 	fullURL := hc.BaseURL + endpoint
 	req, err := http.NewRequest(http.MethodPost, fullURL, bytes.NewBuffer(jsonData))
 	if err != nil {
-		fmt.Println("DEBUG: Error creating POST request:", err.Error())
+		log.Println("DEBUG: Error creating POST request:", err.Error())
 		return nil, err
 	}
 
@@ -200,7 +200,7 @@ func (hc *HttpClient) Post(endpoint string, payload interface{}) ([]byte, error)
 
 	resp, err := hc.Client.Do(req)
 	if err != nil {
-		fmt.Println("DEBUG: Error sending POST request:", err.Error())
+		log.Println("DEBUG: Error sending POST request:", err.Error())
 		return nil, err
 	}
 

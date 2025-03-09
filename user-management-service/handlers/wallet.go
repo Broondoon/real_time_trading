@@ -4,7 +4,6 @@ import (
 	"Shared/network"
 	"databaseAccessUserManagement"
 	"encoding/json"
-	"fmt"
 	"log"
 	"net/http"
 	"net/url"
@@ -58,9 +57,9 @@ func getWalletBalanceHandler(responseWriter network.ResponseWriter, data []byte,
 	log.Printf("Extracted userID: %s\n", userID)
 
 	if userID == "" {
-		fmt.Println("Error: Missing userID in query parameters.")
+		log.Println("Error: Missing userID in query parameters.")
 		responseWriter.WriteHeader(http.StatusBadRequest)
-		fmt.Println("===== [END] getWalletBalanceHandler - Failed: Missing userID =====")
+		log.Println("===== [END] getWalletBalanceHandler - Failed: Missing userID =====")
 		return
 	}
 
@@ -68,7 +67,7 @@ func getWalletBalanceHandler(responseWriter network.ResponseWriter, data []byte,
 	if err != nil {
 		log.Printf("Error: Failed to get wallet balance for userID=%s. Reason: %v\n", userID, err)
 		responseWriter.WriteHeader(http.StatusBadRequest)
-		fmt.Println("===== [END] getWalletBalanceHandler - Failed: Database Error =====")
+		log.Println("===== [END] getWalletBalanceHandler - Failed: Database Error =====")
 		return
 	}
 
@@ -85,7 +84,7 @@ func getWalletBalanceHandler(responseWriter network.ResponseWriter, data []byte,
 		return
 	}
 
-	fmt.Println("Sending successful response...")
+	log.Println("Sending successful response...")
 	responseWriter.Write(walletJSON)
 }
 
@@ -96,7 +95,7 @@ func addMoneyToWalletHandler(responseWriter network.ResponseWriter, data []byte,
 	userID := queryParams.Get("userID")
 	log.Printf("DEBUG: Extracted userID: %s\n", userID)
 	if userID == "" {
-		fmt.Println("DEBUG: userID is missing, returning 400 Bad Request")
+		log.Println("DEBUG: userID is missing, returning 400 Bad Request")
 		responseWriter.WriteHeader(http.StatusBadRequest)
 		responseWriter.Write([]byte("Missing userID"))
 		return
@@ -108,7 +107,7 @@ func addMoneyToWalletHandler(responseWriter network.ResponseWriter, data []byte,
 	}
 
 	if err := json.Unmarshal(data, &request); err != nil {
-		fmt.Println("DEBUG: Error unmarshalling request data:", err.Error())
+		log.Println("DEBUG: Error unmarshalling request data:", err.Error())
 		responseWriter.WriteHeader(http.StatusBadRequest)
 		responseWriter.Write([]byte("Invalid request body"))
 		return
@@ -116,7 +115,7 @@ func addMoneyToWalletHandler(responseWriter network.ResponseWriter, data []byte,
 	log.Printf("DEBUG: Parsed request amount: %f\n", request.Amount)
 
 	if request.Amount <= 0 {
-		fmt.Println("DEBUG: Request amount is invalid (<= 0), returning 400 Bad Request")
+		log.Println("DEBUG: Request amount is invalid (<= 0), returning 400 Bad Request")
 		responseWriter.WriteHeader(http.StatusBadRequest)
 		responseWriter.Write([]byte("Amount must be greater than zero"))
 		return
@@ -142,7 +141,7 @@ func addMoneyToWalletHandler(responseWriter network.ResponseWriter, data []byte,
 
 	responseWriter.Write(returnValJSON)
 
-	fmt.Println("DEBUG: Money added successfully, sending 200 OK response")
+	log.Println("DEBUG: Money added successfully, sending 200 OK response")
 	responseWriter.WriteHeader(http.StatusOK)
 }
 
@@ -151,7 +150,7 @@ func addMoneyToWalletHandler(responseWriter network.ResponseWriter, data []byte,
 
 // 	userID := queryParams.Get("userID")
 // 	if userID == "" {
-// 		fmt.Println("DEBUG: Missing userID in query parameters.")
+// 		log.Println("DEBUG: Missing userID in query parameters.")
 // 		responseWriter.WriteHeader(http.StatusBadRequest)
 // 		return
 // 	}
@@ -174,5 +173,5 @@ func addMoneyToWalletHandler(responseWriter network.ResponseWriter, data []byte,
 // 	log.Printf("DEBUG: Successfully created wallet for userID: %s. Wallet details: %+v\n", userID, createdWallet)
 
 // 	responseWriter.WriteHeader(http.StatusOK)
-// 	fmt.Println("DEBUG: createWalletHandler completed successfully.")
+// 	log.Println("DEBUG: createWalletHandler completed successfully.")
 // }

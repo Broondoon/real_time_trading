@@ -7,7 +7,6 @@ import (
 
 	"encoding/json"
 	"errors"
-	"fmt"
 	"net/http"
 	"net/url"
 	"os"
@@ -141,13 +140,13 @@ type HandlerParams struct {
 
 func CreateNetworkEntityHandlers[T entity.EntityInterface](network NetworkInterface, entityName string, databaseManager databaseService.EntityDataInterface[T], Parse func(jsonBytes []byte) (T, error), ParseList func(jsonBytes []byte) (*[]T, error)) {
 	defaults := func(responseWriter ResponseWriter, data []byte, queryParams url.Values, requestType string) {
-		fmt.Println("-----------------\nRequest:")
+		log.Println("-----------------\nRequest:")
 		if requestType == "POST" || requestType == "PUT" {
-			fmt.Println("data: ", string(data))
+			log.Println("data: ", string(data))
 		}
-		fmt.Println("queryParams: ", queryParams.Encode())
-		fmt.Println("requestType: ", requestType)
-		fmt.Println("-----------------")
+		log.Println("queryParams: ", queryParams.Encode())
+		log.Println("requestType: ", requestType)
+		log.Println("-----------------")
 		bulkRequest := queryParams.Get("Isbulk") != ""
 		useEntities := false
 		noReturns := false
@@ -188,7 +187,7 @@ func CreateNetworkEntityHandlers[T entity.EntityInterface](network NetworkInterf
 				entityObj, err = Parse(data)
 			}
 			if err != nil {
-				fmt.Println("network POST error: ", err.Error())
+				log.Println("network POST error: ", err.Error())
 				responseWriter.WriteHeader(http.StatusBadRequest)
 				return
 			}
@@ -202,7 +201,7 @@ func CreateNetworkEntityHandlers[T entity.EntityInterface](network NetworkInterf
 			updates := make([]*entity.EntityUpdateData, 0)
 			err = json.Unmarshal(data, &updates)
 			if err != nil {
-				fmt.Println("network PUT error: ", err.Error())
+				log.Println("network PUT error: ", err.Error())
 				responseWriter.WriteHeader(http.StatusBadRequest)
 				return
 			}
@@ -262,14 +261,14 @@ func CreateNetworkEntityHandlers[T entity.EntityInterface](network NetworkInterf
 			jsonVal, err = entityObj.ToJSON()
 		}
 		if err != nil {
-			fmt.Println("Network General marshal error: ", err.Error())
+			log.Println("Network General marshal error: ", err.Error())
 			responseWriter.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 		if bulkRequest {
 			jsonVal, err = json.Marshal(BulkReturn{Entities: jsonVal, Errors: errorList})
 			if err != nil {
-				fmt.Println("Networ Bulkify marshal error: ", err.Error())
+				log.Println("Networ Bulkify marshal error: ", err.Error())
 				responseWriter.WriteHeader(http.StatusInternalServerError)
 				return
 			}

@@ -8,7 +8,7 @@ import (
 	"Shared/entities/user"
 	userStock "Shared/entities/user-stock"
 	"Shared/entities/wallet"
-	"fmt"
+	"log"
 	"reflect"
 	"time"
 )
@@ -22,7 +22,7 @@ type TestStruct[T any] struct {
 
 func (t *TestStruct[T]) test(td T) {
 
-	fmt.Println("Test: %s", reflect.TypeOf(td))
+	log.Println("Test: %s", reflect.TypeOf(td))
 }
 
 func main() {
@@ -41,25 +41,25 @@ func main() {
 	test := TestStruct[entity.EntityInterface]{}
 	test.test(u)
 
-	// fmt.Println the User
-	fmt.Println("User: ")
-	fmt.Println(u.GetId())
-	fmt.Println(u.GetDateCreated())
-	fmt.Println(u.GetDateModified())
-	fmt.Println(u.GetUsername())
-	fmt.Println(u.GetPassword())
-	fmt.Println(u.ToParams())
-	fmt.Println(u.ToJSON())
+	// log.Println the User
+	log.Println("User: ")
+	log.Println(u.GetId())
+	log.Println(u.GetDateCreated())
+	log.Println(u.GetDateModified())
+	log.Println(u.GetUsername())
+	log.Println(u.GetPassword())
+	log.Println(u.ToParams())
+	log.Println(u.ToJSON())
 	jsonData, err := u.ToJSON()
 	if err != nil {
-		fmt.Println("Error converting user to JSON:", err)
+		log.Println("Error converting user to JSON:", err)
 	} else {
 		parsedUser, _ := user.Parse(jsonData)
-		fmt.Println(parsedUser.GetId())
-		fmt.Println(parsedUser.GetDateCreated())
-		fmt.Println(parsedUser.GetDateModified())
-		fmt.Println(parsedUser.GetUsername())
-		fmt.Println(parsedUser.GetPassword())
+		log.Println(parsedUser.GetId())
+		log.Println(parsedUser.GetDateCreated())
+		log.Println(parsedUser.GetDateModified())
+		log.Println(parsedUser.GetUsername())
+		log.Println(parsedUser.GetPassword())
 	}
 
 	// Create a new Stock
@@ -72,12 +72,12 @@ func main() {
 		Name: "test",
 	})
 
-	// fmt.Println the Stock
-	fmt.Println("Stock: ")
-	fmt.Println(s.GetId())
-	fmt.Println(s.GetDateCreated())
-	fmt.Println(s.GetDateModified())
-	fmt.Println(s.GetName())
+	// log.Println the Stock
+	log.Println("Stock: ")
+	log.Println(s.GetId())
+	log.Println(s.GetDateCreated())
+	log.Println(s.GetDateModified())
+	log.Println(s.GetName())
 
 	// Create a new Wallet
 	w := wallet.New(wallet.NewWalletParams{
@@ -90,25 +90,25 @@ func main() {
 		// UserId:  "",
 		Balance: 0.0,
 	})
-	// fmt.Println the Wallet
-	fmt.Println("Wallet: ")
-	fmt.Println(w.GetId())
-	fmt.Println(w.GetDateCreated())
-	fmt.Println(w.GetDateModified())
-	fmt.Println(w.GetUserID())
-	fmt.Println(w.GetBalance())
-	fmt.Println(w.ToParams())
-	fmt.Println(w.ToJSON())
+	// log.Println the Wallet
+	log.Println("Wallet: ")
+	log.Println(w.GetId())
+	log.Println(w.GetDateCreated())
+	log.Println(w.GetDateModified())
+	log.Println(w.GetUserID())
+	log.Println(w.GetBalance())
+	log.Println(w.ToParams())
+	log.Println(w.ToJSON())
 	jsonData1, err := w.ToJSON()
 	if err != nil {
-		fmt.Println("Error converting user to JSON:", err)
+		log.Println("Error converting user to JSON:", err)
 	} else {
 		parsedWallet, _ := wallet.Parse(jsonData1)
-		fmt.Println(parsedWallet.GetId())
-		fmt.Println(parsedWallet.GetDateCreated())
-		fmt.Println(parsedWallet.GetDateModified())
-		fmt.Println(parsedWallet.GetUserID())
-		fmt.Println(parsedWallet.GetBalance())
+		log.Println(parsedWallet.GetId())
+		log.Println(parsedWallet.GetDateCreated())
+		log.Println(parsedWallet.GetDateModified())
+		log.Println(parsedWallet.GetUserID())
+		log.Println(parsedWallet.GetBalance())
 	}
 
 	//Create a new Stock Order
@@ -126,16 +126,16 @@ func main() {
 		OrderType: "MARKET",
 		IsBuy:     true,
 	})
-	// fmt.Println the Stock Order
-	fmt.Println("Stock Order: ")
-	fmt.Println(so.GetId())
-	fmt.Println(so.GetDateCreated())
-	fmt.Println(so.GetDateModified())
-	fmt.Println(so.GetStockID())
-	fmt.Println(so.GetQuantity())
-	fmt.Println(so.GetPrice())
-	fmt.Println(so.GetOrderType())
-	fmt.Println(so.GetIsBuy())
+	// log.Println the Stock Order
+	log.Println("Stock Order: ")
+	log.Println(so.GetId())
+	log.Println(so.GetDateCreated())
+	log.Println(so.GetDateModified())
+	log.Println(so.GetStockID())
+	log.Println(so.GetQuantity())
+	log.Println(so.GetPrice())
+	log.Println(so.GetOrderType())
+	log.Println(so.GetIsBuy())
 
 	// Create a new User Stock
 	us := userStock.New(userStock.NewUserStockParams{
@@ -150,14 +150,14 @@ func main() {
 		// StockID: "",
 		Quantity: 0,
 	})
-	// fmt.Println the User Stock
-	fmt.Println("User Stock: ")
-	fmt.Println(us.GetId())
-	fmt.Println(us.GetDateCreated())
-	fmt.Println(us.GetDateModified())
-	fmt.Println(us.GetUserID())
-	fmt.Println(us.GetStockName())
-	fmt.Println(us.GetQuantity())
+	// log.Println the User Stock
+	log.Println("User Stock: ")
+	log.Println(us.GetId())
+	log.Println(us.GetDateCreated())
+	log.Println(us.GetDateModified())
+	log.Println(us.GetUserID())
+	log.Println(us.GetStockName())
+	log.Println(us.GetQuantity())
 
 	// Create a new Stock Transaction
 	st1 := transaction.NewStockTransaction(transaction.NewStockTransactionParams{
@@ -170,19 +170,19 @@ func main() {
 		StockOrder:  so,
 	})
 
-	// fmt.Println the Stock Transaction
-	fmt.Println("Stock Transaction: ")
-	fmt.Println(st1.GetId())
-	fmt.Println(st1.GetDateCreated())
-	fmt.Println(st1.GetDateModified())
-	fmt.Println(st1.GetOrderStatus())
-	fmt.Println(st1.GetStockID())
-	fmt.Println(st1.GetParentStockTransactionID())
-	fmt.Println(st1.GetWalletTransactionID())
-	fmt.Println(st1.GetIsBuy())
-	fmt.Println(st1.GetOrderType())
-	fmt.Println(st1.GetStockPrice())
-	fmt.Println(st1.GetQuantity())
+	// log.Println the Stock Transaction
+	log.Println("Stock Transaction: ")
+	log.Println(st1.GetId())
+	log.Println(st1.GetDateCreated())
+	log.Println(st1.GetDateModified())
+	log.Println(st1.GetOrderStatus())
+	log.Println(st1.GetStockID())
+	log.Println(st1.GetParentStockTransactionID())
+	log.Println(st1.GetWalletTransactionID())
+	log.Println(st1.GetIsBuy())
+	log.Println(st1.GetOrderType())
+	log.Println(st1.GetStockPrice())
+	log.Println(st1.GetQuantity())
 
 	//Create a new wallet transaction
 	wt := transaction.NewWalletTransaction(transaction.NewWalletTransactionParams{
@@ -198,15 +198,15 @@ func main() {
 		IsDebit: true,
 		Amount:  0.0,
 	})
-	// fmt.Println the Wallet Transaction
-	fmt.Println("Wallet Transaction: ")
-	fmt.Println(wt.GetId())
-	fmt.Println(wt.GetDateCreated())
-	fmt.Println(wt.GetDateModified())
-	fmt.Println(wt.GetWalletID())
-	fmt.Println(wt.GetStockTransactionID())
-	fmt.Println(wt.GetIsDebit())
-	fmt.Println(wt.GetAmount())
+	// log.Println the Wallet Transaction
+	log.Println("Wallet Transaction: ")
+	log.Println(wt.GetId())
+	log.Println(wt.GetDateCreated())
+	log.Println(wt.GetDateModified())
+	log.Println(wt.GetWalletID())
+	log.Println(wt.GetStockTransactionID())
+	log.Println(wt.GetIsDebit())
+	log.Println(wt.GetAmount())
 
 	// Create a new Stock Transaction
 	st2 := transaction.NewStockTransaction(transaction.NewStockTransactionParams{
@@ -220,17 +220,17 @@ func main() {
 		ParentStockTransaction: st1,
 	})
 
-	// fmt.Println the Stock Transaction
-	fmt.Println("Stock Transaction: ")
-	fmt.Println(st2.GetId())
-	fmt.Println(st2.GetDateCreated())
-	fmt.Println(st2.GetDateModified())
-	fmt.Println(st2.GetOrderStatus())
-	fmt.Println(st2.GetStockID())
-	fmt.Println(st2.GetParentStockTransactionID())
-	fmt.Println(st2.GetWalletTransactionID())
-	fmt.Println(st2.GetIsBuy())
-	fmt.Println(st2.GetOrderType())
-	fmt.Println(st2.GetStockPrice())
-	fmt.Println(st2.GetQuantity())
+	// log.Println the Stock Transaction
+	log.Println("Stock Transaction: ")
+	log.Println(st2.GetId())
+	log.Println(st2.GetDateCreated())
+	log.Println(st2.GetDateModified())
+	log.Println(st2.GetOrderStatus())
+	log.Println(st2.GetStockID())
+	log.Println(st2.GetParentStockTransactionID())
+	log.Println(st2.GetWalletTransactionID())
+	log.Println(st2.GetIsBuy())
+	log.Println(st2.GetOrderType())
+	log.Println(st2.GetStockPrice())
+	log.Println(st2.GetQuantity())
 }

@@ -30,7 +30,7 @@ func NewNetworkHttp() network.NetworkInterface {
 }
 
 func handleFunc(params network.HandlerParams, w http.ResponseWriter, r *http.Request) {
-	fmt.Println("Handling request for: ", r.URL.Path)
+	log.Println("Handling request for: ", r.URL.Path)
 	responseWriterWrapper := &responseWriterWrapper{ResponseWriter: w, currentCode: http.StatusOK, finished: make(chan bool, 1), channelHasClosed: false}
 	var body []byte
 	var err error
@@ -42,7 +42,7 @@ func handleFunc(params network.HandlerParams, w http.ResponseWriter, r *http.Req
 		}
 	}
 	if err != nil {
-		fmt.Println("HTTP Handle Error, there was an issue with reading the message:", err)
+		log.Println("HTTP Handle Error, there was an issue with reading the message:", err)
 		responseWriterWrapper.WriteHeader(http.StatusBadRequest)
 		return
 	}
@@ -57,7 +57,7 @@ func handleFunc(params network.HandlerParams, w http.ResponseWriter, r *http.Req
 	if r.Method == http.MethodPost || r.Method == http.MethodPut {
 		body, err = io.ReadAll(r.Body)
 		if err != nil {
-			fmt.Println("HTTP Handle Error, there was an issue with reading the message:", err)
+			log.Println("HTTP Handle Error, there was an issue with reading the message:", err)
 			responseWriterWrapper.WriteHeader(http.StatusInternalServerError)
 			return
 		}
@@ -128,7 +128,7 @@ func (rw *responseWriterWrapper) Header() http.Header {
 func (rw *responseWriterWrapper) EncodeResponse(statusCode int, response map[string]interface{}) {
 	log.Println("Encoding response with status code: ", statusCode)
 	//rw.Header().Set("Content-Type", "application/json")
-	rw.currentCode = statusCode
+	rw.ResponseWriter.WriteHeader(statusCode)
 	j, _ := json.Marshal(response)
 	rw.Write(j)
 }

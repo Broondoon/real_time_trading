@@ -67,7 +67,7 @@ func InitalizeHandlers(
 func healthHandler(w http.ResponseWriter, r *http.Request) {
 	// Simple check: you might expand this to test database connectivity, etc.
 	w.WriteHeader(http.StatusOK)
-	//fmt.Println(w, "OK")
+	//log.Println(w, "OK")
 }
 
 func placeStockOrderHandler(responseWriter network.ResponseWriter, data []byte, queryParams url.Values, requestType string) {
@@ -173,15 +173,16 @@ func updateUserStocks(data *[]*StockOrderBulk, TransferParams any) error {
 	//TODO create a setup that errors out only specific parts of the update, not the entire thing.
 	errorList, err := _databaseAccessUser.UserStock().UpdateBulk(&userStocks)
 	if err != nil {
+		log.Printf("Transaction Error failed to update user stocks: %v", err)
 		for _, responseWriter := range *data {
 			responseWriter.ResponseWriter.WriteHeader(http.StatusInternalServerError)
 		}
-		log.Printf("failed to update user stocks: %v", err)
 		return fmt.Errorf("failed to update user stocks: %v", err)
 	}
 
 	for _, stockOrder := range *data {
 		if errorCode := errorList[stockOrder.UserStock.GetId()]; errorCode != 0 {
+			log.Println("Stock order with ID: ", stockOrder.UserStock.GetId(), " has Error code: ", errorCode)
 			if errorCode == http.StatusNotFound {
 				log.Printf("user stock %s not found", stockOrder.UserStock.GetId())
 				stockOrder.ResponseWriter.WriteHeader(http.StatusNotFound)

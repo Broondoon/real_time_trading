@@ -4,7 +4,7 @@ import (
 	networkHttp "Shared/network/http"
 	databaseServiceAuth "databaseServiceAuth/database-connection"
 	authDatabaseHandlers "databaseServiceAuth/handlers"
-	"fmt"
+	"log"
 )
 
 func main() {
@@ -22,7 +22,7 @@ func main() {
 
 	go authDatabaseHandlers.InitializeHandlers(_networkManager, _databaseManager)
 
-	fmt.Println("Auth Database Service Started")
+	log.Println("Auth Database Service Started")
 
 	_networkManager.Listen()
 }
