@@ -59,6 +59,7 @@ func (hc *HttpClient) handleResponse(resp *http.Response) ([]byte, error) {
 	defer resp.Body.Close()
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
+		err = fmt.Errorf("Handle Response: error reading response body: %v", err)
 		return nil, err
 	}
 
@@ -76,12 +77,15 @@ func (hc *HttpClient) handleBulkResponse(resp *http.Response) (network.BulkRetur
 	defer resp.Body.Close()
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
+		fmt.Println("DEBUG: Error reading response body:", err.Error())
 		return network.BulkReturn{}, err
 	}
+	println("Body: ", string(body))
 
 	var bulkReturn network.BulkReturn
 	err = json.Unmarshal(body, &bulkReturn)
 	if err != nil {
+		fmt.Println("DEBUG: Error unmarsheling response body:", err.Error())
 		return network.BulkReturn{}, err
 	}
 
@@ -124,14 +128,14 @@ func (hc *HttpClient) GetBulk(endpoint string, ids []string, queryParams map[str
 		return network.BulkReturn{}, err
 	}
 	q := url.Query()
-	queryParams["ids"] = strings.Join(ids, ",")
 	for key, value := range queryParams {
 		q.Add(key, value)
 	}
-	q.Add("isBulk", "true")
 	url.RawQuery = q.Encode()
 
 	req, err := http.NewRequest(http.MethodGet, url.String(), nil)
+	req.Header.Set("Isbulk", "true")
+	req.Header.Set("Ids", strings.Join(ids, ","))
 	if err != nil {
 		return network.BulkReturn{}, err
 	}
@@ -163,7 +167,7 @@ func (hc *HttpClient) PostBulk(endpoint string, payload []interface{}) (network.
 	// if err := hc.authenticate(req); err != nil {
 	// 	return nil, err
 	// }
-	req.Header.Set("isBulk", "true")
+	req.Header.Set("Isbulk", "true")
 
 	resp, err := hc.Client.Do(req)
 	if err != nil {
@@ -190,7 +194,6 @@ func (hc *HttpClient) Post(endpoint string, payload interface{}) ([]byte, error)
 	}
 
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("isBulk", "false")
 	// if err := hc.authenticate(req); err != nil {
 	// 	return nil, err
 	// }
@@ -243,7 +246,7 @@ func (hc *HttpClient) Put(endpoint string, payload []interface{}) (network.BulkR
 	// if err := hc.authenticate(req); err != nil {
 	// 	return nil, err
 	// }
-	req.Header.Set("isBulk", "true")
+	req.Header.Set("Isbulk", "true")
 
 	resp, err := hc.Client.Do(req)
 	if err != nil {
@@ -280,7 +283,7 @@ func (hc *HttpClient) PatchBulk(endpoint string, ids []string) (network.BulkRetu
 	if err != nil {
 		return network.BulkReturn{}, err
 	}
-	queryParams := map[string]string{"ids": strings.Join(ids, ",")}
+	queryParams := map[string]string{"Ids": strings.Join(ids, ",")}
 	q := url.Query()
 	for key, value := range queryParams {
 		q.Add(key, value)
@@ -288,7 +291,7 @@ func (hc *HttpClient) PatchBulk(endpoint string, ids []string) (network.BulkRetu
 
 	url.RawQuery = q.Encode()
 	req, err := http.NewRequest(http.MethodPatch, url.String(), bytes.NewBuffer(jsonData))
-	req.Header.Set("isBulk", "true")
+	req.Header.Set("Isbulk", "true")
 	if err != nil {
 		return network.BulkReturn{}, err
 	}
@@ -328,7 +331,7 @@ func (hc *HttpClient) DeleteBulk(endpoint string, payload []string) (network.Bul
 	}
 
 	//need to add ids to the IDs query param
-	queryParams := map[string]string{"ids": strings.Join(payload, ",")}
+	queryParams := map[string]string{"Ids": strings.Join(payload, ",")}
 	q := url.Query()
 	for key, value := range queryParams {
 		q.Add(key, value)
@@ -337,7 +340,7 @@ func (hc *HttpClient) DeleteBulk(endpoint string, payload []string) (network.Bul
 	url.RawQuery = q.Encode()
 
 	req, err := http.NewRequest(http.MethodDelete, url.String(), bytes.NewBuffer(jsonData))
-	req.Header.Set("isBulk", "true")
+	req.Header.Set("Isbulk", "true")
 	if err != nil {
 		return network.BulkReturn{}, err
 	}

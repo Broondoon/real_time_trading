@@ -21,9 +21,8 @@ func main() {
 		Network: networkManager,
 	}).Wallet()
 
-	userAccess := databaseAccess.User()
 	// Inject it into the HTTP handlers.
-	handlers.InitializeUser(userAccess, networkManager, databaseAccessWallet)
+	go handlers.InitializeUser(databaseAccess, networkManager, databaseAccessWallet)
 
 	//	router := gin.Default()
 	//	router.POST("/authentication/register", handlers.Register)
@@ -33,4 +32,5 @@ func main() {
 	log.Printf("Auth-service listening on port %s", os.Getenv("AUTH_PORT"))
 	//	http.ListenAndServe(":"+port, router)
 	networkManager.Listen()
+	<-make(chan struct{})
 }

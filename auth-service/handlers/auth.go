@@ -51,6 +51,8 @@ func RespondSuccess(w network.ResponseWriter, data interface{}) {
 }
 
 func RespondError(w network.ResponseWriter, statusCode int, errorMsg string) {
+	println("RespondError: ", errorMsg)
+	println("RespondErrorCode: ", statusCode)
 	response := map[string]interface{}{
 		"success": false,
 		"error":   errorMsg,
@@ -62,7 +64,7 @@ func RespondError(w network.ResponseWriter, statusCode int, errorMsg string) {
 
 // authDB is the dependency injected from main.go.
 // It implements databaseAccessAdduth.AuthDataAccessInterface.
-var _authDB databaseAccessAuth.UserDataAccessInterface
+var _authDB databaseAccessAuth.DatabaseAccessInterface
 var _bulkRoutineRegisterGetByUsername subfunctions.BulkRoutineInterface[*UserBulk]
 var _bulkRoutineRegisterCreateUser subfunctions.BulkRoutineInterface[*UserBulk]
 var _bulkRoutineRegisterCreateWallet subfunctions.BulkRoutineInterface[*UserBulk]
@@ -78,7 +80,7 @@ var _networkManager network.NetworkInterface
 var _walletAccess databaseAccessUserManagement.WalletDataAccessInterface
 
 // InitializeAuthHandlers sets up the dependency for the handlers.
-func InitializeUser(db databaseAccessAuth.UserDataAccessInterface, networkManager network.NetworkInterface, walletAccess databaseAccessUserManagement.WalletDataAccessInterface) {
+func InitializeUser(db databaseAccessAuth.DatabaseAccessInterface, networkManager network.NetworkInterface, walletAccess databaseAccessUserManagement.WalletDataAccessInterface) {
 	_authDB = db
 	_walletAccess = walletAccess
 	_bulkRoutineRegisterGetByUsername = subfunctions.NewBulkRoutine(&subfunctions.BulkRoutineParams[*UserBulk]{
@@ -100,9 +102,18 @@ func InitializeUser(db databaseAccessAuth.UserDataAccessInterface, networkManage
 
 	_networkManager.AddHandleFuncUnprotected(network.HandlerParams{Pattern: "authentication/register", Handler: Register})
 	_networkManager.AddHandleFuncUnprotected(network.HandlerParams{Pattern: "authentication/login", Handler: Login})
+	http.HandleFunc("/health", healthHandler)
+
 }
 
 // ---------- HTTP Handlers ----------
+
+func healthHandler(w http.ResponseWriter, r *http.Request) {
+	// Simple check: you might expand this to test database connectivity, etc.
+	w.WriteHeader(http.StatusOK)
+	//fmt.Println(w, "OK")
+}
+
 // Register handles user registration.
 func Register(w network.ResponseWriter, data []byte, queryParams url.Values, requestType string) {
 	log.Println("Register() called by handler in Auth-service.")
@@ -118,6 +129,7 @@ func Register(w network.ResponseWriter, data []byte, queryParams url.Values, req
 }
 
 func registerUsers(data *[]*UserBulk, TransferParams any) error {
+	println("registering users")
 	userMap := make(map[string]*UserBulk)
 	usernames := make([]string, len(*data))
 	for i, d := range *data {
@@ -131,18 +143,21 @@ func registerUsers(data *[]*UserBulk, TransferParams any) error {
 		userMap[username] = d
 		usernames[i] = username
 	}
-	users, errorList, err := _authDB.GetByForeignIDBulk("Username", usernames)
+	_, errorList, err := _authDB.GetByForeignIDBulk("Username", usernames)
 	if err != nil {
-		for _, d := range *users {
+		println("error getting users: ", err)
+		for _, d := range userMap {
 			go func(responseWriter network.ResponseWriter) {
 				RespondError(responseWriter, http.StatusInternalServerError, "Internal error")
-			}(userMap[d.GetUsername()].ResponseWriter)
+			}(d.ResponseWriter)
 		}
 		return err
 	}
 
 	for _, d := range userMap {
+		println("checking user: ", d.UserEntity.GetUsername())
 		if errCode, exists := errorList[d.UserEntity.GetUsername()]; exists {
+			println("User has Error: ", errCode)
 			if errorList[d.UserEntity.GetUsername()] == http.StatusNotFound {
 				hashedPassword, err := HashPassword(d.UserEntity.GetPassword())
 				if err != nil {
@@ -163,6 +178,7 @@ func registerUsers(data *[]*UserBulk, TransferParams any) error {
 				continue
 			}
 		}
+		println("User already exists: ", d.UserEntity.GetUsername())
 		go func(responseWriter network.ResponseWriter) {
 			RespondError(responseWriter, http.StatusBadRequest, "Username already exists.")
 		}(d.ResponseWriter)
@@ -171,6 +187,7 @@ func registerUsers(data *[]*UserBulk, TransferParams any) error {
 }
 
 func createUser(data *[]*UserBulk, TransferParams any) error {
+	println("creating users")
 	userMap := make(map[string]*UserBulk)
 	usersToCreate := make([]user.UserInterface, len(*data))
 	for i, d := range *data {
@@ -179,6 +196,7 @@ func createUser(data *[]*UserBulk, TransferParams any) error {
 	}
 	users, errorList, err := _authDB.CreateBulk(&usersToCreate)
 	if err != nil {
+		println("error creating users: ", err)
 		for _, d := range *users {
 			go func(responseWriter network.ResponseWriter) {
 				RespondError(responseWriter, http.StatusInternalServerError, "Internal error")

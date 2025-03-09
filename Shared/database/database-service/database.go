@@ -217,6 +217,9 @@ func NewEntityData[T entity.EntityInterface](params *NewEntityDataParams) Entity
 }
 
 func (d *EntityData[T]) Exists(ID string) (bool, error) {
+	if ID == "" {
+		return false, fmt.Errorf("ID is empty")
+	}
 	var ent T
 
 	result := d.GetNewDatabaseSession().First(&ent, "id = ?", ID)
@@ -231,6 +234,10 @@ func (d *EntityData[T]) Exists(ID string) (bool, error) {
 }
 
 func (d *EntityData[T]) GetByID(id string) (T, error) {
+	if id == "" {
+		var zero T
+		return zero, fmt.Errorf("ID is empty")
+	}
 	var ent T
 	result := d.GetDatabaseSession().First(&ent, "id = ?", id)
 	if errors.Is(result.Error, gorm.ErrRecordNotFound) {
@@ -247,6 +254,9 @@ func (d *EntityData[T]) GetByID(id string) (T, error) {
 }
 
 func (d *EntityData[T]) GetByIDs(ids []string) (*[]T, map[string]error) {
+	if len(ids) == 0 {
+		return nil, map[string]error{"transaction": errors.New("no ids provided")}
+	}
 	var entities []T
 	errors := make(map[string]error)
 	results := d.GetDatabaseSession().Find(&entities, "id IN ?", ids)
@@ -271,6 +281,17 @@ func (d *EntityData[T]) GetByIDs(ids []string) (*[]T, map[string]error) {
 
 // This needs the table column names, whihc is a little diffrent
 func (d *EntityData[T]) GetByForeignID(foreignIDKey string, foreignID string) (*[]T, error) {
+	if foreignIDKey == "" {
+		err := fmt.Errorf("foreign key column is empty")
+		fmt.Printf("error getting by foreignKey: %s", err.Error())
+		return nil, err
+	}
+	if foreignID == "" {
+		err := fmt.Errorf("foreign key is empty")
+		fmt.Printf("error getting by foreignKey: %s", err.Error())
+		return nil, err
+	}
+
 	var entities []T
 	foreignIDColumn, ok := d.columnCache[foreignIDKey]
 	if !ok {
@@ -287,6 +308,17 @@ func (d *EntityData[T]) GetByForeignID(foreignIDKey string, foreignID string) (*
 }
 
 func (d *EntityData[T]) GetByForeignIDBulk(foreignIDKey string, foreignIDs []string) (*[]T, map[string]error) {
+	if foreignIDKey == "" {
+		err := fmt.Errorf("foreign key column is empty")
+		fmt.Printf("error getting by foreignKey: %s", err.Error())
+		return nil, map[string]error{"transaction": err}
+	}
+	if len(foreignIDs) == 0 {
+		err := fmt.Errorf("foreign key is empty")
+		fmt.Printf("error getting by foreignKey: %s", err.Error())
+		return nil, map[string]error{"transaction": err}
+	}
+
 	var entities []T
 	errors := make(map[string]error)
 	foreignIDColumn, ok := d.columnCache[foreignIDKey]
@@ -352,6 +384,10 @@ func (d *EntityData[T]) GetAll() (*[]T, error) {
 // }
 
 func (d *EntityData[T]) CreateBulk(entities *[]T) map[string]error {
+	if len(*entities) == 0 {
+		return map[string]error{"transaction": errors.New("CREATE: no entities provided")}
+	}
+
 	// errorMap accumulates errors keyed by the entity's ID.
 	errorMap := make(map[string]error)
 
@@ -442,32 +478,12 @@ func (d *EntityData[T]) Create(entity T) error {
 	return nil
 }
 
-// func generateRandomID() string {
-// 	// Generate a new UUID as the stock ID
-// 	return uuid.New().String()
-// }
-
-// func (d *EntityData[T]) Update(entity T) error {
-// 	updateResult := d.GetDatabaseSession().Save(entity)
-// 	if updateResult.Error != nil {
-// 		fmt.Printf("error updating %s: %s", entity.GetId(), updateResult.Error.Error())
-// 		return updateResult.Error
-// 	}
-// 	return nil
-// }
-
-//	func (d *EntityData[T]) UpdateBulk(entities *[]T) error {
-//		updateResult := d.GetDatabaseSession().Save(entities)
-//		if updateResult.Error != nil {
-//			fmt.Printf("error updating entities: %s", updateResult.Error.Error())
-//			return updateResult.Error
-//		}
-//		return nil
-//	}
-//
 // Generated with assistance of Chat GPT 03-mini-high: https://chatgpt.com/share/67cb6dc5-7cf4-8006-a7cc-b33fa7765051
 
 func (d *EntityData[T]) Update(updates []*entity.EntityUpdateData) map[string]error {
+	if len(updates) == 0 {
+		return map[string]error{"transaction": errors.New("UPDATE: no updates provided")}
+	}
 	// errorMap will accumulate errors keyed by row ID.
 	errorMap := make(map[string]error)
 	// Aggregate new and alter updates.
@@ -716,339 +732,11 @@ func (d *EntityData[T]) Update(updates []*entity.EntityUpdateData) map[string]er
 	return errorMap
 }
 
-// func (d *EntityData[T]) Update(updates []*entity.EntityUpdateData) map[string]error {
-// 	// errorMap will accumulate errors keyed by row ID.
-// 	errorMap := make(map[string]error)
-// 	skipIds := make(map[string]bool)
-// 	for _, upd := range updates {
-// 		if _, ok := skipIds[upd.ID]; ok {
-// 			continue
-// 		}
-// 		skipIds[upd.ID] = false
-// 	}
-// 	// Aggregate updates per field.
-// 	newUpdates := make(map[string]map[string]string)    // field -> (row ID -> new value)
-// 	alterUpdates := make(map[string]map[string]float64) // field -> (row ID -> cumulative delta)
-
-// 	for _, upd := range updates {
-// 		if skipIds[upd.ID] {
-// 			continue
-// 		}
-// 		if upd.NewValue != nil {
-// 			if _, ok := newUpdates[upd.Field]; !ok {
-// 				newUpdates[upd.Field] = make(map[string]string)
-// 			}
-// 			// For duplicate new value updates on the same row and field, the later one wins.
-// 			newUpdates[upd.Field][upd.ID] = *upd.NewValue
-// 		} else if upd.AlterValue != nil {
-// 			parsed, err := strconv.ParseFloat(*upd.AlterValue, 64)
-// 			if err != nil {
-// 				skipIds[upd.ID] = true
-// 				// Record parse error for this row.
-// 				fmt.Printf("failed to parse alter value '%s' for field %s: %v", *upd.AlterValue, upd.Field, err)
-// 				errorMap[upd.ID] = fmt.Errorf("failed to parse alter value '%s' for field %s: %v", *upd.AlterValue, upd.Field, err)
-// 				continue
-// 			}
-// 			if _, ok := alterUpdates[upd.Field]; !ok {
-// 				alterUpdates[upd.Field] = make(map[string]float64)
-// 			}
-// 			alterUpdates[upd.Field][upd.ID] += parsed
-// 		}
-// 	}
-
-// 	//transaction for full attempt:
-// 	err := d.GetNewDatabaseSession().Transaction(func(tx *gorm.DB) error {
-// 		// First, handle new value updates.
-// 		for field, idToNewVal := range newUpdates {
-// 			cacheEntry, ok := d.columnCache[field]
-// 			if !ok {
-// 				fmt.Printf("unknown field %s in column cache", field)
-// 				return fmt.Errorf("unknown field %s in column cache", field)
-// 			}
-
-// 			valueTuples := make([]string, 0, len(idToNewVal))
-// 			args := make([]interface{}, 0, len(idToNewVal)*2)
-
-// 			// For each update, convert the new value based on the field's type.
-// 			for id, newVal := range idToNewVal {
-// 				var converted interface{}
-// 				var castType string
-
-// 				switch cacheEntry.FieldType.Kind() {
-// 				case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-// 					i, err := strconv.ParseInt(newVal, 10, 64)
-// 					if err != nil {
-// 						fmt.Printf("failed to parse new value '%s' as integer for field %s: %v", newVal, field, err)
-// 						return fmt.Errorf("failed to parse new value '%s' as integer for field %s: %v", newVal, field, err)
-// 					}
-// 					converted = i
-// 					castType = "bigint"
-// 				case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-// 					u, err := strconv.ParseUint(newVal, 10, 64)
-// 					if err != nil {
-// 						fmt.Printf("failed to parse new value '%s' as unsigned integer for field %s: %v", newVal, field, err)
-// 						return fmt.Errorf("failed to parse new value '%s' as unsigned integer for field %s: %v", newVal, field, err)
-// 					}
-// 					converted = u
-// 					castType = "bigint"
-// 				case reflect.Float32, reflect.Float64:
-// 					f, err := strconv.ParseFloat(newVal, 64)
-// 					if err != nil {
-// 						fmt.Printf("failed to parse new value '%s' as float for field %s: %v", newVal, field, err)
-// 						return fmt.Errorf("failed to parse new value '%s' as float for field %s: %v", newVal, field, err)
-// 					}
-// 					converted = f
-// 					castType = "double precision"
-// 				default:
-// 					// Treat as text if not a recognized numeric type.
-// 					converted = newVal
-// 					castType = "text"
-// 				}
-// 				// Build each tuple, casting the ID to UUID and the new value to the proper type.
-// 				valueTuples = append(valueTuples, fmt.Sprintf("(CAST(? AS uuid), CAST(? AS %s))", castType))
-// 				args = append(args, id, converted)
-// 			}
-
-// 			query := fmt.Sprintf(`
-// 				UPDATE %s AS t
-// 				SET %s = u.new_val
-// 				FROM (VALUES %s) AS u(id, new_val)
-// 				WHERE t.id = u.id
-// 			`, d.tableName, cacheEntry.ColumnName, strings.Join(valueTuples, ", "))
-
-// 			if err := tx.Exec(query, args...).Error; err != nil {
-// 				fmt.Printf("failed new value bulk update for field '%s': %v", field, err)
-// 				return fmt.Errorf("failed new value bulk update for field '%s': %v", field, err)
-// 			}
-// 		}
-
-// 		// Next, handle alter value updates.
-// 		for field, idToDelta := range alterUpdates {
-// 			cacheEntry, ok := d.columnCache[field]
-// 			if !ok {
-// 				fmt.Printf("unknown field %s in column cache", field)
-// 				return fmt.Errorf("unknown field %s in column cache", field)
-// 			}
-
-// 			var castType string
-// 			valueTuples := make([]string, 0, len(idToDelta))
-// 			args := make([]interface{}, 0, len(idToDelta)*2)
-
-// 			for id, delta := range idToDelta {
-// 				var deltaValue interface{}
-// 				switch cacheEntry.FieldType.Kind() {
-// 				case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-// 					castType = "bigint"
-// 					deltaValue = int64(delta)
-// 				case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-// 					castType = "bigint"
-// 					deltaValue = uint64(delta)
-// 				case reflect.Float32, reflect.Float64:
-// 					castType = "double precision"
-// 					deltaValue = delta
-// 				default:
-// 					fmt.Printf("unsupported numeric field type %s for field %s", cacheEntry.FieldType.Kind(), field)
-// 					return fmt.Errorf("unsupported numeric field type %s for field %s", cacheEntry.FieldType.Kind(), field)
-// 				}
-// 				// Build each tuple, casting the ID to UUID and the delta to the proper type.
-// 				valueTuples = append(valueTuples, fmt.Sprintf("(CAST(? AS uuid), CAST(? AS %s))", castType))
-// 				args = append(args, id, deltaValue)
-// 			}
-
-// 			query := fmt.Sprintf(`
-// 				UPDATE %s AS t
-// 				SET %s = t.%s + u.delta
-// 				FROM (VALUES %s) AS u(id, delta)
-// 				WHERE t.id = u.id
-// 			`, d.tableName, cacheEntry.ColumnName, cacheEntry.ColumnName, strings.Join(valueTuples, ", "))
-
-// 			if err := tx.Exec(query, args...).Error; err != nil {
-// 				fmt.Printf("failed alter value bulk update for field '%s': %v", field, err)
-// 				return fmt.Errorf("failed alter value bulk update for field '%s': %v", field, err)
-// 			}
-// 		}
-
-// 		return nil
-// 	})
-// 	if err == nil {
-// 		return nil
-// 	}
-
-// 	//if we had issues, insert one by one
-// 	// Begin a transaction for partial isolation.
-// 	tx := d.GetNewDatabaseSession().Begin()
-// 	if tx.Error != nil {
-// 		fmt.Printf("failed to begin transaction: %v", tx.Error)
-// 		errorMap["transaction"] = tx.Error
-// 		return errorMap
-// 	}
-
-// 	// A counter to generate unique savepoint names.
-// 	spCounter := 0
-
-// 	// Handle new value updates per row.
-// 	for field, idToNewVal := range newUpdates {
-// 		cacheEntry, ok := d.columnCache[field]
-// 		if !ok {
-// 			fmt.Printf("unknown field %s in column cache", field)
-// 			// For each row in this field, record an error.
-// 			for id := range idToNewVal {
-// 				skipIds[id] = true
-// 				errorMap[id] = fmt.Errorf("unknown field %s in column cache", field)
-// 			}
-// 			continue
-// 		}
-
-// 		// Determine SQL cast type based on the field type.
-// 		var castType string
-// 		switch cacheEntry.FieldType.Kind() {
-// 		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
-// 			reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-// 			castType = "bigint"
-// 		case reflect.Float32, reflect.Float64:
-// 			castType = "double precision"
-// 		default:
-// 			castType = "text"
-// 		}
-
-// 		// Update each row individually.
-// 		for id, newVal := range idToNewVal {
-// 			if skipIds[id] {
-// 				continue
-// 			}
-// 			spCounter++
-// 			spName := fmt.Sprintf("sp_new_%d", spCounter)
-// 			tx.SavePoint(spName)
-
-// 			// Convert newVal to the correct type.
-// 			var converted interface{}
-// 			switch cacheEntry.FieldType.Kind() {
-// 			case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-// 				i, err := strconv.ParseInt(newVal, 10, 64)
-// 				if err != nil {
-// 					fmt.Printf("failed to parse new value '%s' as integer for field %s: %v", newVal, field, err)
-// 					skipIds[id] = true
-// 					errorMap[id] = fmt.Errorf("failed to parse new value '%s' as integer for field %s: %v", newVal, field, err)
-// 					continue
-// 				}
-// 				converted = i
-// 			case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-// 				u, err := strconv.ParseUint(newVal, 10, 64)
-// 				if err != nil {
-// 					fmt.Printf("failed to parse new value '%s' as unsigned integer for field %s: %v", newVal, field, err)
-// 					skipIds[id] = true
-// 					errorMap[id] = fmt.Errorf("failed to parse new value '%s' as unsigned integer for field %s: %v", newVal, field, err)
-// 					continue
-// 				}
-// 				converted = u
-// 			case reflect.Float32, reflect.Float64:
-// 				f, err := strconv.ParseFloat(newVal, 64)
-// 				if err != nil {
-// 					fmt.Printf("failed to parse new value '%s' as float for field %s: %v", newVal, field, err)
-// 					skipIds[id] = true
-// 					errorMap[id] = fmt.Errorf("failed to parse new value '%s' as float for field %s: %v", newVal, field, err)
-// 					continue
-// 				}
-// 				converted = f
-// 			default:
-// 				converted = newVal
-// 			}
-
-// 			// Build and execute the update query for this single row.
-// 			query := fmt.Sprintf(`
-// 				UPDATE %s AS t
-// 				SET %s = CAST(? AS %s)
-// 				WHERE t.id = CAST(? AS uuid)
-// 			`, d.tableName, cacheEntry.ColumnName, castType)
-// 			if err := tx.Exec(query, converted, id).Error; err != nil {
-// 				// Rollback only this row's update.
-// 				fmt.Printf("failed new value update for field '%s': %v", field, err)
-// 				skipIds[id] = true
-// 				tx.RollbackTo(spName)
-// 				errorMap[id] = fmt.Errorf("failed new value update for field '%s': %v", field, err)
-// 			}
-// 		}
-// 	}
-
-// 	// Handle alter value updates per row.
-// 	for field, idToDelta := range alterUpdates {
-// 		cacheEntry, ok := d.columnCache[field]
-// 		if !ok {
-// 			fmt.Printf("unknown field %s in column cache", field)
-// 			for id := range idToDelta {
-// 				skipIds[id] = true
-// 				errorMap[id] = fmt.Errorf("unknown field %s in column cache", field)
-// 			}
-// 			continue
-// 		}
-
-// 		// Determine SQL cast type for the delta.
-// 		var castType string
-// 		switch cacheEntry.FieldType.Kind() {
-// 		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
-// 			reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-// 			castType = "bigint"
-// 		case reflect.Float32, reflect.Float64:
-// 			castType = "double precision"
-// 		default:
-// 			fmt.Printf("unsupported numeric field type %s for field %s", cacheEntry.FieldType.Kind(), field)
-// 			for id := range idToDelta {
-// 				skipIds[id] = true
-// 			}
-// 			errorMap["general"] = fmt.Errorf("unsupported numeric field type %s for field %s", cacheEntry.FieldType.Kind(), field)
-// 			continue
-// 		}
-
-// 		for id, delta := range idToDelta {
-// 			if skipIds[id] {
-// 				continue
-// 			}
-// 			spCounter++
-// 			spName := fmt.Sprintf("sp_alter_%d", spCounter)
-// 			tx.SavePoint(spName)
-
-// 			// Convert the delta value based on the field type.
-// 			var deltaValue interface{}
-// 			switch cacheEntry.FieldType.Kind() {
-// 			case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-// 				deltaValue = int64(delta)
-// 			case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-// 				deltaValue = uint64(delta)
-// 			case reflect.Float32, reflect.Float64:
-// 				deltaValue = delta
-// 			}
-
-// 			query := fmt.Sprintf(`
-// 				UPDATE %s AS t
-// 				SET %s = t.%s + CAST(? AS %s)
-// 				WHERE t.id = CAST(? AS uuid)
-// 			`, d.tableName, cacheEntry.ColumnName, cacheEntry.ColumnName, castType)
-// 			if err := tx.Exec(query, deltaValue, id).Error; err != nil {
-// 				fmt.Printf("failed alter value update for field '%s': %v", field, err)
-// 				tx.RollbackTo(spName)
-// 				skipIds[id] = true
-// 				if errors.Is(err, gorm.ErrRecordNotFound) {
-// 					errorMap[id] = err
-// 				} else {
-// 					errorMap[id] = fmt.Errorf("failed alter value update for field '%s': %v", field, err)
-// 				}
-// 			}
-// 		}
-// 	}
-//
-// 	// Attempt to commit the transaction.
-// 	if err := tx.Commit().Error; err != nil {
-// 		// If commit fails, record a general error.
-// 		errorMap["transaction"] = fmt.Errorf("failed to commit transaction: %v", err)
-// 	}
-// 	return errorMap
-// }
-
 func (d *EntityData[T]) Delete(id string) error {
-	// _, err := d.GetByID(id)
-	// if err != nil {
-	// 	return err
-	// }
+	if id == "" {
+		return errors.New("DELETE: id is required")
+	}
+
 	var zero T
 	deleteResult := d.GetDatabaseSession().Delete(&zero, "id = ?", id)
 	if deleteResult.Error != nil {
@@ -1059,10 +747,10 @@ func (d *EntityData[T]) Delete(id string) error {
 }
 
 func (d *EntityData[T]) DeleteBulk(ids []string) map[string]error {
-	// _, err := d.GetByIDs(ids)
-	// if err != nil {
-	// 	return err
-	// }
+	if len(ids) == 0 {
+		return map[string]error{"transaction": errors.New("DELETE: no IDs provided")}
+	}
+
 	errorMap := make(map[string]error)
 	var zero T
 	deleteResult := d.GetDatabaseSession().Delete(&zero, "id IN ?", ids)

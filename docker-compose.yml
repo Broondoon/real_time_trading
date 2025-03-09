@@ -10,10 +10,10 @@ services:
       - ./reverse_proxy/nginx.conf:/etc/nginx/nginx.conf:ro
     depends_on:
       - auth-service
-      - auth-db
       # - frontend
       - user-management-service
       - order-initiator-service
+      - stock-database-service
     networks:
       - go-network
 
@@ -75,7 +75,7 @@ services:
   #   networks:
   #     - go-network
   #   depends_on:
-  #     user-management-database-service:
+  #     auth-service:
   #       condition: service_healthy
 
   matching-engine-service:
@@ -186,8 +186,23 @@ services:
     depends_on:
       auth-db:
         condition: service_healthy
+      auth-database-service:
+        condition: service_healthy
+      user-management-database-service:
+        condition: service_healthy
     networks:
       - go-network
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "curl",
+          "-f",
+          "http://${AUTH_HOST}:${AUTH_PORT}/health",
+        ]
+      interval: ${HEALTHCHECK_INTERVAL}
+      timeout: ${HEALTHCHECK_TIMEOUT}
+      retries: ${HEALTHCHECK_RETRIES}
 
   frontend:
     image: flutter-trading-app

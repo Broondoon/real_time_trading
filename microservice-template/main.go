@@ -1,14 +1,8 @@
 package main
 
 import (
-	"Shared/entities/entity"
-	"Shared/entities/stock"
-	userStock "Shared/entities/user-stock"
+	"Shared/entities/user"
 	networkHttp "Shared/network/http"
-	"databaseAccessUserManagement"
-	"time"
-
-	"github.com/google/uuid"
 	//"Shared/network"
 )
 
@@ -17,144 +11,155 @@ func main() {
 	//var val []byte
 
 	networkManager := networkHttp.NewNetworkHttp()
+	testUser := user.User{
+		Username: "VanguardETF",
+		Password: "Vang@123",
+		Name:     "Vanguard Corp.",
+	}
 
-	// val, err = networkManager.Transactions().Get("transaction/getStockTransactions", nil)
-	// if err != nil {
-	// 	panic(err)
-	// }
-	// println(string(val))
-	// println("Stock Transactions gotten")
-
-	ea := databaseAccessUserManagement.NewDatabaseAccess(&databaseAccessUserManagement.NewDatabaseAccessParams{
-		Network: networkManager,
-	})
-
-	// test, err := ea.Wallet().Create(wallet.New(wallet.NewWalletParams{
-	// 	NewEntityParams: entity.NewEntityParams{
-	// 		DateCreated:  time.Now(),
-	// 		DateModified: time.Now(),
-	// 	},
-	// 	UserID:  "6fd2fc6b-9142-4777-8b30-575ff6fa2460",
-	// 	Balance: 100000,
-	// }))
-	// if err != nil {
-	// 	println("Error creating wallet: ", err)
-	// 	panic(err)
-	// }
-	// walletOutput, err := test.ToJSON()
-	// println("Wallet created: ", string(walletOutput))
-
-	// testArray, err := ea.Wallet().GetByForeignID("UserID", "6fd2fc6b-9142-4777-8b30-575ff6fa2460")
-	// if err != nil {
-	// 	println("Error getting wallet: ", err)
-	// 	panic(err)
-	// }
-	// println(testArray)
-	// println("Wallet gotten")
-
-	//Create a new Stock
-	newStock1 := stock.New(stock.NewStockParams{
-		NewEntityParams: entity.NewEntityParams{
-			ID:           uuid.New().String(),
-			DateCreated:  time.Now(),
-			DateModified: time.Now(),
-		},
-		Name: "Apple",
-	})
-	newStock2 := stock.New(stock.NewStockParams{
-		NewEntityParams: entity.NewEntityParams{
-			ID:           uuid.New().String(),
-			DateCreated:  time.Now(),
-			DateModified: time.Now(),
-		},
-		Name: "google",
-	})
-
-	// val, err = networkManager.Stocks().Post("setup/createStock", newStock1)
-	// if err != nil {
-	// 	panic(err)
-	// }
-
-	// val, err = networkManager.Stocks().Post("setup/createStock", newStock2)
-	// if err != nil {
-	// 	panic(err)
-	// }
-	// println("Stock Created")
-
-	ea.UserStock().Create(userStock.New(userStock.NewUserStockParams{
-		NewEntityParams: entity.NewEntityParams{
-			ID: uuid.New().String(),
-		},
-		UserID:   "6fd2fc6b-9142-4777-8b30-575ff6fa2460",
-		StockID:  newStock1.GetId(),
-		Quantity: 100,
-	}))
-
-	ea.UserStock().Create(userStock.New(userStock.NewUserStockParams{
-		NewEntityParams: entity.NewEntityParams{
-			ID: uuid.New().String(),
-		},
-		UserID:   "6fd2fc6b-9142-4777-8b30-575ff6fa2460",
-		StockID:  newStock2.GetId(),
-		Quantity: 100,
-	}))
-
-	d, err := ea.UserStock().GetByForeignID("UserID", "6fd2fc6b-9142-4777-8b30-575ff6fa2460")
+	test, err := networkManager.Authentication().Post("authentication/register", testUser)
 	if err != nil {
-		println("Error getting user stock: ", err)
 		panic(err)
 	}
-	for _, us := range *d {
-		da, err := us.ToJSON()
-		if err != nil {
-			println("Error converting user stock to json: ", err)
-			panic(err)
-		}
-		println("User Stock gotten: ", string(da))
-		us.UpdateQuantity(60)
-		ea.UserStock().Update(us)
-	}
+	println(string(test))
+	// // {"user_name":"VanguardETF", "password":"Vang@123", "name":"Vanguard Corp."}
+	// // val, err = networkManager.Transactions().Get("transaction/getStockTransactions", nil)
+	// // if err != nil {
+	// // 	panic(err)
+	// // }
+	// // println(string(val))
+	// // println("Stock Transactions gotten")
 
-	// //Create a new Stock Order
-	// so1 := order.New(order.NewStockOrderParams{
+	// ea := databaseAccessUserManagement.NewDatabaseAccess(&databaseAccessUserManagement.NewDatabaseAccessParams{
+	// 	Network: networkManager,
+	// })
+
+	// // test, err := ea.Wallet().Create(wallet.New(wallet.NewWalletParams{
+	// // 	NewEntityParams: entity.NewEntityParams{
+	// // 		DateCreated:  time.Now(),
+	// // 		DateModified: time.Now(),
+	// // 	},
+	// // 	UserID:  "6fd2fc6b-9142-4777-8b30-575ff6fa2460",
+	// // 	Balance: 100000,
+	// // }))
+	// // if err != nil {
+	// // 	println("Error creating wallet: ", err)
+	// // 	panic(err)
+	// // }
+	// // walletOutput, err := test.ToJSON()
+	// // println("Wallet created: ", string(walletOutput))
+
+	// // testArray, err := ea.Wallet().GetByForeignID("UserID", "6fd2fc6b-9142-4777-8b30-575ff6fa2460")
+	// // if err != nil {
+	// // 	println("Error getting wallet: ", err)
+	// // 	panic(err)
+	// // }
+	// // println(testArray)
+	// // println("Wallet gotten")
+
+	// //Create a new Stock
+	// newStock1 := stock.New(stock.NewStockParams{
 	// 	NewEntityParams: entity.NewEntityParams{
-	// 		ID:           "so1",
+	// 		ID:           uuid.New().String(),
 	// 		DateCreated:  time.Now(),
 	// 		DateModified: time.Now(),
 	// 	},
-	// 	StockID:   newStock1.GetId(),
-	// 	Quantity:  4,
-	// 	Price:     7.5,
-	// 	OrderType: "LIMIT",
-	// 	IsBuy:     false,
+	// 	Name: "Apple",
+	// })
+	// newStock2 := stock.New(stock.NewStockParams{
+	// 	NewEntityParams: entity.NewEntityParams{
+	// 		ID:           uuid.New().String(),
+	// 		DateCreated:  time.Now(),
+	// 		DateModified: time.Now(),
+	// 	},
+	// 	Name: "google",
 	// })
 
-	// // so2 := order.New(order.NewStockOrderParams{
+	// // val, err = networkManager.Stocks().Post("setup/createStock", newStock1)
+	// // if err != nil {
+	// // 	panic(err)
+	// // }
+
+	// // val, err = networkManager.Stocks().Post("setup/createStock", newStock2)
+	// // if err != nil {
+	// // 	panic(err)
+	// // }
+	// // println("Stock Created")
+
+	// ea.UserStock().Create(userStock.New(userStock.NewUserStockParams{
+	// 	NewEntityParams: entity.NewEntityParams{
+	// 		ID: uuid.New().String(),
+	// 	},
+	// 	UserID:   "6fd2fc6b-9142-4777-8b30-575ff6fa2460",
+	// 	StockID:  newStock1.GetId(),
+	// 	Quantity: 100,
+	// }))
+
+	// ea.UserStock().Create(userStock.New(userStock.NewUserStockParams{
+	// 	NewEntityParams: entity.NewEntityParams{
+	// 		ID: uuid.New().String(),
+	// 	},
+	// 	UserID:   "6fd2fc6b-9142-4777-8b30-575ff6fa2460",
+	// 	StockID:  newStock2.GetId(),
+	// 	Quantity: 100,
+	// }))
+
+	// d, err := ea.UserStock().GetByForeignID("UserID", "6fd2fc6b-9142-4777-8b30-575ff6fa2460")
+	// if err != nil {
+	// 	println("Error getting user stock: ", err)
+	// 	panic(err)
+	// }
+	// for _, us := range *d {
+	// 	da, err := us.ToJSON()
+	// 	if err != nil {
+	// 		println("Error converting user stock to json: ", err)
+	// 		panic(err)
+	// 	}
+	// 	println("User Stock gotten: ", string(da))
+	// 	us.UpdateQuantity(60)
+	// 	ea.UserStock().Update(us)
+	// }
+
+	// // //Create a new Stock Order
+	// // so1 := order.New(order.NewStockOrderParams{
 	// // 	NewEntityParams: entity.NewEntityParams{
-	// // 		ID:           "so2",
+	// // 		ID:           "so1",
 	// // 		DateCreated:  time.Now(),
 	// // 		DateModified: time.Now(),
 	// // 	},
 	// // 	StockID:   newStock1.GetId(),
-	// // 	Quantity:  5,
+	// // 	Quantity:  4,
 	// // 	Price:     7.5,
 	// // 	OrderType: "LIMIT",
 	// // 	IsBuy:     false,
 	// // })
 
-	// // so3 := order.New(order.NewStockOrderParams{
+	// // // so2 := order.New(order.NewStockOrderParams{
+	// // // 	NewEntityParams: entity.NewEntityParams{
+	// // // 		ID:           "so2",
+	// // // 		DateCreated:  time.Now(),
+	// // // 		DateModified: time.Now(),
+	// // // 	},
+	// // // 	StockID:   newStock1.GetId(),
+	// // // 	Quantity:  5,
+	// // // 	Price:     7.5,
+	// // // 	OrderType: "LIMIT",
+	// // // 	IsBuy:     false,
+	// // // })
 
-	// // 	NewEntityParams: entity.NewEntityParams{
-	// // 		ID:           "so3",
-	// // 		DateCreated:  time.Now(),
-	// // 		DateModified: time.Now(),
-	// // 	},
-	// // 	StockID:   newStock1.GetId(),
-	// // 	Quantity:  5,
-	// // 	Price:     8.5,
-	// // 	OrderType: "LIMIT",
-	// // 	IsBuy:     false,
-	// // })
+	// // // so3 := order.New(order.NewStockOrderParams{
+
+	// // // 	NewEntityParams: entity.NewEntityParams{
+	// // // 		ID:           "so3",
+	// // // 		DateCreated:  time.Now(),
+	// // // 		DateModified: time.Now(),
+	// // // 	},
+	// // // 	StockID:   newStock1.GetId(),
+	// // // 	Quantity:  5,
+	// // // 	Price:     8.5,
+	// // // 	OrderType: "LIMIT",
+	// // // 	IsBuy:     false,
+	// // // })
 
 	// // so4 := order.New(order.NewStockOrderParams{
 	// // 	NewEntityParams: entity.NewEntityParams{

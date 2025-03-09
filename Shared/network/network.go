@@ -147,7 +147,7 @@ func CreateNetworkEntityHandlers[T entity.EntityInterface](network NetworkInterf
 		fmt.Println("queryParams: ", queryParams.Encode())
 		fmt.Println("requestType: ", requestType)
 		fmt.Println("-----------------")
-		bulkRequest := false
+		bulkRequest := queryParams.Get("Isbulk") != ""
 		useEntities := false
 		noReturns := false
 		errorList := make(map[string]int)
@@ -160,15 +160,14 @@ func CreateNetworkEntityHandlers[T entity.EntityInterface](network NetworkInterf
 		}
 		switch requestType {
 		case "GET":
-			if queryParams.Get("isBulk") != "" {
-				ids := strings.Split(queryParams.Get("ids"), ",")
+			if bulkRequest {
+				ids := strings.Split(queryParams.Get("Ids"), ",")
 				if foreignKey := queryParams.Get("foreignKey"); foreignKey != "" {
 					entities, errorsReceived = databaseManager.GetByForeignIDBulk(foreignKey, ids)
 				} else {
 					entities, errorsReceived = databaseManager.GetByIDs(ids)
 				}
 				useEntities = true
-				bulkRequest = true
 			} else if id := queryParams.Get("id"); id != "" {
 				if foreignKey := queryParams.Get("foreignKey"); foreignKey != "" {
 					entities, err = databaseManager.GetByForeignID(foreignKey, id)
@@ -182,22 +181,19 @@ func CreateNetworkEntityHandlers[T entity.EntityInterface](network NetworkInterf
 			}
 
 		case "POST":
-			var isBulk bool
-			if queryParams.Get("isBulk") != "" {
+			if bulkRequest {
 				entities, err = ParseList(data)
-				isBulk = true
 			} else {
 				entityObj, err = Parse(data)
 			}
 			if err != nil {
-				fmt.Println("error: ", err.Error())
+				fmt.Println("network POST error: ", err.Error())
 				responseWriter.WriteHeader(http.StatusBadRequest)
 				return
 			}
-			if isBulk {
+			if bulkRequest {
 				errorsReceived = databaseManager.CreateBulk(entities)
 				useEntities = true
-				bulkRequest = true
 			} else {
 				err = databaseManager.Create(entityObj)
 			}
@@ -205,19 +201,15 @@ func CreateNetworkEntityHandlers[T entity.EntityInterface](network NetworkInterf
 			updates := make([]*entity.EntityUpdateData, 0)
 			err = json.Unmarshal(data, &updates)
 			if err != nil {
-				fmt.Println("error: ", err.Error())
+				fmt.Println("network PUT error: ", err.Error())
 				responseWriter.WriteHeader(http.StatusBadRequest)
 				return
 			}
 			errorsReceived = databaseManager.Update(updates)
-			if isBulk := queryParams.Get("isBulk"); isBulk != "" {
-				bulkRequest = true
-			}
 			noReturns = true
 		case "DELETE":
-			if isBulk := queryParams.Get("isBulk"); isBulk != "" {
-				errorsReceived = databaseManager.DeleteBulk(strings.Split(queryParams.Get("ids"), ","))
-				bulkRequest = true
+			if bulkRequest {
+				errorsReceived = databaseManager.DeleteBulk(strings.Split(queryParams.Get("Ids"), ","))
 			} else {
 				err = databaseManager.Delete(queryParams.Get("id"))
 			}
@@ -226,14 +218,19 @@ func CreateNetworkEntityHandlers[T entity.EntityInterface](network NetworkInterf
 			return
 		}
 		if errorsReceived != nil {
-			if err = errorsReceived["transaction"]; err == nil {
+			if _, ok := errorsReceived["transaction"]; !ok {
 				for id, err := range errorsReceived {
+					println("Transfer Error: ", err)
 					if errors.Is(err, gorm.ErrRecordNotFound) {
 						errorList[id] = http.StatusNotFound
 					} else {
 						errorList[id] = http.StatusInternalServerError
 					}
 				}
+			} else {
+				fmt.Printf("Transaction error: %v\n", errorsReceived["transaction"])
+				responseWriter.WriteHeader(http.StatusInternalServerError)
+				return
 			}
 		}
 		if err != nil {
@@ -264,14 +261,14 @@ func CreateNetworkEntityHandlers[T entity.EntityInterface](network NetworkInterf
 			jsonVal, err = entityObj.ToJSON()
 		}
 		if err != nil {
-			fmt.Println("error: ", err.Error())
+			fmt.Println("Network General marshal error: ", err.Error())
 			responseWriter.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 		if bulkRequest {
 			jsonVal, err = json.Marshal(BulkReturn{Entities: jsonVal, Errors: errorList})
 			if err != nil {
-				fmt.Println("error: ", err.Error())
+				fmt.Println("Networ Bulkify marshal error: ", err.Error())
 				responseWriter.WriteHeader(http.StatusInternalServerError)
 				return
 			}

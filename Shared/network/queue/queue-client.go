@@ -150,8 +150,8 @@ func (n *QueueClient) Get(route string, headers map[string]string) ([]byte, erro
 }
 
 func (n *QueueClient) GetBulk(route string, ids []string, headers map[string]string) (network.BulkReturn, error) {
-	headers["isBulk"] = "true"
-	headers["ids"] = strings.Join(ids, ",")
+	headers["Isbulk"] = "true"
+	headers["Ids"] = strings.Join(ids, ",")
 	data := QueueJSONData{
 		Headers:     headers,
 		MessageType: "GET",
@@ -176,7 +176,7 @@ func (n *QueueClient) GetBulk(route string, ids []string, headers map[string]str
 }
 
 func (n *QueueClient) PostBulk(route string, payload []interface{}) (network.BulkReturn, error) {
-	headers := map[string]string{"isBulk": "true"}
+	headers := map[string]string{"Isbulk": "true"}
 	data := QueueJSONData{
 		Headers:     headers,
 		MessageType: "POST",
@@ -201,7 +201,7 @@ func (n *QueueClient) PostBulk(route string, payload []interface{}) (network.Bul
 }
 
 func (n *QueueClient) Post(route string, payload interface{}) ([]byte, error) {
-	headers := map[string]string{"isBulk": "false"}
+	headers := map[string]string{"Isbulk": ""}
 	data := QueueJSONData{
 		Headers:     headers,
 		MessageType: "POST",
@@ -234,7 +234,7 @@ func (n *QueueClient) Post(route string, payload interface{}) ([]byte, error) {
 // }
 
 func (n *QueueClient) Put(route string, payload []interface{}) (network.BulkReturn, error) {
-	headers := map[string]string{"isBulk": "true"}
+	headers := map[string]string{"Isbulk": "true"}
 	data := QueueJSONData{
 		Headers:     headers,
 		MessageType: "PUT",

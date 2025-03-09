@@ -5,57 +5,35 @@ import (
 	"Shared/entities/user"
 )
 
-type UserDataServiceInterface interface {
+type DatabaseServiceInterface interface {
 	databaseService.EntityDataInterface[*user.User]
 }
 
-type DatabaseServiceInterface interface {
-	databaseService.DatabaseInterface
-	User() UserDataServiceInterface
-}
-
 type DatabaseService struct {
-	UserInterface UserDataServiceInterface
-	databaseService.DatabaseInterface
+	databaseService.EntityDataInterface[*user.User]
 }
 
 type NewDatabaseServiceParams struct {
-	UserParams *databaseService.NewEntityDataParams // leave nil for default
+	*databaseService.NewEntityDataParams // leave nil for default
 }
 
 func NewDatabaseService(params *NewDatabaseServiceParams) DatabaseServiceInterface {
-	if params.UserParams == nil {
-		params.UserParams = &databaseService.NewEntityDataParams{
-			NewPostGresDatabaseParams: &databaseService.NewPostGresDatabaseParams{},
-		}
-	}
-	var newDBConnection databaseService.PostGresDatabaseInterface
-	if params.UserParams.Existing != nil {
-		newDBConnection = params.UserParams.Existing
-	} else {
-		newDBConnection = databaseService.NewPostGresDatabase(params.UserParams.NewPostGresDatabaseParams)
-		params.UserParams.Existing = newDBConnection
+	if params.NewEntityDataParams == nil {
+		params.NewEntityDataParams = &databaseService.NewEntityDataParams{}
 	}
 
 	db := &DatabaseService{
-		UserInterface:     databaseService.NewEntityData[*user.User](params.UserParams),
-		DatabaseInterface: newDBConnection,
+		EntityDataInterface: databaseService.NewEntityData[*user.User](params.NewEntityDataParams),
 	}
 	db.Connect()
-	db.User().GetDatabaseSession().AutoMigrate(&user.User{})
+	db.GetDatabaseSession().AutoMigrate(&user.User{})
 	return db
 }
 
-func (d *DatabaseService) User() UserDataServiceInterface {
-	return d.UserInterface
-}
-
 func (d *DatabaseService) Connect() {
-	d.User().Connect()
-	d.User().Connect()
+	d.EntityDataInterface.Connect()
 }
 
 func (d *DatabaseService) Disconnect() {
-	d.User().Disconnect()
-	d.User().Disconnect()
+	d.EntityDataInterface.Disconnect()
 }

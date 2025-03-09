@@ -1,6 +1,7 @@
 package networkQueue
 
 import (
+	"fmt"
 	"log"
 	"math/rand"
 	"os"
@@ -154,7 +155,8 @@ func (n *NetworkQueueConnection) CloseChannel(channel *amqp.Channel) {
 
 func failOnError(err error, msg string) {
 	if err != nil {
-		log.Panicf("%s: %s", msg, err)
+		fmt.Printf("Queue %s: %s", msg, err)
+		//log.Panicf("%s: %s", msg, err)
 	}
 }
 
