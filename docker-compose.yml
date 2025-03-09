@@ -406,6 +406,8 @@ services:
       - 15672:15672
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
+    environment:
+      RABBITMQ_ERLANG_COOKIE: "mysecretcookie"
     entrypoint: >
       sh -c "chown -R rabbitmq:rabbitmq /var/lib/rabbitmq &&
             [ -f /var/lib/rabbitmq/.erlang.cookie ] && chmod 400 /var/lib/rabbitmq/.erlang.cookie || true &&

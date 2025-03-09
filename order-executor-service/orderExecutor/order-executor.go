@@ -41,20 +41,28 @@ func ProcessTrade(orderData network.MatchingEngineToExecutionJSON, databaseAcces
 	println("Total Cost: ", totalCost)
 
 	// 1. Go to the Transaction DB, get any stock transaction with the ID Equal to the buy order ID or the sell order ID
-	transactionList, err := databaseAccessTransact.StockTransaction().GetByIDs([]string{buyOrderID, sellOrderID})
+	transactionList, errorList, err := databaseAccessTransact.StockTransaction().GetByIDs([]string{buyOrderID, sellOrderID})
 
 	if err != nil {
 		println("Error: ", err.Error())
 		return false, false, fmt.Errorf("failed to get transactions: %v", err)
 	}
 
+	for key, value := range errorList {
+		println("Error: ", key, value)
+	}
+
 	stockTx := (*transactionList)[0] // Get the stock transaction that initiated this trade
 
 	// 2. Go to User-Managment DB, get wallet of userID present on  Buy order transaction
-	walletList, err := databaseAccessUser.Wallet().GetByIDs([]string{buyerID, sellerID})
+	walletList, errorList, err := databaseAccessUser.Wallet().GetByIDs([]string{buyerID, sellerID})
+
 	if err != nil {
 		println("Error: ", err.Error())
 		return false, false, fmt.Errorf("failed to get wallets: %v", err)
+	}
+	for key, value := range errorList {
+		println("Error: ", key, value)
 	}
 
 	// 3. Check if buyer has enough funds to afford the quantity*stockprice

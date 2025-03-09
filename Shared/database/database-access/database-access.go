@@ -26,13 +26,13 @@ type EntityDataAccessInterface[TEntity entity.EntityInterface, TInterface entity
 	DatabaseAccessInterface
 	GetByID(id string) (TInterface, error)
 	GetAll() (*[]TInterface, error)
-	GetByIDs(ids []string) (*[]TInterface, error)
+	GetByIDs(ids []string) (*[]TInterface, map[string]int, error)
 	GetByForeignID(foreignIDColumn string, foreignID string) (*[]TInterface, error)
-	GetByForeignIDBulk(foreignIDColumn string, foreignIDs []string) (*[]TInterface, error)
+	GetByForeignIDBulk(foreignIDColumn string, foreignIDs []string) (*[]TInterface, map[string]int, error)
 	Create(entity TInterface) (TInterface, error)
-	CreateBulk(entities *[]TInterface) (*[]TInterface, error)
+	CreateBulk(entities *[]TInterface) (*[]TInterface, map[string]int, error)
 	Update(entity TInterface) error
-	UpdateBulk(entities *[]TInterface) error
+	UpdateBulk(entities *[]TInterface) (map[string]int, error)
 	Delete(id string) error
-	DeleteBulk(ids []string) error
+	DeleteBulk(ids []string) (map[string]int, error)
 }

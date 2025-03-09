@@ -12,7 +12,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/google/uuid"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/gorm/schema"
@@ -143,20 +142,20 @@ func (d *PostGresDatabase) GetNewDatabaseSession() *gorm.DB {
 type EntityDataInterface[T entity.EntityInterface] interface {
 	PostGresDatabaseInterface
 	GetByID(ID string) (T, error)
-	GetByIDs(IDs []string) (*[]T, error)
+	GetByIDs(IDs []string) (*[]T, map[string]error)
 	GetByForeignID(foreignIDColumn string, foreignID string) (*[]T, error)
-	GetByForeignIDBulk(foreignIDColumn string, foreignIDs []string) (*[]T, error)
+	GetByForeignIDBulk(foreignIDColumn string, foreignIDs []string) (*[]T, map[string]error)
 	GetAll() (*[]T, error)
 	Create(entity T) error
-	CreateBulk(entities *[]T) error
+	CreateBulk(entities *[]T) map[string]error
 	//Update(entity T) error
 	//UpdateBulk(entities *[]T) error
 	Delete(ID string) error
-	DeleteBulk(IDs []string) error
+	DeleteBulk(IDs []string) map[string]error
 	Exists(ID string) (bool, error)
 
 	//I need a safe updater for numerical values... we can't pass it the updated entity, we have to pass it the values to change the fields by.
-	Update([]*entity.EntityUpdateData) error
+	Update([]*entity.EntityUpdateData) map[string]error
 	//collect all the values for a string where the fields are the same
 }
 
@@ -246,14 +245,27 @@ func (d *EntityData[T]) GetByID(id string) (T, error) {
 	return ent, nil
 }
 
-func (d *EntityData[T]) GetByIDs(ids []string) (*[]T, error) {
+func (d *EntityData[T]) GetByIDs(ids []string) (*[]T, map[string]error) {
 	var entities []T
+	errors := make(map[string]error)
 	results := d.GetDatabaseSession().Find(&entities, "id IN ?", ids)
 	if results.Error != nil {
+		errors["transaction"] = results.Error
 		fmt.Printf("error getting by ids: %s", results.Error.Error())
-		return nil, results.Error
+		return nil, errors
 	}
-	return &entities, nil
+	//get all ids in ids that are not in entities
+	idsFound := make(map[string]bool)
+	for _, entity := range entities {
+		idsFound[entity.GetId()] = true
+	}
+	for _, id := range ids {
+		if _, ok := idsFound[id]; !ok {
+			errors[id] = gorm.ErrRecordNotFound
+		}
+	}
+
+	return &entities, errors
 }
 
 // This needs the table column names, whihc is a little diffrent
@@ -264,43 +276,133 @@ func (d *EntityData[T]) GetByForeignID(foreignIDColumn string, foreignID string)
 		fmt.Printf("error getting by foreignKey: %s", results.Error.Error())
 		return nil, results.Error
 	}
-	println("Printing ENtities")
-	for _, entity := range entities {
-		jso, _ := entity.ToJSON()
-		println("Entity: ", string(jso))
-	}
 	return &entities, nil
 }
 
-func (d *EntityData[T]) GetByForeignIDBulk(foreignIDColumn string, foreignIDs []string) (*[]T, error) {
+func (d *EntityData[T]) GetByForeignIDBulk(foreignIDColumn string, foreignIDs []string) (*[]T, map[string]error) {
 	var entities []T
+	errors := make(map[string]error)
+
 	results := d.GetDatabaseSession().Find(&entities, foreignIDColumn+" IN ?", foreignIDs)
 	if results.Error != nil {
+		errors["transaction"] = results.Error
 		fmt.Printf("error getting by foreignKey: %s", results.Error.Error())
-		return nil, results.Error
+		return nil, errors
 	}
-	return &entities, nil
+
+	//get all ids in ids that are not in entities
+	idsFound := make(map[string]bool)
+	for _, entity := range entities {
+		val := reflect.ValueOf(entity)
+		if val.Kind() == reflect.Ptr {
+			val = val.Elem()
+		}
+		fieldVal := val.FieldByName(foreignIDColumn)
+		if !fieldVal.IsValid() {
+			// Handle the case where the field does not exist.
+			continue
+		}
+		foreignID := fieldVal.String()
+		idsFound[foreignID] = true
+	}
+	for _, id := range foreignIDs {
+		if _, ok := idsFound[id]; !ok {
+			errors[id] = gorm.ErrRecordNotFound
+		}
+	}
+	return &entities, errors
 }
 
 func (d *EntityData[T]) GetAll() (*[]T, error) {
 	var entities []T
-	d.GetDatabaseSession().Find(&entities)
+	result := d.GetDatabaseSession().Find(&entities)
+	if result.Error != nil {
+		fmt.Printf("error getting all: %s", result.Error.Error())
+		return nil, result.Error
+	}
 	return &entities, nil
 }
 
-func (d *EntityData[T]) CreateBulk(entities *[]T) error {
+// func (d *EntityData[T]) CreateBulk(entities *[]T) map[string]error {
+// 	maxInsertCount, err := strconv.Atoi(os.Getenv("MAX_DB_INSERT_COUNT"))
+// 	if err != nil {
+// 		fmt.Printf("error getting max insert count: %s", err.Error())
+// 		return err
+// 	}
+
+// 	result := d.GetNewDatabaseSession().CreateInBatches(&entities, maxInsertCount)
+// 	if result.Error != nil {
+// 		fmt.Printf("error creating entities in bulk: %s", result.Error.Error())
+// 		return result.Error
+// 	}
+// 	return nil
+// }
+
+func (d *EntityData[T]) CreateBulk(entities *[]T) map[string]error {
+	// errorMap accumulates errors keyed by the entity's ID.
+	errorMap := make(map[string]error)
+
 	maxInsertCount, err := strconv.Atoi(os.Getenv("MAX_DB_INSERT_COUNT"))
 	if err != nil {
 		fmt.Printf("error getting max insert count: %s", err.Error())
-		return err
+		errorMap["transaction"] = err
+		return errorMap
 	}
 
 	result := d.GetNewDatabaseSession().CreateInBatches(&entities, maxInsertCount)
 	if result.Error != nil {
-		fmt.Printf("error creating entities in bulk: %s", result.Error.Error())
-		return result.Error
+
+		// Get a new database session and begin a transaction.
+		db := d.GetNewDatabaseSession()
+		tx := db.Begin()
+		if tx.Error != nil {
+			errorMap["transaction"] = tx.Error
+			return errorMap
+		}
+
+		// Use a counter to generate unique savepoint names.
+		spCounter := 0
+
+		// Process each entity individually.
+		for i := range *entities {
+			entity := (*entities)[i]
+			spCounter++
+			spName := fmt.Sprintf("sp_%d", spCounter)
+			tx.SavePoint(spName)
+
+			// Try inserting the entity.
+			if err := tx.Create(&entity).Error; err != nil {
+				// If an error occurs, rollback to the savepoint so that this insert is undone.
+				tx.RollbackTo(spName)
+				// Record the error keyed by the entity's ID.
+				if timestampColumn, ok := d.columnCache["timestamp"]; ok {
+					//get the timestamp
+					timestamp := reflect.ValueOf(entity).FieldByName(timestampColumn.ColumnName).String()
+					errorMap[timestamp] = fmt.Errorf("error creating entity: %v", err)
+				} else if userColumn, ok := d.columnCache["user_id"]; ok {
+					//get the user_id
+					userID := reflect.ValueOf(entity).FieldByName(userColumn.ColumnName).String()
+					errorMap[userID] = fmt.Errorf("error creating entity: %v", err)
+				} else if nameColumn, ok := d.columnCache["Name"]; ok {
+					//get the name
+					name := reflect.ValueOf(entity).FieldByName(nameColumn.ColumnName).String()
+					errorMap[name] = fmt.Errorf("error creating entity: %v", err)
+				} else {
+					errorMap[entity.GetId()] = fmt.Errorf("error creating entity: %v", err)
+				}
+				// Continue to the next entity.
+				continue
+			}
+			// Optionally, you can log successful insertions if needed.
+		}
+
+		// Commit the transaction.
+		if err := tx.Commit().Error; err != nil {
+			// If the commit itself fails, record a transaction-level error.
+			errorMap["transaction"] = fmt.Errorf("failed to commit transaction: %v", err)
+		}
 	}
-	return nil
+	return errorMap
 }
 
 func (d *EntityData[T]) Create(entity T) error {
@@ -309,38 +411,9 @@ func (d *EntityData[T]) Create(entity T) error {
 	result := d.GetNewDatabaseSession().Create(&entity)
 	//if we have a conflicting ID
 	if result.Error != nil {
-		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			candidateID := generateRandomID()
-			for {
-				newEnt := entity
-				newEnt.SetId(candidateID)
-				result := d.GetNewDatabaseSession().Create(&entity)
-				//result := d.GetNewDatabaseSession().FirstOrCreate(&newEnt, "id = ?", candidateID)
-				if result.Error != nil {
-					if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-						candidateID = generateRandomID()
-						//continue
-					}
-					fmt.Printf("error checking if entity exists: %s", result.Error.Error())
-					return result.Error
-				} else {
-					entity.SetId(candidateID)
-					entity.SetDateCreated(newEnt.GetDateCreated())
-					entity.SetDateModified(newEnt.GetDateModified())
-					break
-				}
-
-				// result, err := d.Exists()
-				// if err != nil {
-				// 	fmt.Printf("error checking existing: %s", err.Error())
-				// 	return err
-				// }
-
-				// if !result {
-				// 	break
-				// }
-			}
-		} else {
+		entity.SetId("")
+		result = d.GetNewDatabaseSession().Create(&entity)
+		if result.Error != nil {
 			fmt.Printf("error creating %s: %s", entity.GetId(), result.Error.Error())
 			return result.Error
 		}
@@ -356,10 +429,10 @@ func (d *EntityData[T]) Create(entity T) error {
 	return nil
 }
 
-func generateRandomID() string {
-	// Generate a new UUID as the stock ID
-	return uuid.New().String()
-}
+// func generateRandomID() string {
+// 	// Generate a new UUID as the stock ID
+// 	return uuid.New().String()
+// }
 
 // func (d *EntityData[T]) Update(entity T) error {
 // 	updateResult := d.GetDatabaseSession().Save(entity)
@@ -380,139 +453,563 @@ func generateRandomID() string {
 //	}
 //
 // Generated with assistance of Chat GPT 03-mini-high: https://chatgpt.com/share/67cb6dc5-7cf4-8006-a7cc-b33fa7765051
-func (d *EntityData[T]) Update(updates []*entity.EntityUpdateData) error {
-	// Maps to hold the aggregated updates.
-	// newUpdates: key is field name, value is map from ID to the new value.
-	newUpdates := make(map[string]map[string]string)
-	// alterUpdates: key is field name, value is map from ID to the cumulative delta.
-	alterUpdates := make(map[string]map[string]float64)
 
-	// Process each update.
+func (d *EntityData[T]) Update(updates []*entity.EntityUpdateData) map[string]error {
+	// errorMap will accumulate errors keyed by row ID.
+	errorMap := make(map[string]error)
+	// Aggregate new and alter updates.
+	newUpdates := make(map[string]map[string]string)    // field -> (row ID -> new value)
+	alterUpdates := make(map[string]map[string]float64) // field -> (row ID -> cumulative delta)
+
 	for _, upd := range updates {
 		if upd.NewValue != nil {
-			if _, ok := newUpdates[upd.Field]; !ok {
+			if newUpdates[upd.Field] == nil {
 				newUpdates[upd.Field] = make(map[string]string)
 			}
 			newUpdates[upd.Field][upd.ID] = *upd.NewValue
 		} else if upd.AlterValue != nil {
 			parsed, err := strconv.ParseFloat(*upd.AlterValue, 64)
 			if err != nil {
-				return fmt.Errorf("failed to parse alter value '%s' for ID %s and field %s: %v", *upd.AlterValue, upd.ID, upd.Field, err)
+				errorMap[upd.ID] = fmt.Errorf("failed to parse alter value '%s' for field %s: %v", *upd.AlterValue, upd.Field, err)
+				continue
 			}
-			if _, ok := alterUpdates[upd.Field]; !ok {
+			if alterUpdates[upd.Field] == nil {
 				alterUpdates[upd.Field] = make(map[string]float64)
 			}
 			alterUpdates[upd.Field][upd.ID] += parsed
 		}
 	}
 
-	// Wrap all updates in a transaction.
-	return d.GetNewDatabaseSession().Transaction(func(tx *gorm.DB) error {
-		// First, handle new value updates.
+	// Helper to convert new value to proper type and return SQL cast type.
+	convertNewValue := func(newVal string, fieldType reflect.Type) (interface{}, string, error) {
+		switch fieldType.Kind() {
+		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+			i, err := strconv.ParseInt(newVal, 10, 64)
+			if err != nil {
+				return nil, "", fmt.Errorf("failed to parse '%s' as integer: %v", newVal, err)
+			}
+			return i, "bigint", nil
+		case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+			u, err := strconv.ParseUint(newVal, 10, 64)
+			if err != nil {
+				return nil, "", fmt.Errorf("failed to parse '%s' as unsigned integer: %v", newVal, err)
+			}
+			return u, "bigint", nil
+		case reflect.Float32, reflect.Float64:
+			f, err := strconv.ParseFloat(newVal, 64)
+			if err != nil {
+				return nil, "", fmt.Errorf("failed to parse '%s' as float: %v", newVal, err)
+			}
+			return f, "double precision", nil
+		default:
+			return newVal, "text", nil
+		}
+	}
+
+	// Helper to convert alter delta to proper type and return SQL cast type.
+	convertDelta := func(delta float64, fieldType reflect.Type) (interface{}, string, error) {
+		switch fieldType.Kind() {
+		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+			return int64(delta), "bigint", nil
+		case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+			return uint64(delta), "bigint", nil
+		case reflect.Float32, reflect.Float64:
+			return delta, "double precision", nil
+		default:
+			return nil, "", fmt.Errorf("unsupported numeric field type %s", fieldType.Kind())
+		}
+	}
+
+	// Bulk update transaction.
+	err := d.GetNewDatabaseSession().Transaction(func(tx *gorm.DB) error {
+		// Process new value updates in bulk.
 		for field, idToNewVal := range newUpdates {
 			cacheEntry, ok := d.columnCache[field]
 			if !ok {
 				return fmt.Errorf("unknown field %s in column cache", field)
 			}
-
-			valueTuples := make([]string, 0, len(idToNewVal))
-			args := make([]interface{}, 0, len(idToNewVal)*2)
-
-			// For each update, convert the new value based on the field's type.
+			var valueTuples []string
+			var args []interface{}
 			for id, newVal := range idToNewVal {
-				var converted interface{}
-				var castType string
-
-				switch cacheEntry.FieldType.Kind() {
-				case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-					i, err := strconv.ParseInt(newVal, 10, 64)
-					if err != nil {
-						return fmt.Errorf("failed to parse new value '%s' as integer for field %s: %v", newVal, field, err)
-					}
-					converted = i
-					castType = "bigint"
-				case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-					u, err := strconv.ParseUint(newVal, 10, 64)
-					if err != nil {
-						return fmt.Errorf("failed to parse new value '%s' as unsigned integer for field %s: %v", newVal, field, err)
-					}
-					converted = u
-					castType = "bigint"
-				case reflect.Float32, reflect.Float64:
-					f, err := strconv.ParseFloat(newVal, 64)
-					if err != nil {
-						return fmt.Errorf("failed to parse new value '%s' as float for field %s: %v", newVal, field, err)
-					}
-					converted = f
-					castType = "double precision"
-				default:
-					// Treat as text if not a recognized numeric type.
-					converted = newVal
-					castType = "text"
+				converted, castType, err := convertNewValue(newVal, cacheEntry.FieldType)
+				if err != nil {
+					return fmt.Errorf("field %s for id %s: %v", field, id, err)
 				}
-				// Build each tuple, casting the ID to UUID and the new value to the proper type.
 				valueTuples = append(valueTuples, fmt.Sprintf("(CAST(? AS uuid), CAST(? AS %s))", castType))
 				args = append(args, id, converted)
 			}
-
 			query := fmt.Sprintf(`
 				UPDATE %s AS t
 				SET %s = u.new_val
 				FROM (VALUES %s) AS u(id, new_val)
 				WHERE t.id = u.id
 			`, d.tableName, cacheEntry.ColumnName, strings.Join(valueTuples, ", "))
-
 			if err := tx.Exec(query, args...).Error; err != nil {
-				return fmt.Errorf("failed new value bulk update for field '%s': %v", field, err)
+				return fmt.Errorf("failed bulk new value update for field '%s': %v", field, err)
 			}
 		}
 
-		// Next, handle alter value updates.
+		// Process alter value updates in bulk.
 		for field, idToDelta := range alterUpdates {
 			cacheEntry, ok := d.columnCache[field]
 			if !ok {
 				return fmt.Errorf("unknown field %s in column cache", field)
 			}
-
-			var castType string
-			valueTuples := make([]string, 0, len(idToDelta))
-			args := make([]interface{}, 0, len(idToDelta)*2)
-
+			var valueTuples []string
+			var args []interface{}
 			for id, delta := range idToDelta {
-				var deltaValue interface{}
-				switch cacheEntry.FieldType.Kind() {
-				case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-					castType = "bigint"
-					deltaValue = int64(delta)
-				case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-					castType = "bigint"
-					deltaValue = uint64(delta)
-				case reflect.Float32, reflect.Float64:
-					castType = "double precision"
-					deltaValue = delta
-				default:
-					return fmt.Errorf("unsupported numeric field type %s for field %s", cacheEntry.FieldType.Kind(), field)
+				deltaValue, castType, err := convertDelta(delta, cacheEntry.FieldType)
+				if err != nil {
+					return fmt.Errorf("field %s for id %s: %v", field, id, err)
 				}
-				// Build each tuple, casting the ID to UUID and the delta to the proper type.
 				valueTuples = append(valueTuples, fmt.Sprintf("(CAST(? AS uuid), CAST(? AS %s))", castType))
 				args = append(args, id, deltaValue)
 			}
-
 			query := fmt.Sprintf(`
 				UPDATE %s AS t
 				SET %s = t.%s + u.delta
 				FROM (VALUES %s) AS u(id, delta)
 				WHERE t.id = u.id
 			`, d.tableName, cacheEntry.ColumnName, cacheEntry.ColumnName, strings.Join(valueTuples, ", "))
-
 			if err := tx.Exec(query, args...).Error; err != nil {
-				return fmt.Errorf("failed alter value bulk update for field '%s': %v", field, err)
+				return fmt.Errorf("failed bulk alter value update for field '%s': %v", field, err)
 			}
 		}
-
 		return nil
 	})
+	if err == nil {
+		return nil
+	}
+
+	// Fallback: update row-by-row if bulk update fails.
+	tx := d.GetNewDatabaseSession().Begin()
+	if tx.Error != nil {
+		errorMap["transaction"] = tx.Error
+		return errorMap
+	}
+	spCounter := 0
+
+	// Process new value updates row-by-row.
+	for field, idToNewVal := range newUpdates {
+		cacheEntry, ok := d.columnCache[field]
+		if !ok {
+			for id := range idToNewVal {
+				errorMap[id] = fmt.Errorf("unknown field %s in column cache", field)
+			}
+			continue
+		}
+		var castType string
+		switch cacheEntry.FieldType.Kind() {
+		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
+			reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+			castType = "bigint"
+		case reflect.Float32, reflect.Float64:
+			castType = "double precision"
+		default:
+			castType = "text"
+		}
+		for id, newVal := range idToNewVal {
+			spCounter++
+			spName := fmt.Sprintf("sp_new_%d", spCounter)
+			tx.SavePoint(spName)
+			converted, _, err := convertNewValue(newVal, cacheEntry.FieldType)
+			if err != nil {
+				errorMap[id] = fmt.Errorf("failed to convert new value for field '%s': %v", field, err)
+				tx.RollbackTo(spName)
+				continue
+			}
+			query := fmt.Sprintf(`
+				UPDATE %s AS t
+				SET %s = CAST(? AS %s)
+				WHERE t.id = CAST(? AS uuid)
+			`, d.tableName, cacheEntry.ColumnName, castType)
+			if err := tx.Exec(query, converted, id).Error; err != nil {
+				tx.RollbackTo(spName)
+				errorMap[id] = fmt.Errorf("failed new value update for field '%s': %v", field, err)
+			}
+		}
+	}
+
+	// Process alter value updates row-by-row.
+	for field, idToDelta := range alterUpdates {
+		cacheEntry, ok := d.columnCache[field]
+		if !ok {
+			for id := range idToDelta {
+				errorMap[id] = fmt.Errorf("unknown field %s in column cache", field)
+			}
+			continue
+		}
+		var castType string
+		switch cacheEntry.FieldType.Kind() {
+		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
+			reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+			castType = "bigint"
+		case reflect.Float32, reflect.Float64:
+			castType = "double precision"
+		default:
+			errorMap["general"] = fmt.Errorf("unsupported numeric field type %s for field %s", cacheEntry.FieldType.Kind(), field)
+			continue
+		}
+		for id, delta := range idToDelta {
+			spCounter++
+			spName := fmt.Sprintf("sp_alter_%d", spCounter)
+			tx.SavePoint(spName)
+			deltaValue, _, err := convertDelta(delta, cacheEntry.FieldType)
+			if err != nil {
+				errorMap[id] = fmt.Errorf("failed to convert delta for field '%s': %v", field, err)
+				tx.RollbackTo(spName)
+				continue
+			}
+			query := fmt.Sprintf(`
+				UPDATE %s AS t
+				SET %s = t.%s + CAST(? AS %s)
+				WHERE t.id = CAST(? AS uuid)
+			`, d.tableName, cacheEntry.ColumnName, cacheEntry.ColumnName, castType)
+			if err := tx.Exec(query, deltaValue, id).Error; err != nil {
+				tx.RollbackTo(spName)
+				errorMap[id] = fmt.Errorf("failed alter value update for field '%s': %v", field, err)
+			}
+		}
+	}
+
+	if err := tx.Commit().Error; err != nil {
+		errorMap["transaction"] = fmt.Errorf("failed to commit transaction: %v", err)
+	}
+	for id := range errorMap {
+		if _, ok := errorMap[id]; !ok {
+			fmt.Printf("error updating entity %s: %v", id, errorMap[id])
+		}
+	}
+	return errorMap
 }
+
+// func (d *EntityData[T]) Update(updates []*entity.EntityUpdateData) map[string]error {
+// 	// errorMap will accumulate errors keyed by row ID.
+// 	errorMap := make(map[string]error)
+// 	skipIds := make(map[string]bool)
+// 	for _, upd := range updates {
+// 		if _, ok := skipIds[upd.ID]; ok {
+// 			continue
+// 		}
+// 		skipIds[upd.ID] = false
+// 	}
+// 	// Aggregate updates per field.
+// 	newUpdates := make(map[string]map[string]string)    // field -> (row ID -> new value)
+// 	alterUpdates := make(map[string]map[string]float64) // field -> (row ID -> cumulative delta)
+
+// 	for _, upd := range updates {
+// 		if skipIds[upd.ID] {
+// 			continue
+// 		}
+// 		if upd.NewValue != nil {
+// 			if _, ok := newUpdates[upd.Field]; !ok {
+// 				newUpdates[upd.Field] = make(map[string]string)
+// 			}
+// 			// For duplicate new value updates on the same row and field, the later one wins.
+// 			newUpdates[upd.Field][upd.ID] = *upd.NewValue
+// 		} else if upd.AlterValue != nil {
+// 			parsed, err := strconv.ParseFloat(*upd.AlterValue, 64)
+// 			if err != nil {
+// 				skipIds[upd.ID] = true
+// 				// Record parse error for this row.
+// 				fmt.Printf("failed to parse alter value '%s' for field %s: %v", *upd.AlterValue, upd.Field, err)
+// 				errorMap[upd.ID] = fmt.Errorf("failed to parse alter value '%s' for field %s: %v", *upd.AlterValue, upd.Field, err)
+// 				continue
+// 			}
+// 			if _, ok := alterUpdates[upd.Field]; !ok {
+// 				alterUpdates[upd.Field] = make(map[string]float64)
+// 			}
+// 			alterUpdates[upd.Field][upd.ID] += parsed
+// 		}
+// 	}
+
+// 	//transaction for full attempt:
+// 	err := d.GetNewDatabaseSession().Transaction(func(tx *gorm.DB) error {
+// 		// First, handle new value updates.
+// 		for field, idToNewVal := range newUpdates {
+// 			cacheEntry, ok := d.columnCache[field]
+// 			if !ok {
+// 				fmt.Printf("unknown field %s in column cache", field)
+// 				return fmt.Errorf("unknown field %s in column cache", field)
+// 			}
+
+// 			valueTuples := make([]string, 0, len(idToNewVal))
+// 			args := make([]interface{}, 0, len(idToNewVal)*2)
+
+// 			// For each update, convert the new value based on the field's type.
+// 			for id, newVal := range idToNewVal {
+// 				var converted interface{}
+// 				var castType string
+
+// 				switch cacheEntry.FieldType.Kind() {
+// 				case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+// 					i, err := strconv.ParseInt(newVal, 10, 64)
+// 					if err != nil {
+// 						fmt.Printf("failed to parse new value '%s' as integer for field %s: %v", newVal, field, err)
+// 						return fmt.Errorf("failed to parse new value '%s' as integer for field %s: %v", newVal, field, err)
+// 					}
+// 					converted = i
+// 					castType = "bigint"
+// 				case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+// 					u, err := strconv.ParseUint(newVal, 10, 64)
+// 					if err != nil {
+// 						fmt.Printf("failed to parse new value '%s' as unsigned integer for field %s: %v", newVal, field, err)
+// 						return fmt.Errorf("failed to parse new value '%s' as unsigned integer for field %s: %v", newVal, field, err)
+// 					}
+// 					converted = u
+// 					castType = "bigint"
+// 				case reflect.Float32, reflect.Float64:
+// 					f, err := strconv.ParseFloat(newVal, 64)
+// 					if err != nil {
+// 						fmt.Printf("failed to parse new value '%s' as float for field %s: %v", newVal, field, err)
+// 						return fmt.Errorf("failed to parse new value '%s' as float for field %s: %v", newVal, field, err)
+// 					}
+// 					converted = f
+// 					castType = "double precision"
+// 				default:
+// 					// Treat as text if not a recognized numeric type.
+// 					converted = newVal
+// 					castType = "text"
+// 				}
+// 				// Build each tuple, casting the ID to UUID and the new value to the proper type.
+// 				valueTuples = append(valueTuples, fmt.Sprintf("(CAST(? AS uuid), CAST(? AS %s))", castType))
+// 				args = append(args, id, converted)
+// 			}
+
+// 			query := fmt.Sprintf(`
+// 				UPDATE %s AS t
+// 				SET %s = u.new_val
+// 				FROM (VALUES %s) AS u(id, new_val)
+// 				WHERE t.id = u.id
+// 			`, d.tableName, cacheEntry.ColumnName, strings.Join(valueTuples, ", "))
+
+// 			if err := tx.Exec(query, args...).Error; err != nil {
+// 				fmt.Printf("failed new value bulk update for field '%s': %v", field, err)
+// 				return fmt.Errorf("failed new value bulk update for field '%s': %v", field, err)
+// 			}
+// 		}
+
+// 		// Next, handle alter value updates.
+// 		for field, idToDelta := range alterUpdates {
+// 			cacheEntry, ok := d.columnCache[field]
+// 			if !ok {
+// 				fmt.Printf("unknown field %s in column cache", field)
+// 				return fmt.Errorf("unknown field %s in column cache", field)
+// 			}
+
+// 			var castType string
+// 			valueTuples := make([]string, 0, len(idToDelta))
+// 			args := make([]interface{}, 0, len(idToDelta)*2)
+
+// 			for id, delta := range idToDelta {
+// 				var deltaValue interface{}
+// 				switch cacheEntry.FieldType.Kind() {
+// 				case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+// 					castType = "bigint"
+// 					deltaValue = int64(delta)
+// 				case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+// 					castType = "bigint"
+// 					deltaValue = uint64(delta)
+// 				case reflect.Float32, reflect.Float64:
+// 					castType = "double precision"
+// 					deltaValue = delta
+// 				default:
+// 					fmt.Printf("unsupported numeric field type %s for field %s", cacheEntry.FieldType.Kind(), field)
+// 					return fmt.Errorf("unsupported numeric field type %s for field %s", cacheEntry.FieldType.Kind(), field)
+// 				}
+// 				// Build each tuple, casting the ID to UUID and the delta to the proper type.
+// 				valueTuples = append(valueTuples, fmt.Sprintf("(CAST(? AS uuid), CAST(? AS %s))", castType))
+// 				args = append(args, id, deltaValue)
+// 			}
+
+// 			query := fmt.Sprintf(`
+// 				UPDATE %s AS t
+// 				SET %s = t.%s + u.delta
+// 				FROM (VALUES %s) AS u(id, delta)
+// 				WHERE t.id = u.id
+// 			`, d.tableName, cacheEntry.ColumnName, cacheEntry.ColumnName, strings.Join(valueTuples, ", "))
+
+// 			if err := tx.Exec(query, args...).Error; err != nil {
+// 				fmt.Printf("failed alter value bulk update for field '%s': %v", field, err)
+// 				return fmt.Errorf("failed alter value bulk update for field '%s': %v", field, err)
+// 			}
+// 		}
+
+// 		return nil
+// 	})
+// 	if err == nil {
+// 		return nil
+// 	}
+
+// 	//if we had issues, insert one by one
+// 	// Begin a transaction for partial isolation.
+// 	tx := d.GetNewDatabaseSession().Begin()
+// 	if tx.Error != nil {
+// 		fmt.Printf("failed to begin transaction: %v", tx.Error)
+// 		errorMap["transaction"] = tx.Error
+// 		return errorMap
+// 	}
+
+// 	// A counter to generate unique savepoint names.
+// 	spCounter := 0
+
+// 	// Handle new value updates per row.
+// 	for field, idToNewVal := range newUpdates {
+// 		cacheEntry, ok := d.columnCache[field]
+// 		if !ok {
+// 			fmt.Printf("unknown field %s in column cache", field)
+// 			// For each row in this field, record an error.
+// 			for id := range idToNewVal {
+// 				skipIds[id] = true
+// 				errorMap[id] = fmt.Errorf("unknown field %s in column cache", field)
+// 			}
+// 			continue
+// 		}
+
+// 		// Determine SQL cast type based on the field type.
+// 		var castType string
+// 		switch cacheEntry.FieldType.Kind() {
+// 		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
+// 			reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+// 			castType = "bigint"
+// 		case reflect.Float32, reflect.Float64:
+// 			castType = "double precision"
+// 		default:
+// 			castType = "text"
+// 		}
+
+// 		// Update each row individually.
+// 		for id, newVal := range idToNewVal {
+// 			if skipIds[id] {
+// 				continue
+// 			}
+// 			spCounter++
+// 			spName := fmt.Sprintf("sp_new_%d", spCounter)
+// 			tx.SavePoint(spName)
+
+// 			// Convert newVal to the correct type.
+// 			var converted interface{}
+// 			switch cacheEntry.FieldType.Kind() {
+// 			case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+// 				i, err := strconv.ParseInt(newVal, 10, 64)
+// 				if err != nil {
+// 					fmt.Printf("failed to parse new value '%s' as integer for field %s: %v", newVal, field, err)
+// 					skipIds[id] = true
+// 					errorMap[id] = fmt.Errorf("failed to parse new value '%s' as integer for field %s: %v", newVal, field, err)
+// 					continue
+// 				}
+// 				converted = i
+// 			case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+// 				u, err := strconv.ParseUint(newVal, 10, 64)
+// 				if err != nil {
+// 					fmt.Printf("failed to parse new value '%s' as unsigned integer for field %s: %v", newVal, field, err)
+// 					skipIds[id] = true
+// 					errorMap[id] = fmt.Errorf("failed to parse new value '%s' as unsigned integer for field %s: %v", newVal, field, err)
+// 					continue
+// 				}
+// 				converted = u
+// 			case reflect.Float32, reflect.Float64:
+// 				f, err := strconv.ParseFloat(newVal, 64)
+// 				if err != nil {
+// 					fmt.Printf("failed to parse new value '%s' as float for field %s: %v", newVal, field, err)
+// 					skipIds[id] = true
+// 					errorMap[id] = fmt.Errorf("failed to parse new value '%s' as float for field %s: %v", newVal, field, err)
+// 					continue
+// 				}
+// 				converted = f
+// 			default:
+// 				converted = newVal
+// 			}
+
+// 			// Build and execute the update query for this single row.
+// 			query := fmt.Sprintf(`
+// 				UPDATE %s AS t
+// 				SET %s = CAST(? AS %s)
+// 				WHERE t.id = CAST(? AS uuid)
+// 			`, d.tableName, cacheEntry.ColumnName, castType)
+// 			if err := tx.Exec(query, converted, id).Error; err != nil {
+// 				// Rollback only this row's update.
+// 				fmt.Printf("failed new value update for field '%s': %v", field, err)
+// 				skipIds[id] = true
+// 				tx.RollbackTo(spName)
+// 				errorMap[id] = fmt.Errorf("failed new value update for field '%s': %v", field, err)
+// 			}
+// 		}
+// 	}
+
+// 	// Handle alter value updates per row.
+// 	for field, idToDelta := range alterUpdates {
+// 		cacheEntry, ok := d.columnCache[field]
+// 		if !ok {
+// 			fmt.Printf("unknown field %s in column cache", field)
+// 			for id := range idToDelta {
+// 				skipIds[id] = true
+// 				errorMap[id] = fmt.Errorf("unknown field %s in column cache", field)
+// 			}
+// 			continue
+// 		}
+
+// 		// Determine SQL cast type for the delta.
+// 		var castType string
+// 		switch cacheEntry.FieldType.Kind() {
+// 		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
+// 			reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+// 			castType = "bigint"
+// 		case reflect.Float32, reflect.Float64:
+// 			castType = "double precision"
+// 		default:
+// 			fmt.Printf("unsupported numeric field type %s for field %s", cacheEntry.FieldType.Kind(), field)
+// 			for id := range idToDelta {
+// 				skipIds[id] = true
+// 			}
+// 			errorMap["general"] = fmt.Errorf("unsupported numeric field type %s for field %s", cacheEntry.FieldType.Kind(), field)
+// 			continue
+// 		}
+
+// 		for id, delta := range idToDelta {
+// 			if skipIds[id] {
+// 				continue
+// 			}
+// 			spCounter++
+// 			spName := fmt.Sprintf("sp_alter_%d", spCounter)
+// 			tx.SavePoint(spName)
+
+// 			// Convert the delta value based on the field type.
+// 			var deltaValue interface{}
+// 			switch cacheEntry.FieldType.Kind() {
+// 			case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+// 				deltaValue = int64(delta)
+// 			case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+// 				deltaValue = uint64(delta)
+// 			case reflect.Float32, reflect.Float64:
+// 				deltaValue = delta
+// 			}
+
+// 			query := fmt.Sprintf(`
+// 				UPDATE %s AS t
+// 				SET %s = t.%s + CAST(? AS %s)
+// 				WHERE t.id = CAST(? AS uuid)
+// 			`, d.tableName, cacheEntry.ColumnName, cacheEntry.ColumnName, castType)
+// 			if err := tx.Exec(query, deltaValue, id).Error; err != nil {
+// 				fmt.Printf("failed alter value update for field '%s': %v", field, err)
+// 				tx.RollbackTo(spName)
+// 				skipIds[id] = true
+// 				if errors.Is(err, gorm.ErrRecordNotFound) {
+// 					errorMap[id] = err
+// 				} else {
+// 					errorMap[id] = fmt.Errorf("failed alter value update for field '%s': %v", field, err)
+// 				}
+// 			}
+// 		}
+// 	}
+//
+// 	// Attempt to commit the transaction.
+// 	if err := tx.Commit().Error; err != nil {
+// 		// If commit fails, record a general error.
+// 		errorMap["transaction"] = fmt.Errorf("failed to commit transaction: %v", err)
+// 	}
+// 	return errorMap
+// }
 
 func (d *EntityData[T]) Delete(id string) error {
 	// _, err := d.GetByID(id)
@@ -528,16 +1025,48 @@ func (d *EntityData[T]) Delete(id string) error {
 	return nil
 }
 
-func (d *EntityData[T]) DeleteBulk(ids []string) error {
+func (d *EntityData[T]) DeleteBulk(ids []string) map[string]error {
 	// _, err := d.GetByIDs(ids)
 	// if err != nil {
 	// 	return err
 	// }
+	errorMap := make(map[string]error)
 	var zero T
 	deleteResult := d.GetDatabaseSession().Delete(&zero, "id IN ?", ids)
 	if deleteResult.Error != nil {
-		fmt.Printf("error deleting entities: %s", deleteResult.Error.Error())
-		return deleteResult.Error
+		db := d.GetNewDatabaseSession()
+		tx := db.Begin()
+		if tx.Error != nil {
+			errorMap["transaction"] = tx.Error
+			return errorMap
+		}
+
+		// Use a counter to generate unique savepoint names.
+		spCounter := 0
+
+		// Process each entity individually.
+		for _, id := range ids {
+			spCounter++
+			spName := fmt.Sprintf("sp_%d", spCounter)
+			tx.SavePoint(spName)
+
+			// Try inserting the entity.
+			if err := tx.Delete(&zero, "id = ?", id).Error; err != nil {
+				// If an error occurs, rollback to the savepoint so that this insert is undone.
+				tx.RollbackTo(spName)
+				// Record the error keyed by the entity's ID.
+				errorMap[id] = fmt.Errorf("error deleting entity: %v", err)
+				// Continue to the next entity.
+				continue
+			}
+			// Optionally, you can log successful insertions if needed.
+		}
+
+		// Commit the transaction.
+		if err := tx.Commit().Error; err != nil {
+			// If the commit itself fails, record a transaction-level error.
+			errorMap["transaction"] = fmt.Errorf("failed to commit transaction: %v", err)
+		}
 	}
 	return nil
 }

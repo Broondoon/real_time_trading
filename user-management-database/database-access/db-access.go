@@ -13,7 +13,7 @@ import (
 type UserStocksDataAccessInterface interface {
 	databaseAccess.EntityDataAccessInterface[*userStock.UserStock, userStock.UserStockInterface]
 	GetUserStocks(userID string) (*[]userStock.UserStockInterface, error)
-	GetUserStocksBulk(userIDs []string, routine func(userID string, userStocks *[]userStock.UserStockInterface)) error
+	GetUserStocksBulk(userIDs []string, routine func(userID string, userStocks *[]userStock.UserStockInterface, errorCode int)) error
 }
 
 type UserStocksDataAccess struct {
@@ -124,8 +124,8 @@ func (d *UserStocksDataAccess) GetUserStocks(userID string) (*[]userStock.UserSt
 	return userStocks, nil
 }
 
-func (d *UserStocksDataAccess) GetUserStocksBulk(userIDs []string, routine func(userID string, userStocks *[]userStock.UserStockInterface)) error {
-	userStocks, err := d.GetByForeignIDBulk("user_id", userIDs)
+func (d *UserStocksDataAccess) GetUserStocksBulk(userIDs []string, routine func(userID string, userStocks *[]userStock.UserStockInterface, errorCode int)) error {
+	userStocks, errList, err := d.GetByForeignIDBulk("user_id", userIDs)
 	//lets make a variant which is get by foregin ids. Get back multiple, then perform a function for each userId
 	if err != nil {
 		println("Error fetching user stocks by foreign ID for userIDs %s: %v\n", userIDs, err)
@@ -138,7 +138,7 @@ func (d *UserStocksDataAccess) GetUserStocksBulk(userIDs []string, routine func(
 				userStockslist = append(userStockslist, userStock)
 			}
 		}
-		go routine(userID, &userStockslist)
+		go routine(userID, &userStockslist, errList[userID])
 	}
 	return nil
 }

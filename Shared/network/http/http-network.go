@@ -8,7 +8,10 @@ import (
 	"net/url"
 	"os"
 	"strings"
+	"time"
 )
+
+const TIMEOUT = 5000 * time.Millisecond
 
 type NetworkHttp struct {
 	network.BaseNetworkInterface
@@ -25,14 +28,15 @@ func NewNetworkHttp() network.NetworkInterface {
 }
 
 func handleFunc(params network.HandlerParams, w http.ResponseWriter, r *http.Request) {
-	// fmt.Println("Handling request for: ", r.URL.Path)
+	fmt.Println("Handling request for: ", r.URL.Path)
+	responseWriterWrapper := &responseWriterWrapper{ResponseWriter: w, currentCode: http.StatusProcessing, finished: make(chan bool, 1)}
 	var body []byte
 	var err error
 	queryParams := make(url.Values)
 	queryParams, err = url.ParseQuery(r.URL.RawQuery)
 	if err != nil {
 		fmt.Println("Error, there was an issue with reading the message:", err)
-		w.WriteHeader(http.StatusBadRequest)
+		responseWriterWrapper.WriteHeader(http.StatusBadRequest)
 		return
 	}
 	if r.Method == http.MethodGet || r.Method == http.MethodDelete || r.Method == http.MethodPut {
@@ -48,7 +52,7 @@ func handleFunc(params network.HandlerParams, w http.ResponseWriter, r *http.Req
 		body, err = io.ReadAll(r.Body)
 		if err != nil {
 			fmt.Println("Error, there was an issue with reading the message:", err)
-			w.WriteHeader(http.StatusInternalServerError)
+			responseWriterWrapper.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 		defer r.Body.Close()
@@ -65,17 +69,55 @@ func handleFunc(params network.HandlerParams, w http.ResponseWriter, r *http.Req
 		}
 	}
 
-	params.Handler(w, body, queryParams, r.Method)
+	go params.Handler(responseWriterWrapper, body, queryParams, r.Method)
+	select {
+	case <-responseWriterWrapper.finished:
+		close(responseWriterWrapper.finished)
+		break
+	case <-time.After(TIMEOUT):
+		if responseWriterWrapper.currentCode == http.StatusProcessing {
+			println("timed out with no response")
+			responseWriterWrapper.ResponseWriter.WriteHeader(http.StatusRequestTimeout)
+		}
+		close(responseWriterWrapper.finished)
+		break
+	}
 	//w.WriteHeader(http.StatusOK)
+}
+
+type responseWriterWrapper struct {
+	http.ResponseWriter
+	currentCode int
+	finished    chan bool
+}
+
+func (rw *responseWriterWrapper) WriteHeader(statusCode int) {
+	rw.currentCode = statusCode
+	println("Writing header: ", statusCode)
+	rw.ResponseWriter.WriteHeader(statusCode)
+	rw.finished <- true
+}
+
+func (rw *responseWriterWrapper) Write(data []byte) (int, error) {
+	rw.currentCode = http.StatusOK
+	println("Writing data: ", string(data))
+	int, err := rw.ResponseWriter.Write(data)
+	rw.finished <- true
+	return int, err
+
+}
+
+func (rw *responseWriterWrapper) Header() http.Header {
+	return rw.ResponseWriter.Header()
 }
 
 // For Internal handlers
 func (n *NetworkHttp) AddHandleFuncUnprotected(params network.HandlerParams) {
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		handleFunc(params, w, r)
+
 	})
 	http.Handle("/"+params.Pattern, handler)
-
 }
 
 // For Protected handlers (I.E exposed to the outside)

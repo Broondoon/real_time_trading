@@ -19,6 +19,8 @@ import (
 	"gorm.io/gorm"
 )
 
+const TIMEOUT = 2 * time.Second
+
 var _databaseAccess databaseAccessTransaction.DatabaseAccessInterface
 var _databaseAccessUser databaseAccessUserManagement.DatabaseAccessInterface
 var _networkHttpManager network.NetworkInterface
@@ -33,6 +35,8 @@ type StockOrderBulk struct {
 	UserStock      userStock.UserStockInterface
 	ResponseWriter network.ResponseWriter
 	userId         string
+	timeStamp      string
+	hasFinished    bool
 }
 
 func InitalizeHandlers(
@@ -43,7 +47,7 @@ func InitalizeHandlers(
 	_networkQueueManager = networkQueueManager
 
 	_bulkRoutineStockOrderCheckUserStocks = subfunctions.NewBulkRoutine[*StockOrderBulk](&subfunctions.BulkRoutineParams[*StockOrderBulk]{
-		Routine: placeStockOrder,
+		Routine: checkUserStocks,
 	})
 
 	_bulkRoutineStockOrderUpdateUserStocks = subfunctions.NewBulkRoutine[*StockOrderBulk](&subfunctions.BulkRoutineParams[*StockOrderBulk]{
@@ -75,14 +79,23 @@ func placeStockOrderHandler(responseWriter network.ResponseWriter, data []byte, 
 		return
 	}
 	stockOrder.SetUserID(queryParams.Get("userID"))
-	_bulkRoutineStockOrderCheckUserStocks.Insert(&StockOrderBulk{
+	stockOrderCarry := &StockOrderBulk{
 		StockOrder:     stockOrder,
 		ResponseWriter: responseWriter,
 		userId:         queryParams.Get("userID"),
-	})
+	}
+	_bulkRoutineStockOrderCheckUserStocks.Insert(stockOrderCarry)
+
+	time.Sleep(TIMEOUT)
+	if !stockOrderCarry.hasFinished {
+		go func(responseWriter network.ResponseWriter) {
+			responseWriter.WriteHeader(http.StatusInternalServerError)
+		}(stockOrderCarry.ResponseWriter)
+	}
 }
 
-func placeStockOrder(data *[]*StockOrderBulk, TransferParams any) error {
+func checkUserStocks(data *[]*StockOrderBulk, TransferParams any) error {
+	println("Checking user stocks")
 	// bul routine, taking in stock order.
 	//then we organize the stock order's by USer IDS
 	//then we run the bulk routine on user stocks. That will give us back
@@ -98,7 +111,19 @@ func placeStockOrder(data *[]*StockOrderBulk, TransferParams any) error {
 		}
 	}
 
-	handleSellOrders := func(userID string, sellerStockPortfolio *[]userStock.UserStockInterface) {
+	handleSellOrders := func(userID string, sellerStockPortfolio *[]userStock.UserStockInterface, errorCode int) {
+		if errorCode != 0 {
+			for _, stockOrder := range ordersByUserId[userID] {
+				if errorCode == http.StatusNotFound {
+					fmt.Printf("user %s not found", userID)
+					go func() { stockOrder.ResponseWriter.WriteHeader(http.StatusNotFound) }()
+				} else {
+					fmt.Printf("failed to get user stocks for user %s", userID)
+					go func() { stockOrder.ResponseWriter.WriteHeader(http.StatusInternalServerError) }()
+				}
+			}
+			return
+		}
 		sellOrders := ordersByUserId[userID]
 		for _, stockOrder := range sellOrders {
 			// Find the stock in the seller's portfolio
@@ -138,12 +163,14 @@ func placeStockOrder(data *[]*StockOrderBulk, TransferParams any) error {
 				responseWriter.WriteHeader(http.StatusInternalServerError)
 			}(responseWriter.ResponseWriter)
 		}
+		fmt.Printf("failed to get user stocks: %v", err)
 		return fmt.Errorf("failed to get user stocks: %v", err)
 	}
 	return nil
 }
 
 func updateUserStocks(data *[]*StockOrderBulk, TransferParams any) error {
+	println("Updating user stocks")
 	//map user stocks by id and by stock id
 	//then map then map them to the stock orders
 	//then we
@@ -153,23 +180,37 @@ func updateUserStocks(data *[]*StockOrderBulk, TransferParams any) error {
 	}
 	//bulk update user stocks
 	//TODO create a setup that errors out only specific parts of the update, not the entire thing.
-	err := _databaseAccessUser.UserStock().UpdateBulk(&userStocks)
+	errorList, err := _databaseAccessUser.UserStock().UpdateBulk(&userStocks)
 	if err != nil {
 		for _, responseWriter := range *data {
 			go func(responseWriter network.ResponseWriter) {
 				responseWriter.WriteHeader(http.StatusInternalServerError)
 			}(responseWriter.ResponseWriter)
 		}
+		fmt.Printf("failed to update user stocks: %v", err)
 		return fmt.Errorf("failed to update user stocks: %v", err)
 	}
+
 	for _, stockOrder := range *data {
+		if errorCode := errorList[stockOrder.UserStock.GetId()]; errorCode != 0 {
+			go func(responseWriter network.ResponseWriter) {
+				if errorCode == http.StatusNotFound {
+					fmt.Printf("user stock %s not found", stockOrder.UserStock.GetId())
+					responseWriter.WriteHeader(http.StatusNotFound)
+				} else {
+					fmt.Printf("failed to update user stock %s", stockOrder.UserStock.GetId())
+					responseWriter.WriteHeader(http.StatusInternalServerError)
+				}
+			}(stockOrder.ResponseWriter)
+			continue
+		}
 		_bulkRoutineCreateStockOrderTransactions.Insert(stockOrder)
 	}
 	return nil
 }
 
 func placeStockOrderResponse(data *[]*StockOrderBulk, TransferParams any) error {
-
+	println("Creating stock order transactions")
 	bulkTransactions := make([]transaction.StockTransactionInterface, len(*data))
 	for _, stockOrder := range *data {
 		newTransaction := transaction.NewStockTransaction(transaction.NewStockTransactionParams{
@@ -178,16 +219,35 @@ func placeStockOrderResponse(data *[]*StockOrderBulk, TransferParams any) error 
 			TimeStamp:   time.Now(),
 		})
 		bulkTransactions = append(bulkTransactions, newTransaction)
+		//get string version of time stamp
+
+		stockOrder.timeStamp = newTransaction.GetTimestamp().String()
 	}
-	createdTransactions, err := _databaseAccess.StockTransaction().CreateBulk(&bulkTransactions)
+	createdTransactions, errList, err := _databaseAccess.StockTransaction().CreateBulk(&bulkTransactions)
 	if err != nil {
 		for _, responseWriter := range *data {
 			go func(responseWriter network.ResponseWriter) {
 				responseWriter.WriteHeader(http.StatusInternalServerError)
 			}(responseWriter.ResponseWriter)
+			fmt.Printf("failed to create transactions: %v", err)
 			return fmt.Errorf("failed to create transactions: %v", err)
 		}
 	}
+	stockOrdersByTimeStamp := make(map[string][]*StockOrderBulk)
+	for _, stockOrder := range *data {
+		stockOrdersByTimeStamp[stockOrder.timeStamp] = append(stockOrdersByTimeStamp[stockOrder.timeStamp], stockOrder)
+	}
+	for timeStamp, err := range errList {
+		if err != 0 {
+			for _, stockOrder := range stockOrdersByTimeStamp[timeStamp] {
+				go func(responseWriter network.ResponseWriter) {
+					fmt.Printf("failed to create transaction %s", timeStamp)
+					responseWriter.WriteHeader(http.StatusInternalServerError)
+				}(stockOrder.ResponseWriter)
+			}
+		}
+	}
+
 	for _, createdTransaction := range *createdTransactions {
 		reconstructedStockOrder := order.New(order.NewStockOrderParams{
 			StockID:   createdTransaction.GetStockID(),
@@ -203,6 +263,7 @@ func placeStockOrderResponse(data *[]*StockOrderBulk, TransferParams any) error 
 				go func(responseWriter network.ResponseWriter) {
 					responseWriter.WriteHeader(http.StatusInternalServerError)
 				}(responseWriter.ResponseWriter)
+				fmt.Printf("failed to send to matching engine: %v", err)
 				return fmt.Errorf("failed to send to matching engine: %v", err)
 			}
 		}
@@ -215,6 +276,7 @@ func placeStockOrderResponse(data *[]*StockOrderBulk, TransferParams any) error 
 			}
 			returnValJSON, err := json.Marshal(returnVal)
 			if err != nil {
+				fmt.Printf("failed to marshal return value: %v", err)
 				responseWriter.WriteHeader(http.StatusInternalServerError)
 				return
 			}

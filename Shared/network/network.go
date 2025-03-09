@@ -2,8 +2,8 @@ package network
 
 import (
 	databaseService "Shared/database/database-service"
-
 	"Shared/entities/entity"
+
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -137,85 +137,46 @@ func CreateNetworkEntityHandlers[T entity.EntityInterface](network NetworkInterf
 		fmt.Println("queryParams: ", queryParams.Encode())
 		fmt.Println("requestType: ", requestType)
 		fmt.Println("-----------------")
-		if requestType == "GET" || requestType == "" {
-			if queryParams.Get("id") != "" {
-				if queryParams.Get("foreignKey") != "" {
-					entities, err := databaseManager.GetByForeignID(queryParams.Get("foreignKey"), queryParams.Get("id"))
-					if errors.Is(err, gorm.ErrRecordNotFound) {
-						responseWriter.WriteHeader(http.StatusNotFound)
-						return
-					}
-					if err != nil {
-						fmt.Println("error: ", err.Error())
-						responseWriter.WriteHeader(http.StatusInternalServerError)
-						return
-					}
-					entitiesJSON, err := json.Marshal(entities)
-					if err != nil {
-						fmt.Println("error: ", err.Error())
-						responseWriter.WriteHeader(http.StatusInternalServerError)
-						return
-					}
-					responseWriter.Write(entitiesJSON)
+		bulkRequest := false
+		useEntities := false
+		errorList := make(map[string]int)
+		errorsReceived := make(map[string]error)
+		var err error
+		var entityObj T
+		var entities *[]T
+		if requestType == "" {
+			requestType = "GET"
+		}
+		switch requestType {
+		case "GET":
+			if queryParams.Get("isBulk") != "" {
+				ids := strings.Split(queryParams.Get("ids"), ",")
+				if foreignKey := queryParams.Get("foreignKey"); foreignKey != "" {
+					entities, errorsReceived = databaseManager.GetByForeignIDBulk(foreignKey, ids)
 				} else {
-					entity, err := databaseManager.GetByID(queryParams.Get("id"))
-					if errors.Is(err, gorm.ErrRecordNotFound) {
-						responseWriter.WriteHeader(http.StatusNotFound)
-						return
-					}
-					if err != nil {
-						fmt.Println("error: ", err.Error())
-						responseWriter.WriteHeader(http.StatusInternalServerError)
-						return
-					}
-					entityJSON, err := entity.ToJSON()
-					if err != nil {
-						fmt.Println("error: ", err.Error())
-						responseWriter.WriteHeader(http.StatusInternalServerError)
-						return
-					}
-					responseWriter.Write(entityJSON)
+					entities, errorsReceived = databaseManager.GetByIDs(ids)
+				}
+				useEntities = true
+				bulkRequest = true
+			} else if id := queryParams.Get("id"); id != "" {
+				if foreignKey := queryParams.Get("foreignKey"); foreignKey != "" {
+					entities, err = databaseManager.GetByForeignID(foreignKey, id)
+					useEntities = true
+				} else {
+					entityObj, err = databaseManager.GetByID(id)
 				}
 			} else {
-				var entities *[]T
-				var err error
-				if queryParams.Get("ids") != "" {
-					if queryParams.Get("foreignKey") != "" {
-						entities, err = databaseManager.GetByForeignIDBulk(queryParams.Get("foreignKey"), strings.Split(queryParams.Get("ids"), ","))
-					} else {
-						entities, err = databaseManager.GetByIDs(strings.Split(queryParams.Get("ids"), ","))
-					}
-				} else {
-					entities, err = databaseManager.GetAll()
-				}
-				if errors.Is(err, gorm.ErrRecordNotFound) {
-					responseWriter.WriteHeader(http.StatusNotFound)
-					return
-				}
-				if err != nil {
-					fmt.Println("error: ", err.Error())
-					responseWriter.WriteHeader(http.StatusInternalServerError)
-					return
-				}
-
-				entitiesJSON, err := json.Marshal(entities)
-				if err != nil {
-					fmt.Println("error: ", err.Error())
-					responseWriter.WriteHeader(http.StatusInternalServerError)
-					return
-				}
-				responseWriter.Write(entitiesJSON)
+				entities, err = databaseManager.GetAll()
+				useEntities = true
 			}
-		} else if requestType == "POST" {
-			var entities *[]T
-			var entity T
-			var err error
-			isBulk := queryParams.Get("isBulk") == "true"
 
-			if isBulk {
+		case "POST":
+			var isBulk bool
+			if queryParams.Get("isBulk") != "" {
 				entities, err = ParseList(data)
+				isBulk = true
 			} else {
-				entity, err = Parse(data)
+				entityObj, err = Parse(data)
 			}
 			if err != nil {
 				fmt.Println("error: ", err.Error())
@@ -223,66 +184,82 @@ func CreateNetworkEntityHandlers[T entity.EntityInterface](network NetworkInterf
 				return
 			}
 			if isBulk {
-				err = databaseManager.CreateBulk(entities)
+				errorsReceived = databaseManager.CreateBulk(entities)
+				useEntities = true
+				bulkRequest = true
 			} else {
-				err = databaseManager.Create(entity)
+				err = databaseManager.Create(entityObj)
 			}
-			if err != nil {
-				fmt.Println("error: ", err.Error())
-				responseWriter.WriteHeader(http.StatusInternalServerError)
-				return
-			}
-			var entityJSON []byte
-			if isBulk {
-				entityJSON, err = json.Marshal(entities)
-			} else {
-				entityJSON, err = entity.ToJSON()
-			}
-			if err != nil {
-				fmt.Println("error: ", err.Error())
-				responseWriter.WriteHeader(http.StatusInternalServerError)
-				return
-			}
-			responseWriter.Write(entityJSON)
-		} else if requestType == "PUT" {
-			var updates []*entity.EntityUpdateData
-			var err error
+		case "PUT":
+			updates := make([]*entity.EntityUpdateData, 0)
 			err = json.Unmarshal(data, &updates)
 			if err != nil {
 				fmt.Println("error: ", err.Error())
 				responseWriter.WriteHeader(http.StatusBadRequest)
 				return
 			}
-			err = databaseManager.Update(updates)
-			if errors.Is(err, gorm.ErrRecordNotFound) {
-				responseWriter.WriteHeader(http.StatusNotFound)
-				return
+			errorsReceived = databaseManager.Update(updates)
+			if isBulk := queryParams.Get("isBulk"); isBulk != "" {
+				bulkRequest = true
 			}
-			if err != nil {
-				fmt.Println("error: ", err.Error())
-				responseWriter.WriteHeader(http.StatusInternalServerError)
-				return
-			}
-			responseWriter.WriteHeader(http.StatusOK)
-		} else if requestType == "DELETE" {
-			var err error
-			if queryParams.Get("ids") != "" {
-				err = databaseManager.DeleteBulk(strings.Split(queryParams.Get("ids"), ","))
+		case "DELETE":
+			if isBulk := queryParams.Get("isBulk"); isBulk != "" {
+				errorsReceived = databaseManager.DeleteBulk(strings.Split(queryParams.Get("ids"), ","))
+				bulkRequest = true
 			} else {
 				err = databaseManager.Delete(queryParams.Get("id"))
 			}
+		default:
+			responseWriter.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		if errorsReceived != nil {
+			if err = errorsReceived["transaction"]; err == nil {
+				for id, err := range errorsReceived {
+					if errors.Is(err, gorm.ErrRecordNotFound) {
+						errorList[id] = http.StatusNotFound
+					} else {
+						errorList[id] = http.StatusInternalServerError
+					}
+				}
+			}
+		}
+		if err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
 				responseWriter.WriteHeader(http.StatusNotFound)
 				return
+			} else {
+				responseWriter.WriteHeader(http.StatusInternalServerError)
+				return
 			}
+		}
+		var jsonVal []byte
+		if useEntities {
+			jsonVal, err = json.Marshal(entities)
+		} else {
+			jsonVal, err = entityObj.ToJSON()
+		}
+		if err != nil {
+			fmt.Println("error: ", err.Error())
+			responseWriter.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		if bulkRequest {
+			jsonVal, err = json.Marshal(BulkReturn{Entities: jsonVal, Errors: errorList})
 			if err != nil {
 				fmt.Println("error: ", err.Error())
 				responseWriter.WriteHeader(http.StatusInternalServerError)
 				return
 			}
 		}
+		responseWriter.Write(jsonVal)
 	}
 
 	network.AddHandleFuncUnprotected(HandlerParams{Pattern: entityName + "/", Handler: defaults})
 	network.AddHandleFuncUnprotected(HandlerParams{Pattern: entityName, Handler: defaults})
+}
+
+type BulkReturn struct {
+	Entities []byte         `json:"entities"`
+	Errors   map[string]int `json:"errors"`
 }

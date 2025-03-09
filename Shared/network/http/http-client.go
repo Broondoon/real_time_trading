@@ -40,13 +40,13 @@ func newHttpClient(baseURL string) network.ClientInterface {
 	}
 }
 
-func (hc *HttpClient) authenticate(req *http.Request) error {
-	if hc.AuthToken == "" {
-		return errors.New("no token found, authentication required")
-	}
-	req.Header.Set("token", fmt.Sprintf("Bearer %s", hc.AuthToken))
-	return nil
-}
+// func (hc *HttpClient) authenticate(req *http.Request) error {
+// 	if hc.AuthToken == "" {
+// 		return errors.New("no token found, authentication required")
+// 	}
+// 	req.Header.Set("token", fmt.Sprintf("Bearer %s", hc.AuthToken))
+// 	return nil
+// }
 
 func (hc *HttpClient) handleResponse(resp *http.Response) ([]byte, error) {
 	if resp.StatusCode >= 400 {
@@ -63,6 +63,29 @@ func (hc *HttpClient) handleResponse(resp *http.Response) ([]byte, error) {
 	}
 
 	return body, nil
+}
+
+func (hc *HttpClient) handleBulkResponse(resp *http.Response) (network.BulkReturn, error) {
+	if resp.StatusCode >= 400 {
+		return network.BulkReturn{}, fmt.Errorf("server returned error: %d %s", resp.StatusCode, resp.Status)
+	}
+	if resp.StatusCode == http.StatusResetContent {
+		return network.BulkReturn{}, errors.New("204 No Content")
+	}
+
+	defer resp.Body.Close()
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return network.BulkReturn{}, err
+	}
+
+	var bulkReturn network.BulkReturn
+	err = json.Unmarshal(body, &bulkReturn)
+	if err != nil {
+		return network.BulkReturn{}, err
+	}
+
+	return bulkReturn, nil
 }
 
 func (hc *HttpClient) Get(endpoint string, queryParams map[string]string) ([]byte, error) {
@@ -95,21 +118,46 @@ func (hc *HttpClient) Get(endpoint string, queryParams map[string]string) ([]byt
 	return hc.handleResponse(resp)
 }
 
-func (hc *HttpClient) PostBulk(endpoint string, payload []interface{}) ([]byte, error) {
+func (hc *HttpClient) GetBulk(endpoint string, ids []string, queryParams map[string]string) (network.BulkReturn, error) {
+	url, err := url.Parse(hc.BaseURL + endpoint)
+	if err != nil {
+		return network.BulkReturn{}, err
+	}
+	q := url.Query()
+	queryParams["ids"] = strings.Join(ids, ",")
+	for key, value := range queryParams {
+		q.Add(key, value)
+	}
+	q.Add("isBulk", "true")
+	url.RawQuery = q.Encode()
+
+	req, err := http.NewRequest(http.MethodGet, url.String(), nil)
+	if err != nil {
+		return network.BulkReturn{}, err
+	}
+
+	resp, err := hc.Client.Do(req)
+	if err != nil {
+		return network.BulkReturn{}, err
+	}
+
+	return hc.handleBulkResponse(resp)
+
+}
+
+func (hc *HttpClient) PostBulk(endpoint string, payload []interface{}) (network.BulkReturn, error) {
 	jsonData, err := json.Marshal(payload)
 	if err != nil {
 		fmt.Println("DEBUG: Error marshalling payload:", err.Error())
-		return nil, err
+		return network.BulkReturn{}, err
 	}
-	fmt.Printf("DEBUG: Payload marshalled successfully: %s\n", string(jsonData))
 
 	fullURL := hc.BaseURL + endpoint
 	req, err := http.NewRequest(http.MethodPost, fullURL, bytes.NewBuffer(jsonData))
 	if err != nil {
 		fmt.Println("DEBUG: Error creating POST request:", err.Error())
-		return nil, err
+		return network.BulkReturn{}, err
 	}
-	fmt.Printf("DEBUG: Created POST request for URL: %s\n", fullURL)
 
 	req.Header.Set("Content-Type", "application/json")
 	// if err := hc.authenticate(req); err != nil {
@@ -117,15 +165,13 @@ func (hc *HttpClient) PostBulk(endpoint string, payload []interface{}) ([]byte, 
 	// }
 	req.Header.Set("isBulk", "true")
 
-	fmt.Println("DEBUG: Sending POST request...")
 	resp, err := hc.Client.Do(req)
 	if err != nil {
 		fmt.Println("DEBUG: Error sending POST request:", err.Error())
-		return nil, err
+		return network.BulkReturn{}, err
 	}
-	fmt.Printf("DEBUG: Received response with status: %s\n", resp.Status)
 
-	return hc.handleResponse(resp)
+	return hc.handleBulkResponse(resp)
 
 }
 
@@ -135,7 +181,6 @@ func (hc *HttpClient) Post(endpoint string, payload interface{}) ([]byte, error)
 		fmt.Println("DEBUG: Error marshalling payload:", err.Error())
 		return nil, err
 	}
-	fmt.Printf("DEBUG: Payload marshalled successfully: %s\n", string(jsonData))
 
 	fullURL := hc.BaseURL + endpoint
 	req, err := http.NewRequest(http.MethodPost, fullURL, bytes.NewBuffer(jsonData))
@@ -143,7 +188,6 @@ func (hc *HttpClient) Post(endpoint string, payload interface{}) ([]byte, error)
 		fmt.Println("DEBUG: Error creating POST request:", err.Error())
 		return nil, err
 	}
-	fmt.Printf("DEBUG: Created POST request for URL: %s\n", fullURL)
 
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("isBulk", "false")
@@ -151,13 +195,11 @@ func (hc *HttpClient) Post(endpoint string, payload interface{}) ([]byte, error)
 	// 	return nil, err
 	// }
 
-	fmt.Println("DEBUG: Sending POST request...")
 	resp, err := hc.Client.Do(req)
 	if err != nil {
 		fmt.Println("DEBUG: Error sending POST request:", err.Error())
 		return nil, err
 	}
-	fmt.Printf("DEBUG: Received response with status: %s\n", resp.Status)
 
 	return hc.handleResponse(resp)
 }
@@ -186,15 +228,15 @@ func (hc *HttpClient) Post(endpoint string, payload interface{}) ([]byte, error)
 // 	return hc.handleResponse(resp)
 // }
 
-func (hc *HttpClient) Put(endpoint string, payload []interface{}) error {
+func (hc *HttpClient) Put(endpoint string, payload []interface{}) (network.BulkReturn, error) {
 	jsonData, err := json.Marshal(payload)
 	if err != nil {
-		return err
+		return network.BulkReturn{}, err
 	}
 
 	req, err := http.NewRequest(http.MethodPut, hc.BaseURL+endpoint, bytes.NewBuffer(jsonData))
 	if err != nil {
-		return err
+		return network.BulkReturn{}, err
 	}
 
 	req.Header.Set("Content-Type", "application/json")
@@ -205,10 +247,9 @@ func (hc *HttpClient) Put(endpoint string, payload []interface{}) error {
 
 	resp, err := hc.Client.Do(req)
 	if err != nil {
-		return err
+		return network.BulkReturn{}, err
 	}
-	_, err = hc.handleResponse(resp)
-	return err
+	return hc.handleBulkResponse(resp)
 }
 
 func (hc *HttpClient) Patch(endpoint string, id string) error {
@@ -230,14 +271,14 @@ func (hc *HttpClient) Patch(endpoint string, id string) error {
 	return err
 }
 
-func (hc *HttpClient) PatchBulk(endpoint string, ids []string) error {
+func (hc *HttpClient) PatchBulk(endpoint string, ids []string) (network.BulkReturn, error) {
 	url, err := url.Parse(hc.BaseURL + endpoint)
 	if err != nil {
-		return err
+		return network.BulkReturn{}, err
 	}
 	jsonData, err := json.Marshal(ids)
 	if err != nil {
-		return err
+		return network.BulkReturn{}, err
 	}
 	queryParams := map[string]string{"ids": strings.Join(ids, ",")}
 	q := url.Query()
@@ -249,15 +290,13 @@ func (hc *HttpClient) PatchBulk(endpoint string, ids []string) error {
 	req, err := http.NewRequest(http.MethodPatch, url.String(), bytes.NewBuffer(jsonData))
 	req.Header.Set("isBulk", "true")
 	if err != nil {
-		return err
+		return network.BulkReturn{}, err
 	}
 	resp, err := hc.Client.Do(req)
 	if err != nil {
-		return err
+		return network.BulkReturn{}, err
 	}
-	_, err = hc.handleResponse(resp)
-	return err
-
+	return hc.handleBulkResponse(resp)
 }
 
 func (hc *HttpClient) Delete(endpoint string) ([]byte, error) {
@@ -278,14 +317,14 @@ func (hc *HttpClient) Delete(endpoint string) ([]byte, error) {
 	return hc.handleResponse(resp)
 }
 
-func (hc *HttpClient) DeleteBulk(endpoint string, payload []string) ([]byte, error) {
+func (hc *HttpClient) DeleteBulk(endpoint string, payload []string) (network.BulkReturn, error) {
 	url, err := url.Parse(hc.BaseURL + endpoint)
 	if err != nil {
-		return nil, err
+		return network.BulkReturn{}, err
 	}
 	jsonData, err := json.Marshal(payload)
 	if err != nil {
-		return nil, err
+		return network.BulkReturn{}, err
 	}
 
 	//need to add ids to the IDs query param
@@ -300,7 +339,7 @@ func (hc *HttpClient) DeleteBulk(endpoint string, payload []string) ([]byte, err
 	req, err := http.NewRequest(http.MethodDelete, url.String(), bytes.NewBuffer(jsonData))
 	req.Header.Set("isBulk", "true")
 	if err != nil {
-		return nil, err
+		return network.BulkReturn{}, err
 	}
 
 	req.Header.Set("Content-Type", "application/json")
@@ -310,10 +349,10 @@ func (hc *HttpClient) DeleteBulk(endpoint string, payload []string) ([]byte, err
 
 	resp, err := hc.Client.Do(req)
 	if err != nil {
-		return nil, err
+		return network.BulkReturn{}, err
 	}
 
-	return hc.handleResponse(resp)
+	return hc.handleBulkResponse(resp)
 }
 
 // ExtractUserIDFromToken extracts the user ID from a JWT token

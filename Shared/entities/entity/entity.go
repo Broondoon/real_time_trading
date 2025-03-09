@@ -78,7 +78,7 @@ type NewEntityParams struct {
 
 func NewEntity(params NewEntityParams) *Entity {
 	if params.Updates == nil {
-		params.Updates = []*EntityUpdateData{}
+		params.Updates = make([]*EntityUpdateData, 0)
 	}
 	e := &Entity{
 		ID:           params.ID,
