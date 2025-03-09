@@ -50,11 +50,29 @@ func ProcessTrade(orderData network.MatchingEngineToExecutionJSON, databaseAcces
 		totalCost))
 
 	// 1. Go to the Transaction DB, get stock transactions associated with the buyOrder ID and the sellOrder ID
-	transactionList, err := databaseAccessTransact.StockTransaction().GetByIDs([]string{buyOrderID, sellOrderID})
+	transactionList, errList, err := databaseAccessTransact.StockTransaction().GetByIDs([]string{buyOrderID, sellOrderID})
 	if err != nil {
 		println("Error: ", err.Error())
 		return false, false, fmt.Errorf("failed to get transactions: %v", err)
 	}
+
+	if len(errList) > 0 {
+		buyerValid := true
+		sellerValid := true
+		if _, ok := errList["transaction"]; ok {
+			return false, false, fmt.Errorf("failed to get transactions: %v", errList["transaction"])
+		}
+		for i, err := range errList {
+			println("Error code: ", err)
+			if i == buyOrderID {
+				buyerValid = false
+			} else {
+				sellerValid = false
+			}
+		}
+		return buyerValid, sellerValid, nil
+	}
+
 	println("Stock Transactions List:")
 	for i, transaction := range *transactionList {
 		json, err := transaction.ToJSON()
@@ -73,11 +91,28 @@ func ProcessTrade(orderData network.MatchingEngineToExecutionJSON, databaseAcces
 	println(fmt.Sprintf("Grabbing first stock transaction in Transaction List: ID= %s, Order Status= %s", stockTx.GetId(), stockTx.GetOrderStatus()))
 
 	// 2. Go to User-Managment DB, get wallet of userID present on  Buy order transaction
-	walletList, errorList, err := databaseAccessUser.Wallet().GetByIDs([]string{buyerID, sellerID})
+	walletList, errList, err := databaseAccessUser.Wallet().GetByIDs([]string{buyerID, sellerID})
 
 	if err != nil {
 		println("Error: ", err.Error())
 		return false, false, fmt.Errorf("failed to get wallets: %v", err)
+	}
+
+	if len(errList) > 0 {
+		buyerValid := true
+		sellerValid := true
+		if _, ok := errList["transaction"]; ok {
+			return false, false, fmt.Errorf("failed to get wallets: %v", errList["transaction"])
+		}
+		for i, err := range errList {
+			println("Error code: ", err)
+			if i == buyOrderID {
+				buyerValid = false
+			} else {
+				sellerValid = false
+			}
+		}
+		return buyerValid, sellerValid, nil
 	}
 
 	println("Wallet List:")
