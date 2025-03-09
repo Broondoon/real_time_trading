@@ -63,21 +63,19 @@ func NewDatabaseService(params *NewDatabaseServiceParams) DatabaseServiceInterfa
 		params.WalletParams.Existing = newDBConnection
 	}
 
-	underlyingUserStock := databaseService.NewEntityData[*userStock.UserStock](params.UserStockParams)
-	underlyingWallet := databaseService.NewEntityData[*wallet.Wallet](params.WalletParams)
+	cachedUserStock := databaseService.NewCachedEntityData[*userStock.UserStock](&databaseService.NewCachedEntityDataParams{
+		NewEntityDataParams: params.UserStockParams,
+		RedisAddr:           os.Getenv("REDIS_ADDR"),
+		Password:            os.Getenv("REDIS_PASSWORD"),
+		DefaultTTL:          5 * time.Minute,
+	})
 
-	cachedUserStock := databaseService.NewCachedEntityData[*userStock.UserStock](
-		underlyingUserStock,
-		os.Getenv("REDIS_ADDR"),
-		os.Getenv("REDIS_PASSWORD"),
-		5*time.Minute,
-	)
-	cachedWallet := databaseService.NewCachedEntityData[*wallet.Wallet](
-		underlyingWallet,
-		os.Getenv("REDIS_ADDR"),
-		os.Getenv("REDIS_PASSWORD"),
-		5*time.Minute,
-	)
+	cachedWallet := databaseService.NewCachedEntityData[*wallet.Wallet](&databaseService.NewCachedEntityDataParams{
+		NewEntityDataParams: params.WalletParams,
+		RedisAddr:           os.Getenv("REDIS_ADDR"),
+		Password:            os.Getenv("REDIS_PASSWORD"),
+		DefaultTTL:          5 * time.Minute,
+	})
 
 	db := &DatabaseService{
 		UserStock:         cachedUserStock,
