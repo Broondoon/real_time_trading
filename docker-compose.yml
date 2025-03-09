@@ -460,16 +460,6 @@ services:
     networks:
       - go-network
 
-# TODO: Actually fill this out properly
-  # service-monitor:
-  #   build:
-  #     context: .
-  #     dockerfile: ./stock-database/database-service/Dockerfile
-  #   ports:
-  #     - "${STOCK_DATABASE_SERVICE_PORT}:${STOCK_DATABASE_SERVICE_PORT}"
-  #   env_file:
-  #     - .env
-
 volumes:
   user-management-db-data:
   stock-db-data:
