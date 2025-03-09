@@ -72,14 +72,18 @@ func handleFunc(params network.HandlerParams, w http.ResponseWriter, r *http.Req
 	go params.Handler(responseWriterWrapper, body, queryParams, r.Method)
 	select {
 	case <-responseWriterWrapper.finished:
+		println("finished, closing channel")
 		close(responseWriterWrapper.finished)
+		responseWriterWrapper.channelHasClosed = true
 		break
 	case <-time.After(TIMEOUT):
 		if responseWriterWrapper.currentCode == http.StatusProcessing {
 			println("timed out with no response")
 			responseWriterWrapper.ResponseWriter.WriteHeader(http.StatusRequestTimeout)
 		}
+		println("timed out, closing channel")
 		close(responseWriterWrapper.finished)
+		responseWriterWrapper.channelHasClosed = true
 		break
 	}
 	//w.WriteHeader(http.StatusOK)
@@ -87,22 +91,31 @@ func handleFunc(params network.HandlerParams, w http.ResponseWriter, r *http.Req
 
 type responseWriterWrapper struct {
 	http.ResponseWriter
-	currentCode int
-	finished    chan bool
+	currentCode      int
+	finished         chan bool
+	channelHasClosed bool
 }
 
 func (rw *responseWriterWrapper) WriteHeader(statusCode int) {
 	rw.currentCode = statusCode
 	println("Writing header: ", statusCode)
 	rw.ResponseWriter.WriteHeader(statusCode)
+	//check if finished is closed
+	if rw.channelHasClosed {
+		return
+	}
 	rw.finished <- true
+	rw.channelHasClosed = true
 }
 
 func (rw *responseWriterWrapper) Write(data []byte) (int, error) {
 	rw.currentCode = http.StatusOK
 	println("Writing data: ", string(data))
 	int, err := rw.ResponseWriter.Write(data)
-	rw.finished <- true
+	if !rw.channelHasClosed {
+		rw.finished <- true
+		rw.channelHasClosed = true
+	}
 	return int, err
 
 }

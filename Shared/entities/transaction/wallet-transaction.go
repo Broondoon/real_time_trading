@@ -48,7 +48,7 @@ func (wt *WalletTransaction) GetStockTransactionID() string {
 
 func (wt *WalletTransaction) SetStockTransactionID(stockTransactionID string) {
 	wt.StockTransactionID = stockTransactionID
-	wt.Updates = append(wt.Updates, &entity.EntityUpdateData{
+	*wt.Updates = append(*wt.Updates, &entity.EntityUpdateData{
 		ID:       wt.GetId(),
 		Field:    "StockTransactionID",
 		NewValue: &stockTransactionID,
@@ -61,7 +61,7 @@ func (wt *WalletTransaction) GetIsDebit() bool {
 
 func (wt *WalletTransaction) SetIsDebit(isDebit bool) {
 	wt.IsDebit = isDebit
-	wt.Updates = append(wt.Updates, &entity.EntityUpdateData{
+	*wt.Updates = append(*wt.Updates, &entity.EntityUpdateData{
 		ID:       wt.GetId(),
 		Field:    "IsDebit",
 		NewValue: func() *string { s := strconv.FormatBool(isDebit); return &s }(),
@@ -74,7 +74,7 @@ func (wt *WalletTransaction) GetAmount() float64 {
 
 func (wt *WalletTransaction) SetAmount(amount float64) {
 	wt.Amount = amount
-	wt.Updates = append(wt.Updates, &entity.EntityUpdateData{
+	*wt.Updates = append(*wt.Updates, &entity.EntityUpdateData{
 		ID:       wt.GetId(),
 		Field:    "Amount",
 		NewValue: func() *string { s := strconv.FormatFloat(amount, 'f', -1, 64); return &s }(),
@@ -87,7 +87,7 @@ func (wt *WalletTransaction) GetTimestamp() time.Time {
 
 func (wt *WalletTransaction) SetTimestamp(timestamp time.Time) {
 	wt.Timestamp = timestamp
-	wt.Updates = append(wt.Updates, &entity.EntityUpdateData{
+	*wt.Updates = append(*wt.Updates, &entity.EntityUpdateData{
 		ID:       wt.GetId(),
 		Field:    "Timestamp",
 		NewValue: func() *string { s := timestamp.Format(time.RFC3339); return &s }(),
@@ -96,7 +96,7 @@ func (wt *WalletTransaction) SetTimestamp(timestamp time.Time) {
 
 func (wt *WalletTransaction) SetWalletTXID() {
 	wt.WalletTXID = wt.GetId()
-	wt.Updates = append(wt.Updates, &entity.EntityUpdateData{
+	*wt.Updates = append(*wt.Updates, &entity.EntityUpdateData{
 		ID:       wt.GetId(),
 		Field:    "WalletTXID",
 		NewValue: &wt.WalletTXID,

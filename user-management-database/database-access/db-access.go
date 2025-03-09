@@ -116,7 +116,7 @@ func (d *DatabaseAccess) Wallet() WalletDataAccessInterface {
 }
 
 func (d *UserStocksDataAccess) GetUserStocks(userID string) (*[]userStock.UserStockInterface, error) {
-	userStocks, err := d.GetByForeignID("user_id", userID)
+	userStocks, err := d.GetByForeignID("UserID", userID)
 	if err != nil {
 		println("Error fetching user stocks by foreign ID for userID %s: %v\n", userID, err)
 		return nil, err
@@ -125,7 +125,8 @@ func (d *UserStocksDataAccess) GetUserStocks(userID string) (*[]userStock.UserSt
 }
 
 func (d *UserStocksDataAccess) GetUserStocksBulk(userIDs []string, routine func(userID string, userStocks *[]userStock.UserStockInterface, errorCode int)) error {
-	userStocks, errList, err := d.GetByForeignIDBulk("user_id", userIDs)
+	println("DEBUG: GetUserStocksBulk called for userIDs %s\n", userIDs)
+	userStocks, errList, err := d.GetByForeignIDBulk("UserID", userIDs)
 	//lets make a variant which is get by foregin ids. Get back multiple, then perform a function for each userId
 	if err != nil {
 		println("Error fetching user stocks by foreign ID for userIDs %s: %v\n", userIDs, err)
@@ -146,7 +147,7 @@ func (d *UserStocksDataAccess) GetUserStocksBulk(userIDs []string, routine func(
 func (d *WalletDataAccess) AddMoneyToWallet(userID string, amount float64) error {
 	fmt.Printf("DEBUG: AddMoneyToWallet called for userID=%s with amount=%f\n", userID, amount)
 
-	walletList, err := d.GetByForeignID("user_id", userID)
+	walletList, err := d.GetByForeignID("UserID", userID)
 	if err != nil {
 		fmt.Printf("DEBUG: Error retrieving wallet for userID=%s: %v\n", userID, err)
 		return err
@@ -175,7 +176,7 @@ func (d *WalletDataAccess) AddMoneyToWallet(userID string, amount float64) error
 }
 
 func (d *WalletDataAccess) GetWalletBalance(userID string) (float64, error) {
-	walletList, err := d.GetByForeignID("user_id", userID)
+	walletList, err := d.GetByForeignID("UserID", userID)
 	if err != nil {
 		fmt.Printf("[DEBUG] Error fetching wallet by foreign ID for userID %s: %v\n", userID, err)
 		return 0, err

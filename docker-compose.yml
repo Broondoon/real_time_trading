@@ -75,10 +75,6 @@ services:
   #   networks:
   #     - go-network
   #   depends_on:
-  #     order-initiator-service:
-  #       condition: service_healthy
-  #     stock-database-service:
-  #       condition: service_healthy
   #     user-management-database-service:
   #       condition: service_healthy
 

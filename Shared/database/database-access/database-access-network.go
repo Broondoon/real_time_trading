@@ -272,9 +272,8 @@ func (d *EntityDataAccessClient[TEntity, TInterface]) Update(entity TInterface) 
 		d.PutRoute = d.DefaultRoute
 	}
 
-	updates := entity.GetUpdates()
 	var updatesInterface []interface{}
-	for _, u := range updates {
+	for _, u := range *entity.GetUpdates() {
 		updatesInterface = append(updatesInterface, u)
 	}
 
@@ -297,7 +296,7 @@ func (d *EntityDataAccessClient[TEntity, TInterface]) UpdateBulk(entities *[]TIn
 	}
 	var interfaces []interface{}
 	for _, v := range *entities {
-		for _, u := range v.GetUpdates() {
+		for _, u := range *v.GetUpdates() {
 			interfaces = append(interfaces, u)
 		}
 	}

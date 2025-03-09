@@ -36,7 +36,6 @@ type StockOrderBulk struct {
 	ResponseWriter network.ResponseWriter
 	userId         string
 	timeStamp      string
-	hasFinished    bool
 }
 
 func InitalizeHandlers(
@@ -85,13 +84,6 @@ func placeStockOrderHandler(responseWriter network.ResponseWriter, data []byte, 
 		userId:         queryParams.Get("userID"),
 	}
 	_bulkRoutineStockOrderCheckUserStocks.Insert(stockOrderCarry)
-
-	time.Sleep(TIMEOUT)
-	if !stockOrderCarry.hasFinished {
-		go func(responseWriter network.ResponseWriter) {
-			responseWriter.WriteHeader(http.StatusInternalServerError)
-		}(stockOrderCarry.ResponseWriter)
-	}
 }
 
 func checkUserStocks(data *[]*StockOrderBulk, TransferParams any) error {

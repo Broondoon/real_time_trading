@@ -29,7 +29,7 @@ func (u *User) GetName() string {
 
 func (u *User) SetName(name string) {
 	u.Name = name
-	u.Updates = append(u.Updates, &entity.EntityUpdateData{
+	*u.Updates = append(*u.Updates, &entity.EntityUpdateData{
 		ID:       u.GetId(),
 		Field:    "Name",
 		NewValue: &name,
@@ -42,7 +42,7 @@ func (u *User) GetUsername() string {
 
 func (u *User) SetUsername(username string) {
 	u.Username = username
-	u.Updates = append(u.Updates, &entity.EntityUpdateData{
+	*u.Updates = append(*u.Updates, &entity.EntityUpdateData{
 		ID:       u.GetId(),
 		Field:    "Username",
 		NewValue: &username,
@@ -55,7 +55,7 @@ func (u *User) GetPassword() string {
 
 func (u *User) SetPassword(password string) {
 	u.Password = password
-	u.Updates = append(u.Updates, &entity.EntityUpdateData{
+	*u.Updates = append(*u.Updates, &entity.EntityUpdateData{
 		ID:       u.GetId(),
 		Field:    "Password",
 		NewValue: &password,

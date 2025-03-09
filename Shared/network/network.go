@@ -139,6 +139,7 @@ func CreateNetworkEntityHandlers[T entity.EntityInterface](network NetworkInterf
 		fmt.Println("-----------------")
 		bulkRequest := false
 		useEntities := false
+		noReturns := false
 		errorList := make(map[string]int)
 		errorsReceived := make(map[string]error)
 		var err error
@@ -202,6 +203,7 @@ func CreateNetworkEntityHandlers[T entity.EntityInterface](network NetworkInterf
 			if isBulk := queryParams.Get("isBulk"); isBulk != "" {
 				bulkRequest = true
 			}
+			noReturns = true
 		case "DELETE":
 			if isBulk := queryParams.Get("isBulk"); isBulk != "" {
 				errorsReceived = databaseManager.DeleteBulk(strings.Split(queryParams.Get("ids"), ","))
@@ -234,8 +236,20 @@ func CreateNetworkEntityHandlers[T entity.EntityInterface](network NetworkInterf
 			}
 		}
 		var jsonVal []byte
+		if noReturns {
+			responseWriter.WriteHeader(http.StatusOK)
+			return
+		}
+
 		if useEntities {
 			jsonVal, err = json.Marshal(entities)
+		} else if noReturns {
+			if bulkRequest {
+				jsonVal = []byte{}
+			} else {
+				responseWriter.WriteHeader(http.StatusOK)
+				return
+			}
 		} else {
 			jsonVal, err = entityObj.ToJSON()
 		}

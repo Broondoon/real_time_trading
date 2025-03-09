@@ -28,7 +28,7 @@ func (w *Wallet) GetBalance() float64 {
 
 func (w *Wallet) UpdateBalance(balanceToAdd float64) {
 	w.Balance += balanceToAdd
-	w.Updates = append(w.Updates, &entity.EntityUpdateData{
+	*w.Updates = append(*w.Updates, &entity.EntityUpdateData{
 		ID:         w.GetId(),
 		Field:      "Balance",
 		AlterValue: func() *string { s := strconv.FormatFloat(balanceToAdd, 'f', -1, 64); return &s }(),

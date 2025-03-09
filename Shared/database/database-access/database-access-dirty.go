@@ -90,7 +90,7 @@ func (d *EntityDataAccess[TEntity, TInterface]) Create(entity TInterface) (TInte
 }
 
 func (d *EntityDataAccess[TEntity, TInterface]) Update(entity TInterface) error {
-	err := d.EntityDataServiceTemp.Update(entity.GetUpdates())
+	err := d.EntityDataServiceTemp.Update(*entity.GetUpdates())
 	if len(err) > 0 {
 		for _, e := range err {
 			log.Fatal("Failed to update entity: ", e)

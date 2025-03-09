@@ -142,7 +142,7 @@ func cancelStockTransactionHandler(responseWriter network.ResponseWriter, data [
 		return
 	}
 	stockTransaction.SetOrderStatus("CANCELLED")
-	errList := _databaseManager.StockTransactions().Update(stockTransaction.Updates)
+	errList := _databaseManager.StockTransactions().Update(*stockTransaction.Updates)
 	if err := errList["transaction"]; err != nil {
 		responseWriter.WriteHeader(http.StatusInternalServerError)
 		return

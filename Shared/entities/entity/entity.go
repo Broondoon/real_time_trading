@@ -12,7 +12,7 @@ type BaseEntityInterface interface {
 	SetDateCreated(dateCreated time.Time)
 	GetDateModified() time.Time
 	SetDateModified(dateModified time.Time)
-	GetUpdates() []*EntityUpdateData
+	GetUpdates() *[]*EntityUpdateData
 	EntityToParams() NewEntityParams
 	EntityToJSON() ([]byte, error)
 }
@@ -23,10 +23,10 @@ type EntityInterface interface {
 }
 
 type Entity struct {
-	ID           string              `json:"ID" gorm:"primaryKey;default:uuid_generate_v4()"` // gorm:"primaryKey" is used to set the primary key in the database.
-	DateCreated  time.Time           `json:"DateCreated" gorm:"autoCreateTime:milli"`         // gorm:"autoCreateTime:milli" is used to set the time the entity was created in the database.
-	DateModified time.Time           `json:"DateModified" gorm:"autoUpdateTime:milli"`        // gorm:"autoUpdateTime:milli" is used to set the time the entity was last modified in the database.
-	Updates      []*EntityUpdateData `json:"updates" gorm:"-"`
+	ID           string               `json:"ID" gorm:"primaryKey;default:uuid_generate_v4()"` // gorm:"primaryKey" is used to set the primary key in the database.
+	DateCreated  time.Time            `json:"DateCreated" gorm:"autoCreateTime:milli"`         // gorm:"autoCreateTime:milli" is used to set the time the entity was created in the database.
+	DateModified time.Time            `json:"DateModified" gorm:"autoUpdateTime:milli"`        // gorm:"autoUpdateTime:milli" is used to set the time the entity was last modified in the database.
+	Updates      *[]*EntityUpdateData `json:"-" gorm:"-"`
 }
 
 type EntityUpdateData struct {
@@ -58,33 +58,31 @@ func (e *Entity) GetDateModified() time.Time {
 
 func (e *Entity) SetDateModified(dateModified time.Time) {
 	e.DateModified = dateModified
-	e.Updates = append(e.Updates, &EntityUpdateData{
+	*e.Updates = append(*e.Updates, &EntityUpdateData{
 		ID:       e.GetId(),
 		Field:    "DateModified",
 		NewValue: func() *string { s := dateModified.Format(time.RFC3339); return &s }(),
 	})
 }
 
-func (e *Entity) GetUpdates() []*EntityUpdateData {
+func (e *Entity) GetUpdates() *[]*EntityUpdateData {
 	return e.Updates
 }
 
 type NewEntityParams struct {
-	ID           string              `json:"ID"`
-	DateCreated  time.Time           `json:"DateCreated"`
-	DateModified time.Time           `json:"DateModified"`
-	Updates      []*EntityUpdateData `json:"updates"`
+	ID           string    `json:"ID"`
+	DateCreated  time.Time `json:"DateCreated"`
+	DateModified time.Time `json:"DateModified"`
 }
 
 func NewEntity(params NewEntityParams) *Entity {
-	if params.Updates == nil {
-		params.Updates = make([]*EntityUpdateData, 0)
-	}
+	tmp := make([]*EntityUpdateData, 0)
+
 	e := &Entity{
 		ID:           params.ID,
 		DateCreated:  params.DateCreated,
 		DateModified: params.DateModified,
-		Updates:      params.Updates,
+		Updates:      &tmp,
 	}
 	return e
 }
@@ -102,7 +100,6 @@ func (e *Entity) EntityToParams() NewEntityParams {
 		ID:           e.GetId(),
 		DateCreated:  e.GetDateCreated(),
 		DateModified: e.GetDateModified(),
-		Updates:      e.Updates,
 	}
 }
 

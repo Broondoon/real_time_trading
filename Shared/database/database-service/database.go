@@ -12,6 +12,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/google/uuid"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/gorm/schema"
@@ -260,7 +261,7 @@ func (d *EntityData[T]) GetByIDs(ids []string) (*[]T, map[string]error) {
 		idsFound[entity.GetId()] = true
 	}
 	for _, id := range ids {
-		if _, ok := idsFound[id]; !ok {
+		if val, ok := idsFound[id]; !ok && !val {
 			errors[id] = gorm.ErrRecordNotFound
 		}
 	}
@@ -269,9 +270,15 @@ func (d *EntityData[T]) GetByIDs(ids []string) (*[]T, map[string]error) {
 }
 
 // This needs the table column names, whihc is a little diffrent
-func (d *EntityData[T]) GetByForeignID(foreignIDColumn string, foreignID string) (*[]T, error) {
+func (d *EntityData[T]) GetByForeignID(foreignIDKey string, foreignID string) (*[]T, error) {
 	var entities []T
-	results := d.GetDatabaseSession().Find(&entities, foreignIDColumn+" = ?", foreignID)
+	foreignIDColumn, ok := d.columnCache[foreignIDKey]
+	if !ok {
+		err := fmt.Errorf("foreign key column %s not found", foreignIDKey)
+		fmt.Printf("error getting by foreignKey: %s", err.Error())
+		return nil, err
+	}
+	results := d.GetDatabaseSession().Find(&entities, foreignIDColumn.ColumnName+" = ?", foreignID)
 	if results.Error != nil {
 		fmt.Printf("error getting by foreignKey: %s", results.Error.Error())
 		return nil, results.Error
@@ -279,11 +286,17 @@ func (d *EntityData[T]) GetByForeignID(foreignIDColumn string, foreignID string)
 	return &entities, nil
 }
 
-func (d *EntityData[T]) GetByForeignIDBulk(foreignIDColumn string, foreignIDs []string) (*[]T, map[string]error) {
+func (d *EntityData[T]) GetByForeignIDBulk(foreignIDKey string, foreignIDs []string) (*[]T, map[string]error) {
 	var entities []T
 	errors := make(map[string]error)
+	foreignIDColumn, ok := d.columnCache[foreignIDKey]
+	if !ok {
+		errors["transaction"] = fmt.Errorf("foreign key column %s not found", foreignIDKey)
+		fmt.Printf("error getting by foreignKey: %s", errors["transaction"].Error())
+		return nil, errors
+	}
 
-	results := d.GetDatabaseSession().Find(&entities, foreignIDColumn+" IN ?", foreignIDs)
+	results := d.GetDatabaseSession().Find(&entities, foreignIDColumn.ColumnName+" IN ?", foreignIDs)
 	if results.Error != nil {
 		errors["transaction"] = results.Error
 		fmt.Printf("error getting by foreignKey: %s", results.Error.Error())
@@ -297,16 +310,16 @@ func (d *EntityData[T]) GetByForeignIDBulk(foreignIDColumn string, foreignIDs []
 		if val.Kind() == reflect.Ptr {
 			val = val.Elem()
 		}
-		fieldVal := val.FieldByName(foreignIDColumn)
+		fieldVal := val.FieldByName(foreignIDKey)
 		if !fieldVal.IsValid() {
-			// Handle the case where the field does not exist.
+			errors[entity.GetId()] = fmt.Errorf("foreign key column %s not found", foreignIDKey)
 			continue
 		}
 		foreignID := fieldVal.String()
 		idsFound[foreignID] = true
 	}
 	for _, id := range foreignIDs {
-		if _, ok := idsFound[id]; !ok {
+		if val, ok := idsFound[id]; !ok && !val {
 			errors[id] = gorm.ErrRecordNotFound
 		}
 	}
@@ -535,14 +548,18 @@ func (d *EntityData[T]) Update(updates []*entity.EntityUpdateData) map[string]er
 				if err != nil {
 					return fmt.Errorf("field %s for id %s: %v", field, id, err)
 				}
-				valueTuples = append(valueTuples, fmt.Sprintf("(CAST(? AS uuid), CAST(? AS %s))", castType))
-				args = append(args, id, converted)
+				valueTuples = append(valueTuples, fmt.Sprintf("(?::text, ?::%s)", castType))
+				uid, err := uuid.Parse(id)
+				if err != nil {
+					return fmt.Errorf("failed to parse id %s: %v", id, err)
+				}
+				args = append(args, uid, converted)
 			}
 			query := fmt.Sprintf(`
 				UPDATE %s AS t
-				SET %s = u.new_val
-				FROM (VALUES %s) AS u(id, new_val)
-				WHERE t.id = u.id
+				SET %s = u.delta
+				FROM (VALUES %s) AS u(id, delta)
+    			WHERE t.id = u.id
 			`, d.tableName, cacheEntry.ColumnName, strings.Join(valueTuples, ", "))
 			if err := tx.Exec(query, args...).Error; err != nil {
 				return fmt.Errorf("failed bulk new value update for field '%s': %v", field, err)
@@ -562,14 +579,18 @@ func (d *EntityData[T]) Update(updates []*entity.EntityUpdateData) map[string]er
 				if err != nil {
 					return fmt.Errorf("field %s for id %s: %v", field, id, err)
 				}
-				valueTuples = append(valueTuples, fmt.Sprintf("(CAST(? AS uuid), CAST(? AS %s))", castType))
-				args = append(args, id, deltaValue)
+				valueTuples = append(valueTuples, fmt.Sprintf("(?::text, ?::%s)", castType))
+				uid, err := uuid.Parse(id)
+				if err != nil {
+					return fmt.Errorf("failed to parse id %s: %v", id, err)
+				}
+				args = append(args, uid, deltaValue)
 			}
 			query := fmt.Sprintf(`
 				UPDATE %s AS t
 				SET %s = t.%s + u.delta
 				FROM (VALUES %s) AS u(id, delta)
-				WHERE t.id = u.id
+    			WHERE t.id = u.id
 			`, d.tableName, cacheEntry.ColumnName, cacheEntry.ColumnName, strings.Join(valueTuples, ", "))
 			if err := tx.Exec(query, args...).Error; err != nil {
 				return fmt.Errorf("failed bulk alter value update for field '%s': %v", field, err)
@@ -621,9 +642,15 @@ func (d *EntityData[T]) Update(updates []*entity.EntityUpdateData) map[string]er
 			query := fmt.Sprintf(`
 				UPDATE %s AS t
 				SET %s = CAST(? AS %s)
-				WHERE t.id = CAST(? AS uuid)
+    			WHERE t.id = ?
 			`, d.tableName, cacheEntry.ColumnName, castType)
-			if err := tx.Exec(query, converted, id).Error; err != nil {
+			uid, err := uuid.Parse(id)
+			if err != nil {
+				errorMap[id] = fmt.Errorf("failed to parse id %s: %v", id, err)
+				tx.RollbackTo(spName)
+				continue
+			}
+			if err := tx.Exec(query, converted, uid).Error; err != nil {
 				tx.RollbackTo(spName)
 				errorMap[id] = fmt.Errorf("failed new value update for field '%s': %v", field, err)
 			}
@@ -663,9 +690,15 @@ func (d *EntityData[T]) Update(updates []*entity.EntityUpdateData) map[string]er
 			query := fmt.Sprintf(`
 				UPDATE %s AS t
 				SET %s = t.%s + CAST(? AS %s)
-				WHERE t.id = CAST(? AS uuid)
+    			WHERE t.id = ?
 			`, d.tableName, cacheEntry.ColumnName, cacheEntry.ColumnName, castType)
-			if err := tx.Exec(query, deltaValue, id).Error; err != nil {
+			uid, err := uuid.Parse(id)
+			if err != nil {
+				errorMap[id] = fmt.Errorf("failed to parse id %s: %v", id, err)
+				tx.RollbackTo(spName)
+				continue
+			}
+			if err := tx.Exec(query, deltaValue, uid).Error; err != nil {
 				tx.RollbackTo(spName)
 				errorMap[id] = fmt.Errorf("failed alter value update for field '%s': %v", field, err)
 			}
