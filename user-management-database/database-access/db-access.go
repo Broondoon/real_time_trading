@@ -135,7 +135,7 @@ func (d *UserStocksDataAccess) GetUserStocksBulk(userIDs []string, routine func(
 	for _, userID := range userIDs {
 		userStockslist := []userStock.UserStockInterface{}
 		for _, userStock := range *userStocks {
-			if userStock.GetUserID() == userID {
+			if userStock.GetUserIDString() == userID {
 				userStockslist = append(userStockslist, userStock)
 			}
 		}

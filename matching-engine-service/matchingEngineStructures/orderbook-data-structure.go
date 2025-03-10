@@ -3,6 +3,8 @@ package matchingEngineStructures
 import (
 	"Shared/entities/order"
 	"container/list"
+
+	"github.com/google/uuid"
 )
 
 // Base Structure
@@ -28,7 +30,7 @@ type OrderBookDataStructureInterface interface {
 }
 
 type RemoveParams struct {
-	OrderID  string
+	OrderID  *uuid.UUID
 	PriceKey float64
 }
 
@@ -58,7 +60,7 @@ func (q *Queue) PopNext() order.StockOrderInterface {
 
 func (q *Queue) Remove(params *RemoveParams) order.StockOrderInterface {
 	for e := q.data.Front(); e != nil; e = e.Next() {
-		if e.Value.(order.StockOrderInterface).GetId() == params.OrderID {
+		if e.Value.(order.StockOrderInterface).GetIdString() == params.OrderID.String() {
 			q.data.Remove(e)
 			return e.Value.(order.StockOrderInterface)
 		}

@@ -5,6 +5,8 @@ import (
 	"Shared/entities/stock"
 	"encoding/json"
 	"strconv"
+
+	"github.com/google/uuid"
 )
 
 const (
@@ -25,8 +27,9 @@ const (
 // }
 
 type StockOrderInterface interface {
-	GetStockID() string
-	SetStockID(stockID string)
+	GetStockID() *uuid.UUID
+	GetStockIDString() string
+	SetStockID(stockID *uuid.UUID)
 	GetIsBuy() bool
 	SetIsBuy(isBuy bool)
 	GetOrderType() string
@@ -34,23 +37,25 @@ type StockOrderInterface interface {
 	UpdateQuantity(quantityToAdd int)
 	GetPrice() float64
 	SetPrice(price float64)
-	GetParentStockOrderID() string
-	SetParentStockOrderID(parentStockOrderID string)
-	GetUserID() string
-	SetUserID(userID string)
+	GetParentStockOrderID() *uuid.UUID
+	GetParentStockOrderIDString() string
+	SetParentStockOrderID(parentStockOrderID *uuid.UUID)
+	GetUserID() *uuid.UUID
+	GetUserIDString() string
+	SetUserID(userID *uuid.UUID)
 	CreateChildOrder(parent StockOrderInterface, partner StockOrderInterface) StockOrderInterface
 	ToParams() NewStockOrderParams
 	entity.EntityInterface
 }
 
 type StockOrder struct {
-	StockID            string  `json:"stock_id" gorm:"not null"` // use this or Stock
-	ParentStockOrderID string  `json:"ParentStockOrderID"`
-	IsBuy              bool    `json:"is_buy" gorm:"not null"`
-	OrderType          string  `json:"order_type" gorm:"not null"` // MARKET or LIMIT. This can't be changed later.
-	Quantity           int     `json:"quantity" gorm:"not null"`
-	Price              float64 `json:"price" gorm:"not null"`
-	UserID             string  `json:"user_id" gorm:"type:text;column:user_id;not null"`
+	StockID            *uuid.UUID `json:"stock_id" gorm:"type:uuid;not null"` // use this or Stock
+	ParentStockOrderID *uuid.UUID `json:"ParentStockOrderID" gorm:"type:uuid"`
+	IsBuy              bool       `json:"is_buy" gorm:"not null"`
+	OrderType          string     `json:"order_type" gorm:"not null"` // MARKET or LIMIT. This can't be changed later.
+	Quantity           int        `json:"quantity" gorm:"not null"`
+	Price              float64    `json:"price" gorm:"not null"`
+	UserID             *uuid.UUID `json:"user_id" gorm:"type:uuid;column:user_id;not null"`
 	entity.Entity      `json:"Entity" gorm:"embedded"`
 }
 
@@ -96,27 +101,48 @@ func (so *StockOrder) SetPrice(price float64) {
 	})
 }
 
-func (so *StockOrder) GetStockID() string {
+func (so *StockOrder) GetStockID() *uuid.UUID {
 	return so.StockID
 }
 
-func (so *StockOrder) SetStockID(stockID string) {
+func (so *StockOrder) GetStockIDString() string {
+	if so.StockID == nil {
+		return ""
+	}
+	return so.StockID.String()
+}
+
+func (so *StockOrder) SetStockID(stockID *uuid.UUID) {
 	so.StockID = stockID
 }
 
-func (so *StockOrder) GetParentStockOrderID() string {
+func (so *StockOrder) GetParentStockOrderID() *uuid.UUID {
 	return so.ParentStockOrderID
 }
 
-func (so *StockOrder) SetParentStockOrderID(parentStockOrderID string) {
+func (so *StockOrder) GetParentStockOrderIDString() string {
+	if so.ParentStockOrderID == nil {
+		return ""
+	}
+	return so.ParentStockOrderID.String()
+}
+
+func (so *StockOrder) SetParentStockOrderID(parentStockOrderID *uuid.UUID) {
 	so.ParentStockOrderID = parentStockOrderID
 }
 
-func (so *StockOrder) GetUserID() string {
+func (so *StockOrder) GetUserID() *uuid.UUID {
 	return so.UserID
 }
 
-func (so *StockOrder) SetUserID(userID string) {
+func (so *StockOrder) GetUserIDString() string {
+	if so.UserID == nil {
+		return ""
+	}
+	return so.UserID.String()
+}
+
+func (so *StockOrder) SetUserID(userID *uuid.UUID) {
 	so.UserID = userID
 }
 
@@ -140,18 +166,18 @@ func (so *StockOrder) CreateChildOrder(parent StockOrderInterface, partner Stock
 type NewStockOrderParams struct {
 	entity.NewEntityParams `json:"Entity"`
 	Stock                  stock.StockInterface // use this or StockID
-	StockID                string               `json:"stock_id"`
+	StockID                *uuid.UUID           `json:"stock_id"`
 	IsBuy                  bool                 `json:"is_buy"`
 	OrderType              string               `json:"order_type"` // MARKET or LIMIT. This can't be changed later.
 	Quantity               int                  `json:"quantity"`
 	Price                  float64              `json:"price"`
-	ParentStockOrderID     string               `json:"ParentStockOrderID"`
-	UserID                 string               `json:"user_id"`
+	ParentStockOrderID     *uuid.UUID           `json:"ParentStockOrderID"`
+	UserID                 *uuid.UUID           `json:"user_id"`
 }
 
 func New(params NewStockOrderParams) *StockOrder {
 	e := entity.NewEntity(params.NewEntityParams)
-	var stockID string
+	var stockID *uuid.UUID
 	if params.Stock != nil {
 		stockID = params.Stock.GetId()
 	} else {

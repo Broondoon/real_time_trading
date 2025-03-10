@@ -122,7 +122,9 @@ func (rw *responseWriterWrapper) Header() http.Header {
 
 func (rw *responseWriterWrapper) EncodeResponse(statusCode int, response map[string]interface{}) {
 	//rw.Header().Set("Content-Type", "application/json")
-	rw.ResponseWriter.WriteHeader(statusCode)
+	if statusCode != http.StatusOK {
+		rw.ResponseWriter.WriteHeader(statusCode)
+	}
 	j, _ := json.Marshal(response)
 	rw.Write(j)
 }

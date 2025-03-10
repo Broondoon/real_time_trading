@@ -3,11 +3,13 @@ package databaseServiceStockOrder
 import (
 	databaseService "Shared/database/database-service"
 	"Shared/entities/order"
+
+	"github.com/google/uuid"
 )
 
 type DatabaseServiceInterface interface {
 	databaseService.EntityDataInterface[*order.StockOrder]
-	GetInitialStockOrdersForStock(stockID string) (*[]order.StockOrder, error)
+	GetInitialStockOrdersForStock(stockID *uuid.UUID) (*[]*order.StockOrder, error)
 }
 
 type DatabaseService struct {
@@ -40,8 +42,10 @@ func (d *DatabaseService) Disconnect() {
 }
 
 // Right now, we're just gonna get all stocksOrders for a given stock. Later, we need to limit this to a specific subset of orders.
-func (d *DatabaseService) GetInitialStockOrdersForStock(stockID string) (*[]order.StockOrder, error) {
-	var orders []order.StockOrder
-	d.GetDatabaseSession().Find(&orders, "stock_id = ? ", stockID)
-	return &orders, nil
+func (d *DatabaseService) GetInitialStockOrdersForStock(stockID *uuid.UUID) (*[]*order.StockOrder, error) {
+	orders, err := d.GetByForeignID("StockID", stockID.String())
+	if err != nil {
+		return nil, err
+	}
+	return orders, nil
 }

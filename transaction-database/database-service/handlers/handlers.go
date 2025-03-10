@@ -83,8 +83,8 @@ func GetStockTransactions(responseWriter network.ResponseWriter, data []byte, qu
 
 		// Create formatted transaction
 		formatted := FormattedStockTransaction{
-			StockTxID:   tx.GetId(),
-			StockID:     tx.GetStockID(),
+			StockTxID:   tx.GetIdString(),
+			StockID:     tx.GetStockIDString(),
 			OrderStatus: tx.GetOrderStatus(),
 			IsBuy:       tx.GetIsBuy(),
 			OrderType:   tx.GetOrderType(),
@@ -94,10 +94,10 @@ func GetStockTransactions(responseWriter network.ResponseWriter, data []byte, qu
 		}
 
 		// Handle nullable fields
-		if parentID := tx.GetParentStockTransactionID(); parentID != "" {
+		if parentID := tx.GetParentStockTransactionIDString(); parentID != "" {
 			formatted.ParentStockTxID = &parentID
 		}
-		if walletID := tx.GetWalletTransactionID(); walletID != "" {
+		if walletID := tx.GetWalletTransactionIDString(); walletID != "" {
 			formatted.WalletTxID = &walletID
 		}
 
@@ -170,8 +170,8 @@ func getWalletTransactions(responseWriter network.ResponseWriter, data []byte, q
 
 		// Create formatted transaction
 		formatted := FormattedWalletTransaction{
-			WalletTxID: tx.GetId(), // Get the ID from the wallet transaction
-			StockTxID:  tx.GetStockTransactionID(),
+			WalletTxID: tx.GetIdString(), // Get the ID from the wallet transaction
+			StockTxID:  tx.GetStockTransactionIDString(),
 			IsDebit:    tx.GetIsDebit(),
 			Amount:     tx.GetAmount(),
 			Timestamp:  tx.GetTimestamp(),

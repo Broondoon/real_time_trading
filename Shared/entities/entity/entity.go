@@ -3,11 +3,14 @@ package entity
 import (
 	"encoding/json"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 type BaseEntityInterface interface {
-	GetId() string
-	SetId(id string)
+	GetId() *uuid.UUID
+	GetIdString() string
+	SetId(id *uuid.UUID)
 	GetDateCreated() time.Time
 	SetDateCreated(dateCreated time.Time)
 	GetDateModified() time.Time
@@ -23,24 +26,31 @@ type EntityInterface interface {
 }
 
 type Entity struct {
-	ID           string               `json:"ID" gorm:"primaryKey;type:uuid;default:uuid_generate_v4()"` // gorm:"primaryKey" is used to set the primary key in the database.
+	ID           *uuid.UUID           `json:"ID" gorm:"primaryKey;type:uuid;default:uuid_generate_v4()"` // gorm:"primaryKey" is used to set the primary key in the database.
 	DateCreated  time.Time            `json:"DateCreated" gorm:"autoCreateTime:milli"`                   // gorm:"autoCreateTime:milli" is used to set the time the entity was created in the database.
 	DateModified time.Time            `json:"DateModified" gorm:"autoUpdateTime:milli"`                  // gorm:"autoUpdateTime:milli" is used to set the time the entity was last modified in the database.
 	Updates      *[]*EntityUpdateData `json:"-" gorm:"-"`
 }
 
 type EntityUpdateData struct {
-	ID         string
+	ID         *uuid.UUID
 	Field      string
 	NewValue   *string // New value to set the field; set as nil to not update.
 	AlterValue *string // Value to add to the existing value NOT the new value; set as nil to not update.
 }
 
-func (e *Entity) GetId() string {
+func (e *Entity) GetId() *uuid.UUID {
 	return e.ID
 }
 
-func (e *Entity) SetId(id string) {
+func (e *Entity) GetIdString() string {
+	if e.ID == nil {
+		return ""
+	}
+	return e.ID.String()
+}
+
+func (e *Entity) SetId(id *uuid.UUID) {
 	e.ID = id
 }
 
@@ -74,9 +84,9 @@ func (e *Entity) GetUpdates() *[]*EntityUpdateData {
 }
 
 type NewEntityParams struct {
-	ID           string    `json:"ID"`
-	DateCreated  time.Time `json:"DateCreated"`
-	DateModified time.Time `json:"DateModified"`
+	ID           *uuid.UUID `json:"ID"`
+	DateCreated  time.Time  `json:"DateCreated"`
+	DateModified time.Time  `json:"DateModified"`
 }
 
 func NewEntity(params NewEntityParams) *Entity {

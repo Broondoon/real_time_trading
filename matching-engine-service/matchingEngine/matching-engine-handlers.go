@@ -13,22 +13,23 @@ import (
 	"os"
 	"sort"
 
+	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
-var _matchingEngineMap map[string]MatchingEngineInterface
+var _matchingEngineMap map[*uuid.UUID]MatchingEngineInterface
 var _databaseManager databaseAccessStockOrder.DatabaseAccessInterface
 var _networkHttpManager network.NetworkInterface
 var _networkQueueManager network.NetworkInterface
 var _stockDatabaseAccess databaseAccessStock.DatabaseAccessInterface
 
-func InitalizeHandlers(stockIDs *[]string,
+func InitalizeHandlers(stockIDs *[]*uuid.UUID,
 	networkHttpManager network.NetworkInterface, networkQueueManager network.NetworkInterface, databaseManager databaseAccessStockOrder.DatabaseAccessInterface, stockDatabaseAccess databaseAccessStock.DatabaseAccessInterface) {
 	_databaseManager = databaseManager
 	_networkHttpManager = networkHttpManager
 	_networkQueueManager = networkQueueManager
 	_stockDatabaseAccess = stockDatabaseAccess
-	_matchingEngineMap = make(map[string]MatchingEngineInterface)
+	_matchingEngineMap = make(map[*uuid.UUID]MatchingEngineInterface)
 	//Create all matching engines for stocks.
 	for _, stockID := range *stockIDs {
 		AddNewStock(stockID)
@@ -63,11 +64,17 @@ func AddNewStockHandler(responseWriter network.ResponseWriter, data []byte, quer
 		responseWriter.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	AddNewStock(stockID.StockID)
+	uid, err := uuid.Parse(stockID.StockID)
+	if err != nil {
+		log.Println("Error: ", err.Error())
+		responseWriter.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	AddNewStock(&uid)
 	responseWriter.WriteHeader(http.StatusOK)
 }
 
-func AddNewStock(stockID string) {
+func AddNewStock(stockID *uuid.UUID) {
 	_, ok := _matchingEngineMap[stockID]
 	//if we don't have a matching engine for this stock, create one
 	if !ok {
@@ -120,8 +127,13 @@ func PlaceStockOrder(stockOrder order.StockOrderInterface) bool {
 
 func DeleteStockOrderHandler(responseWriter network.ResponseWriter, data []byte, queryParams url.Values, requestType string) {
 	log.Println("Deleting stock order")
-	orderID := queryParams.Get("id")
-	err := DeleteStockOrder(orderID)
+	orderID, err := uuid.Parse(queryParams.Get("id"))
+	if err != nil {
+		log.Println("Error: ", err.Error())
+		responseWriter.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	err = DeleteStockOrder(&orderID)
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		responseWriter.WriteHeader(http.StatusNotFound)
 		return
@@ -134,7 +146,7 @@ func DeleteStockOrderHandler(responseWriter network.ResponseWriter, data []byte,
 	responseWriter.WriteHeader(http.StatusOK)
 }
 
-func DeleteStockOrder(orderID string) error {
+func DeleteStockOrder(orderID *uuid.UUID) error {
 	order, err := _databaseManager.GetByID(orderID)
 	if err != nil {
 		log.Println("Error: ", err.Error())
@@ -183,12 +195,12 @@ func GetStockPrices() (*[]network.StockPrice, error) {
 		return nil, err
 	}
 	//create a map from the stock ids to names
-	stockIDToName := make(map[string]string)
+	stockIDToName := make(map[*uuid.UUID]string)
 	for _, stock := range *stocks {
 		stockIDToName[stock.GetId()] = stock.GetName()
 	}
 	//get the prices for each stock
-	prices := make(map[string]float64)
+	prices := make(map[*uuid.UUID]float64)
 	for stockID, me := range _matchingEngineMap {
 		prices[stockID] = me.GetPrice()
 	}
@@ -197,7 +209,7 @@ func GetStockPrices() (*[]network.StockPrice, error) {
 	i := 0
 	for stockID, price := range prices {
 		stockPrices[i] = network.StockPrice{
-			StockID:   stockID,
+			StockID:   stockID.String(),
 			StockName: stockIDToName[stockID],
 			Price:     price,
 		}
@@ -219,11 +231,11 @@ func SendToOrderExection(buyOrder order.StockOrderInterface, sellOrder order.Sto
 		quantity = sellQty
 	}
 	transferEntity := network.MatchingEngineToExecutionJSON{
-		BuyerID:       buyOrder.GetUserID(),
-		SellerID:      sellOrder.GetUserID(),
-		StockID:       buyOrder.GetStockID(),
-		BuyOrderID:    buyOrder.GetId(),
-		SellOrderID:   sellOrder.GetId(),
+		BuyerID:       buyOrder.GetUserIDString(),
+		SellerID:      sellOrder.GetUserIDString(),
+		StockID:       buyOrder.GetStockIDString(),
+		BuyOrderID:    buyOrder.GetIdString(),
+		SellOrderID:   sellOrder.GetIdString(),
 		IsBuyPartial:  buyQty > sellQty,
 		IsSellPartial: buyQty < sellQty,
 		StockPrice:    sellOrder.GetPrice(),

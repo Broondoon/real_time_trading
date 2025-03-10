@@ -5,11 +5,14 @@ import (
 	"Shared/entities/user"
 	"encoding/json"
 	"strconv"
+
+	"github.com/google/uuid"
 )
 
 type WalletInterface interface {
-	GetUserID() string
-	SetUserID(userID string)
+	GetUserID() *uuid.UUID
+	GetUserIDString() string
+	SetUserID(userID *uuid.UUID)
 	GetBalance() float64
 	UpdateBalance(balanceToAdd float64)
 	ToParams() NewWalletParams
@@ -17,8 +20,8 @@ type WalletInterface interface {
 }
 
 type Wallet struct {
-	UserID        string  `json:"user_id" gorm:"type:text;column:user_id;not null"`
-	Balance       float64 `json:"balance" gorm:"not null"`
+	UserID        *uuid.UUID `json:"user_id" gorm:"type:uuid;column:user_id;not null"`
+	Balance       float64    `json:"balance" gorm:"not null"`
 	entity.Entity `json:"Entity" gorm:"embedded"`
 }
 
@@ -35,24 +38,31 @@ func (w *Wallet) UpdateBalance(balanceToAdd float64) {
 	})
 }
 
-func (w *Wallet) GetUserID() string {
+func (w *Wallet) GetUserID() *uuid.UUID {
 	return w.UserID
 }
 
-func (w *Wallet) SetUserID(userID string) {
+func (w *Wallet) GetUserIDString() string {
+	if w.UserID == nil {
+		return ""
+	}
+	return w.UserID.String()
+}
+
+func (w *Wallet) SetUserID(userID *uuid.UUID) {
 	w.UserID = userID
 }
 
 type NewWalletParams struct {
 	entity.NewEntityParams `json:"Entity"`
-	UserID                 string             `json:"user_id" gorm:"not null"`
+	UserID                 *uuid.UUID         `json:"user_id" gorm:"not null"`
 	Balance                float64            `json:"balance" gorm:"not null"`
 	User                   user.UserInterface // use this or UserId
 }
 
 func New(params NewWalletParams) *Wallet {
 	e := entity.NewEntity(params.NewEntityParams)
-	var UserID string
+	var UserID *uuid.UUID
 	if params.User != nil {
 		UserID = params.User.GetId()
 	} else {

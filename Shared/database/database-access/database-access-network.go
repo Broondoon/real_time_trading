@@ -9,6 +9,8 @@ import (
 	"os"
 	"strconv"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 type EntityDataAccessClient[TEntity entity.EntityInterface, TInterface entity.EntityInterface] struct {
@@ -92,11 +94,11 @@ func (d *EntityDataAccessClient[TEntity, TInterface]) Disconnect() {
 
 }
 
-func (d *EntityDataAccessClient[TEntity, TInterface]) GetByID(id string) (TInterface, error) {
+func (d *EntityDataAccessClient[TEntity, TInterface]) GetByID(id *uuid.UUID) (TInterface, error) {
 	if d.GetRoute == "" {
 		d.GetRoute = d.DefaultRoute
 	}
-	jsonBytes, err := d._client.Get(d.GetRoute+"/"+id, nil)
+	jsonBytes, err := d._client.Get(d.GetRoute+"/"+id.String(), nil)
 	if err != nil {
 		var zero TInterface
 		return zero, err
@@ -133,12 +135,16 @@ func (d *EntityDataAccessClient[TEntity, TInterface]) GetAll() (*[]TInterface, e
 	return &converted, nil
 }
 
-func (d *EntityDataAccessClient[TEntity, TInterface]) GetByIDs(ids []string) (*[]TInterface, map[string]int, error) {
+func (d *EntityDataAccessClient[TEntity, TInterface]) GetByIDs(ids []*uuid.UUID) (*[]TInterface, map[string]int, error) {
 	if d.GetRoute == "" {
 		d.GetRoute = d.DefaultRoute
 	}
 	queryParams := map[string]string{}
-	bulkReturn, err := d._client.GetBulk(d.GetRoute, ids, queryParams)
+	idsStr := make([]string, len(ids))
+	for i, id := range ids {
+		idsStr[i] = id.String()
+	}
+	bulkReturn, err := d._client.GetBulk(d.GetRoute, idsStr, queryParams)
 	if err != nil {
 		var zero []TInterface
 		var mapErrs map[string]int
@@ -309,11 +315,11 @@ func (d *EntityDataAccessClient[TEntity, TInterface]) UpdateBulk(entities *[]TIn
 	return bulkReturn.Errors, nil
 }
 
-func (d *EntityDataAccessClient[TEntity, TInterface]) Delete(id string) error {
+func (d *EntityDataAccessClient[TEntity, TInterface]) Delete(id *uuid.UUID) error {
 	if d.DeleteRoute == "" {
 		d.DeleteRoute = d.DefaultRoute
 	}
-	_, err := d._client.Delete(d.DeleteRoute + "/" + id)
+	_, err := d._client.Delete(d.DeleteRoute + "/" + id.String())
 	if err != nil {
 		log.Println("Failed to delete entity: ", err)
 		return err
@@ -321,11 +327,15 @@ func (d *EntityDataAccessClient[TEntity, TInterface]) Delete(id string) error {
 	return nil
 }
 
-func (d *EntityDataAccessClient[TEntity, TInterface]) DeleteBulk(ids []string) (map[string]int, error) {
+func (d *EntityDataAccessClient[TEntity, TInterface]) DeleteBulk(ids []*uuid.UUID) (map[string]int, error) {
 	if d.DeleteRoute == "" {
 		d.DeleteRoute = d.DefaultRoute
 	}
-	bulkReturn, err := d._client.DeleteBulk(d.DeleteRoute, ids)
+	var idsStr []string
+	for _, id := range ids {
+		idsStr = append(idsStr, id.String())
+	}
+	bulkReturn, err := d._client.DeleteBulk(d.DeleteRoute, idsStr)
 	if err != nil {
 		var mapErrs map[string]int
 		log.Println("Failed to delete entities: ", err)

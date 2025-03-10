@@ -4,6 +4,8 @@ import (
 	databaseAccess "Shared/database/database-access"
 	"Shared/entities/order"
 	databaseServiceStockOrder "databaseServiceStockOrder/database-connection"
+
+	"github.com/google/uuid"
 )
 
 type EntityDataAccessInterface = databaseAccess.EntityDataAccessInterface[*order.StockOrder, order.StockOrderInterface]
@@ -11,7 +13,7 @@ type EntityDataAccessInterface = databaseAccess.EntityDataAccessInterface[*order
 type DatabaseAccessInterface interface {
 	databaseAccess.DatabaseAccessInterface
 	EntityDataAccessInterface
-	GetInitialStockOrdersForStock(stockID string) *[]order.StockOrderInterface
+	GetInitialStockOrdersForStock(stockID *uuid.UUID) *[]order.StockOrderInterface
 }
 
 type DatabaseAccess struct {
@@ -47,14 +49,14 @@ func NewDatabaseAccess(params *NewDatabaseAccessParams) DatabaseAccessInterface 
 	return dba
 }
 
-func (d *DatabaseAccess) GetInitialStockOrdersForStock(stockID string) *[]order.StockOrderInterface {
+func (d *DatabaseAccess) GetInitialStockOrdersForStock(stockID *uuid.UUID) *[]order.StockOrderInterface {
 	stockOrders, err := d.TEMPCONNECTION.GetInitialStockOrdersForStock(stockID)
 	if err != nil {
 		return nil
 	}
 	convertedStockOrders := make([]order.StockOrderInterface, len(*stockOrders))
 	for i, o := range *stockOrders {
-		convertedStockOrders[i] = &o
+		convertedStockOrders[i] = o
 	}
 	return &convertedStockOrders
 }

@@ -42,7 +42,7 @@ func GetStockIDsHandler(responseWriter network.ResponseWriter, data []byte, quer
 	}
 	stockIDs := make([]string, len(*stocks))
 	for i, stock := range *stocks {
-		stockIDs[i] = stock.GetId()
+		stockIDs[i] = stock.GetIdString()
 	}
 	stockIDsJSON, err := json.Marshal(stockIDs)
 	if err != nil {
@@ -69,7 +69,7 @@ func AddNewStockHandler(responseWriter network.ResponseWriter, data []byte, quer
 		responseWriter.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	stockIdObject := network.StockID{StockID: newStock.GetId()}
+	stockIdObject := network.StockID{StockID: newStock.GetIdString()}
 	_, err = _networkManager.MatchingEngine().Post("createStock", stockIdObject)
 	if err != nil {
 		log.Println("Error: ", err.Error())
@@ -78,7 +78,7 @@ func AddNewStockHandler(responseWriter network.ResponseWriter, data []byte, quer
 	}
 	returnVal := network.ReturnJSON{
 		Success: true,
-		Data:    network.StockID{StockID: newStock.GetId()},
+		Data:    network.StockID{StockID: newStock.GetIdString()},
 	}
 	returnValJSON, err := json.Marshal(returnVal)
 	if err != nil {

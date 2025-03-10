@@ -9,6 +9,8 @@ import (
 	"fmt"
 	"log"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 // Calculates the total cost of a transaction given the quantity and stock price.
@@ -18,24 +20,24 @@ func calculateTotalTransactionCost(quantity int, stockPrice float64) float64 {
 
 // Finds and validates user stock portfolios
 func findUserStockPortfolios(
-	buyerID string,
-	sellerID string,
+	buyerID *uuid.UUID,
+	sellerID *uuid.UUID,
 	databaseAccessUser databaseAccessUserManagement.DatabaseAccessInterface,
 ) (*[]userStock.UserStockInterface, *[]userStock.UserStockInterface, error) {
 
 	// Get buyer's current stock holdings
-	buyerStockPortfolio, err := databaseAccessUser.UserStock().GetUserStocks(buyerID)
+	buyerStockPortfolio, err := databaseAccessUser.UserStock().GetUserStocks(buyerID.String())
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get buyer stocks: %v", err)
 	}
-	log.Println(fmt.Sprintf("Retrieved buyer portfolio with %d stocks", len(*buyerStockPortfolio)))
+	log.Printf("Retrieved buyer portfolio with %d stocks", len(*buyerStockPortfolio))
 
 	// Get seller's current stock holdings
-	sellerStockPortfolio, err := databaseAccessUser.UserStock().GetUserStocks(sellerID)
+	sellerStockPortfolio, err := databaseAccessUser.UserStock().GetUserStocks(sellerID.String())
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get seller stocks: %v", err)
 	}
-	log.Println(fmt.Sprintf("Retrieved seller portfolio with %d stocks", len(*sellerStockPortfolio)))
+	log.Printf("%s", fmt.Sprintf("Retrieved seller portfolio with %d stocks", len(*sellerStockPortfolio)))
 
 	return buyerStockPortfolio, sellerStockPortfolio, nil
 }
@@ -43,13 +45,13 @@ func findUserStockPortfolios(
 // Finds and validates seller's stock holding
 func handleSellerStock(
 	sellerStockPortfolio *[]userStock.UserStockInterface,
-	stockID string,
+	stockID *uuid.UUID,
 	quantity int,
 ) (userStock.UserStockInterface, error) {
 
 	var sellerStock userStock.UserStockInterface
 	for _, stock := range *sellerStockPortfolio {
-		if stock.GetStockID() == stockID {
+		if stock.GetStockIDString() == stockID.String() {
 			sellerStock = stock
 			break
 		}
@@ -65,15 +67,15 @@ func handleSellerStock(
 			stockID, sellerQuantity, quantity)
 	}
 
-	log.Println(fmt.Sprintf("Initially Seller has %d shares of StockID: %s", sellerQuantity, sellerStock.GetStockID()))
+	log.Printf("%s", fmt.Sprintf("Initially Seller has %d shares of StockID: %s", sellerQuantity, sellerStock.GetStockIDString()))
 	return sellerStock, nil
 }
 
 // Creates or retrieves buyer's stock holding
 func handleBuyerStock(
 	buyerStockPortfolio *[]userStock.UserStockInterface,
-	buyerID string,
-	stockID string,
+	buyerID *uuid.UUID,
+	stockID *uuid.UUID,
 	//quantity int,
 	sellerStock userStock.UserStockInterface,
 	databaseAccessUser databaseAccessUserManagement.DatabaseAccessInterface,
@@ -81,15 +83,16 @@ func handleBuyerStock(
 
 	var buyerStock userStock.UserStockInterface
 	for _, stock := range *buyerStockPortfolio {
-		if stock.GetStockID() == stockID {
+		if stock.GetStockIDString() == stockID.String() {
 			buyerStock = stock
 			break
 		}
 	}
-	log.Println(fmt.Sprintf("Initially Buyer has %d shares of StockID: %s", buyerStock.GetQuantity(), buyerStock.GetStockID()))
+	log.Printf("%s", fmt.Sprintf("Initially Buyer has %d shares of StockID: %s", buyerStock.GetQuantity(), buyerStock.GetStockID()))
 
 	// If the buyer doesn't have any of the stock, a new stock holding is created
 	// The quantity is originally set to zero and is updated after (otherwise there's an error where the quantity is double what it should be)
+
 	if buyerStock == nil {
 		buyerStock = userStock.New(userStock.NewUserStockParams{
 			UserID:    buyerID,
@@ -128,7 +131,7 @@ func updateUserStockQuantities(
 	}
 	//log.Println(fmt.Sprintf("Final -> Buyer  has %d shares of StockID: %s", buyerStock.GetQuantity(), buyerStock.GetStockID()))
 
-	log.Println("Final Buyer Quantity of StockID = %s is %d, Final Seller Quantity of StockID = %s is %d", buyerStock.GetStockID(), buyerStock.GetQuantity(), sellerStock.GetStockID(), sellerStock.GetQuantity())
+	log.Printf("Final Buyer Quantity of StockID = %s is %d, Final Seller Quantity of StockID = %s is %d", buyerStock.GetStockID(), buyerStock.GetQuantity(), sellerStock.GetStockID(), sellerStock.GetQuantity())
 
 	return nil
 }
@@ -142,7 +145,7 @@ func updateTransactionStatus(
 	databaseAccessTransact databaseAccessTransaction.DatabaseAccessInterface,
 ) error {
 
-	log.Println(fmt.Sprintf("BEFORE Update Status: %s", stockTx.GetOrderStatus()))
+	log.Printf("%s", fmt.Sprintf("BEFORE Update Status: %s", stockTx.GetOrderStatus()))
 
 	// Set the stock price in the transaction
 	stockTx.SetStockPrice(stockPrice)
@@ -168,7 +171,7 @@ func updateTransactionStatus(
 	if err := databaseAccessTransact.StockTransaction().Update(stockTx); err != nil {
 		return fmt.Errorf("failed to update transaction status: %v", err)
 	}
-	log.Println(fmt.Sprintf("AFTER Update Status: %s", stockTx.GetOrderStatus()))
+	log.Printf("%s", fmt.Sprintf("AFTER Update Status: %s", stockTx.GetOrderStatus()))
 
 	// Create filled transaction for partial orders
 	if isBuyPartial || isSellPartial {
@@ -185,7 +188,7 @@ func updateTransactionStatus(
 			return fmt.Errorf("failed to create filled stock transaction: %v", err)
 		}
 
-		log.Println(fmt.Sprintf("Created Filled Transaction with ID: %s", filledTx.GetId()))
+		log.Printf("%s", fmt.Sprintf("Created Filled Transaction with ID: %s", filledTx.GetId()))
 	}
 
 	return nil

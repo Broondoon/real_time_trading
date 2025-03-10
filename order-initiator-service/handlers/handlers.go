@@ -17,6 +17,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
@@ -78,7 +79,13 @@ func placeStockOrderHandler(responseWriter network.ResponseWriter, data []byte, 
 		responseWriter.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	stockOrder.SetUserID(queryParams.Get("userID"))
+	userUuid, err := uuid.Parse(queryParams.Get("userID"))
+	if err != nil {
+		log.Println("Error: ", err.Error())
+		responseWriter.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	stockOrder.SetUserID(&userUuid)
 	stockOrderCarry := &StockOrderBulk{
 		StockOrder:     stockOrder,
 		ResponseWriter: responseWriter,
@@ -122,7 +129,7 @@ func checkUserStocks(data *[]*StockOrderBulk, TransferParams any) error {
 			// Find the stock in the seller's portfolio
 			var sellerStock userStock.UserStockInterface
 			for _, stock := range *sellerStockPortfolio {
-				if stock.GetStockID() == stockOrder.StockOrder.GetStockID() {
+				if stock.GetStockIDString() == stockOrder.StockOrder.GetStockIDString() {
 					sellerStock = stock
 					break
 				}
@@ -181,7 +188,7 @@ func updateUserStocks(data *[]*StockOrderBulk, TransferParams any) error {
 	}
 
 	for _, stockOrder := range *data {
-		if errorCode := errorList[stockOrder.UserStock.GetId()]; errorCode != 0 {
+		if errorCode := errorList[stockOrder.UserStock.GetIdString()]; errorCode != 0 {
 			log.Println("Stock order with ID: ", stockOrder.UserStock.GetId(), " has Error code: ", errorCode)
 			if errorCode == http.StatusNotFound {
 				log.Printf("user stock %s not found", stockOrder.UserStock.GetId())
@@ -220,7 +227,7 @@ func placeStockOrderResponse(data *[]*StockOrderBulk, TransferParams any) error 
 		}
 	}
 
-	IdsByTimeStamp := make(map[string]string)
+	IdsByTimeStamp := make(map[string]*uuid.UUID)
 	for _, createdcreatedTransaction := range *createdTransactions {
 		IdsByTimeStamp[createdcreatedTransaction.GetTimestamp().String()] = createdcreatedTransaction.GetId()
 	}

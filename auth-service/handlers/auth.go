@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -206,7 +207,7 @@ func createWallet(data *[]*UserBulk, TransferParams any) error {
 	users := make(map[string]*UserBulk, len(*data))
 	wallets := make([]wallet.WalletInterface, len(*data))
 	for i, d := range *data {
-		users[d.UserEntity.GetId()] = d
+		users[d.UserEntity.GetIdString()] = d
 		wallets[i] = wallet.New(wallet.NewWalletParams{
 			NewEntityParams: entity.NewEntityParams{},
 			UserID:          d.UserEntity.GetId(),
@@ -227,14 +228,14 @@ func createWallet(data *[]*UserBulk, TransferParams any) error {
 		RespondError(users[userId].ResponseWriter, http.StatusInternalServerError, "Internal error")
 	}
 	for _, d := range *newWallets {
-		RespondSuccess(users[d.GetUserID()].ResponseWriter, nil)
+		RespondSuccess(users[d.GetUserIDString()].ResponseWriter, nil)
 	}
 	return nil
 }
 
 func removeUser(data *[]*UserBulk, TransferParams any) error {
 	log.Printf("Error creating wallets. We need to delete any users we created for this.\n")
-	userIDs := make([]string, len(*data))
+	userIDs := make([]*uuid.UUID, len(*data))
 	for i, d := range *data {
 		userIDs[i] = d.UserEntity.GetId()
 	}
@@ -289,7 +290,7 @@ func loginUsers(data *[]*UserBulk, TransferParams any) error {
 		}
 		log.Println("Checking password for user: ", user.GetUsername(), " with password: ", d.UserEntity.GetPassword(), " and hash: ", user.GetPassword())
 		if CheckPasswordHash(d.UserEntity.GetPassword(), user.GetPassword()) {
-			token, err := GenerateToken(user.GetId())
+			token, err := GenerateToken(user.GetIdString())
 			if err != nil {
 				RespondError(d.ResponseWriter, http.StatusInternalServerError, "Token generation failed.")
 				continue

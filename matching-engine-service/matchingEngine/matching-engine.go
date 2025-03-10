@@ -6,20 +6,22 @@ import (
 	"Shared/network"
 	"databaseAccessStockOrder"
 	"log"
+
+	"github.com/google/uuid"
 )
 
 // https://gobyexample.com/channels
 // https://chatgpt.com/share/67aa804e-4678-8006-970a-23d76d933f3c
 type MatchingEngineInterface interface {
 	AddOrder(stockOrder order.StockOrderInterface)
-	RemoveOrder(orderID string, priceKey float64)
+	RemoveOrder(orderID *uuid.UUID, priceKey float64)
 	RunMatchingEngineOrders()
 	RunMatchingEngineUpdates()
 	GetPrice() float64
 }
 
 type MatchingEngine struct {
-	StockId             string
+	StockId             *uuid.UUID
 	BuyOrderBook        matchingEngineStructures.BuyOrderBookInterface
 	SellOrderBook       matchingEngineStructures.SellOrderBookInterface
 	orderChannel        chan order.StockOrderInterface
@@ -30,7 +32,7 @@ type MatchingEngine struct {
 }
 
 type NewMatchingEngineParams struct {
-	StockID                  string
+	StockID                  *uuid.UUID
 	InitalOrders             *[]order.StockOrderInterface
 	SendToOrderExecutionFunc func(buyOrder order.StockOrderInterface, sellOrder order.StockOrderInterface) (network.ExecutorToMatchingEngineJSON, error)
 	DatabaseManager          databaseAccessStockOrder.DatabaseAccessInterface
@@ -189,7 +191,7 @@ func (me *MatchingEngine) RunMatchingEngineOrders() {
 }
 
 type UpdateParams struct {
-	OrderID  string
+	OrderID  *uuid.UUID
 	PriceKey float64
 }
 
@@ -214,7 +216,7 @@ func (me *MatchingEngine) AddOrder(stockOrder order.StockOrderInterface) {
 	me.orderChannel <- stockOrder
 }
 
-func (me *MatchingEngine) RemoveOrder(orderID string, priceKey float64) {
+func (me *MatchingEngine) RemoveOrder(orderID *uuid.UUID, priceKey float64) {
 	me.updateChannel <- &UpdateParams{
 		OrderID:  orderID,
 		PriceKey: priceKey,

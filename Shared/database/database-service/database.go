@@ -153,7 +153,6 @@ type EntityDataInterface[T entity.EntityInterface] interface {
 	//UpdateBulk(entities *[]T) error
 	Delete(ID string) error
 	DeleteBulk(IDs []string) map[string]error
-	Exists(ID string) (bool, error)
 
 	//I need a safe updater for numerical values... we can't pass it the updated entity, we have to pass it the values to change the fields by.
 	Update([]*entity.EntityUpdateData) map[string]error
@@ -225,38 +224,59 @@ func NewEntityData[T entity.EntityInterface](params *NewEntityDataParams) Entity
 	return ed
 }
 
-func (d *EntityData[T]) Exists(ID string) (bool, error) {
-	if ID == "" {
-		return false, fmt.Errorf("ID is empty")
+func convertID(id string) (uuid.UUID, error) {
+	uid, err := uuid.Parse(id)
+	if err != nil {
+		return uuid.UUID{}, fmt.Errorf("failed to parse id %s: %v", id, err)
 	}
-	var ent T
+	return uid, nil
+}
 
-	result := d.GetNewDatabaseSession().First(&ent, "id = ?", ID)
-	if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-		return false, nil
+func convertIDs(ids []string, errors map[string]error) ([]uuid.UUID, map[string]error) {
+	uids := make([]uuid.UUID, 0, len(ids))
+	for _, id := range ids {
+		uid, err := convertID(id)
+		if err != nil {
+			errors[id] = err
+			continue
+		}
+		uids = append(uids, uid)
 	}
-	if result.Error != nil {
-		log.Printf("error checking if entity exists: %s", result.Error.Error())
-		return false, result.Error
+	return uids, errors
+}
+
+func (d *EntityData[T]) PrintOutEntities() {
+	entities, err := d.GetAll()
+	if err != nil {
+		log.Printf("error getting all: %s", err.Error())
+		return
 	}
-	return true, nil
+	for _, entity := range *entities {
+		json, _ := entity.ToJSON()
+		log.Println(string(json))
+	}
 }
 
 func (d *EntityData[T]) GetByID(id string) (T, error) {
+	var zero T
 	if id == "" {
-		var zero T
 		return zero, fmt.Errorf("ID is empty")
 	}
 	var ent T
-	result := d.GetDatabaseSession().First(&ent, "id = ?", id)
+	uid, err := convertID(id)
+	if err != nil {
+		log.Printf("error getting: %s", err.Error())
+		return zero, err
+	}
+	result := d.GetDatabaseSession().First(&ent, "id = ?", uid)
 	if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-		var zero T
 		log.Printf("record not found for id: %s", id)
+		d.PrintOutEntities()
 		return zero, result.Error
 	}
 	if result.Error != nil {
-		var zero T
 		log.Printf("error getting: %s", result.Error.Error())
+		d.PrintOutEntities()
 		return zero, result.Error
 	}
 	return ent, nil
@@ -268,20 +288,28 @@ func (d *EntityData[T]) GetByIDs(ids []string) (*[]T, map[string]error) {
 	}
 	var entities []T
 	errors := make(map[string]error)
-	results := d.GetDatabaseSession().Find(&entities, "id IN ?", ids)
+	uids, errors := convertIDs(ids, errors)
+	if len(uids) == 0 {
+		return nil, errors
+	}
+
+	results := d.GetDatabaseSession().Find(&entities, "id IN ?", uids)
 	if results.Error != nil {
 		errors["transaction"] = results.Error
 		log.Printf("error getting by ids: %s", results.Error.Error())
+		d.PrintOutEntities()
+
 		return nil, errors
 	}
 	//get all ids in ids that are not in entities
 	idsFound := make(map[string]bool)
 	for _, entity := range entities {
-		idsFound[entity.GetId()] = true
+		idsFound[entity.GetIdString()] = true
 	}
 	for _, id := range ids {
 		if val, ok := idsFound[id]; !ok && !val {
 			errors[id] = gorm.ErrRecordNotFound
+			d.PrintOutEntities()
 		}
 	}
 
@@ -313,9 +341,21 @@ func (d *EntityData[T]) GetByForeignID(foreignIDKey string, foreignID string) (*
 		log.Println("avalaible columns: ", strings.Join(columns, ", "))
 		return nil, err
 	}
-	results := d.GetDatabaseSession().Find(&entities, foreignIDColumn.ColumnName+" = ?", foreignID)
+	var results *gorm.DB
+
+	if strings.Contains(foreignIDColumn.ColumnName, "_id") || foreignIDColumn.ColumnName == "id" {
+		uid, err := convertID(foreignID)
+		if err != nil {
+			log.Printf("error getting by foreignKey: %s", err.Error())
+			return nil, err
+		}
+		results = d.GetDatabaseSession().Find(&entities, foreignIDColumn.ColumnName+" = ?", uid)
+	} else {
+		results = d.GetDatabaseSession().Find(&entities, foreignIDColumn.ColumnName+" = ?", foreignID)
+	}
 	if results.Error != nil {
 		log.Printf("error getting by foreignKey: %s", results.Error.Error())
+		d.PrintOutEntities()
 		return nil, results.Error
 	}
 	return &entities, nil
@@ -346,11 +386,21 @@ func (d *EntityData[T]) GetByForeignIDBulk(foreignIDKey string, foreignIDs []str
 		log.Println("avalaible columns: ", strings.Join(columns, ", "))
 		return nil, errors
 	}
-
-	results := d.GetDatabaseSession().Find(&entities, foreignIDColumn.ColumnName+" IN ?", foreignIDs)
+	var results *gorm.DB
+	println("key: ", foreignIDKey, "Foreign ID Column: ", foreignIDColumn.ColumnName)
+	if strings.Contains(foreignIDColumn.ColumnName, "_id") || foreignIDColumn.ColumnName == "id" {
+		uids, errors := convertIDs(foreignIDs, errors)
+		if len(uids) == 0 {
+			return nil, errors
+		}
+		results = d.GetDatabaseSession().Find(&entities, foreignIDColumn.ColumnName+" IN ?", uids)
+	} else {
+		results = d.GetDatabaseSession().Find(&entities, foreignIDColumn.ColumnName+" IN ?", foreignIDs)
+	}
 	if results.Error != nil {
 		errors["transaction"] = results.Error
 		log.Printf("error getting by foreignKey: %s", results.Error.Error())
+		d.PrintOutEntities()
 		return nil, errors
 	}
 
@@ -363,14 +413,34 @@ func (d *EntityData[T]) GetByForeignIDBulk(foreignIDKey string, foreignIDs []str
 		}
 		fieldVal := val.FieldByName(foreignIDKey)
 		if !fieldVal.IsValid() {
-			errors[entity.GetId()] = fmt.Errorf("foreign key column %s not found", foreignIDKey)
+			errors[entity.GetIdString()] = fmt.Errorf("foreign key column %s not found", foreignIDKey)
 			continue
 		}
-		foreignID := fieldVal.String()
-		idsFound[foreignID] = true
+		switch actual := fieldVal.Interface().(type) {
+		case uuid.UUID:
+			// If the field is a value type
+			foreignID := actual.String()
+			idsFound[foreignID] = true
+		case *uuid.UUID:
+			// If the field is a pointer type
+			if actual != nil {
+				foreignID := actual.String()
+				idsFound[foreignID] = true
+				log.Println("Foreign ID Found: ", actual.String())
+			} else {
+				// Possibly store an empty string or skip
+				continue
+			}
+		default:
+			foreignID := fieldVal.String()
+			log.Println("Foreign ID Found: ", foreignID)
+			idsFound[foreignID] = true
+		}
 	}
 	for _, id := range foreignIDs {
-		if val, ok := idsFound[id]; !ok && !val {
+		log.Println("Checking for foreign ID: ", id)
+		if val, ok := idsFound[id]; !ok || !val {
+			d.PrintOutEntities()
 			errors[id] = gorm.ErrRecordNotFound
 		}
 	}
@@ -402,6 +472,10 @@ func (d *EntityData[T]) CreateBulk(entities *[]T) map[string]error {
 		return errorMap
 	}
 
+	for _, entity := range *entities {
+		println("Entity ID pre insert: ", entity.GetIdString())
+	}
+
 	result := d.GetNewDatabaseSession().CreateInBatches(&entities, maxInsertCount)
 	if result.Error != nil {
 
@@ -426,22 +500,26 @@ func (d *EntityData[T]) CreateBulk(entities *[]T) map[string]error {
 			// Try inserting the entity.
 			if err := tx.Create(&entity).Error; err != nil {
 				// If an error occurs, rollback to the savepoint so that this insert is undone.
+				val := reflect.ValueOf(entity)
+				if val.Kind() == reflect.Ptr {
+					val = val.Elem()
+				}
 				tx.RollbackTo(spName)
 				// Record the error keyed by the entity's ID.
 				if timestampColumn, ok := d.columnCache["timestamp"]; ok {
 					//get the timestamp
-					timestamp := reflect.ValueOf(entity).FieldByName(timestampColumn.ColumnName).String()
+					timestamp := val.FieldByName(timestampColumn.ColumnName).String()
 					errorMap[timestamp] = fmt.Errorf("error creating entity: %v", err)
 				} else if userColumn, ok := d.columnCache["user_id"]; ok {
 					//get the user_id
-					userID := reflect.ValueOf(entity).FieldByName(userColumn.ColumnName).String()
+					userID := val.FieldByName(userColumn.ColumnName).String()
 					errorMap[userID] = fmt.Errorf("error creating entity: %v", err)
-				} else if nameColumn, ok := d.columnCache["Name"]; ok {
+				} else if nameColumn, ok := d.columnCache["name"]; ok {
 					//get the name
-					name := reflect.ValueOf(entity).FieldByName(nameColumn.ColumnName).String()
+					name := val.FieldByName(nameColumn.ColumnName).String()
 					errorMap[name] = fmt.Errorf("error creating entity: %v", err)
 				} else {
-					errorMap[entity.GetId()] = fmt.Errorf("error creating entity: %v", err)
+					errorMap[entity.GetIdString()] = fmt.Errorf("error creating entity: %v", err)
 				}
 				// Continue to the next entity.
 				continue
@@ -455,6 +533,10 @@ func (d *EntityData[T]) CreateBulk(entities *[]T) map[string]error {
 			errorMap["transaction"] = fmt.Errorf("failed to commit transaction: %v", err)
 		}
 	}
+
+	for _, entity := range *entities {
+		println("Entity ID post insert: ", entity.GetIdString())
+	}
 	return errorMap
 }
 
@@ -464,7 +546,7 @@ func (d *EntityData[T]) Create(entity T) error {
 	result := d.GetNewDatabaseSession().Create(&entity)
 	//if we have a conflicting ID
 	if result.Error != nil {
-		entity.SetId("")
+		entity.SetId(nil)
 		result = d.GetNewDatabaseSession().Create(&entity)
 		if result.Error != nil {
 			log.Printf("error creating %s: %s", entity.GetId(), result.Error.Error())
@@ -500,22 +582,30 @@ func (d *EntityData[T]) Update(updates []*entity.EntityUpdateData) map[string]er
 			if newUpdates[upd.Field] == nil {
 				newUpdates[upd.Field] = make(map[string]string)
 			}
-			newUpdates[upd.Field][upd.ID] = *upd.NewValue
+			newUpdates[upd.Field][upd.ID.String()] = *upd.NewValue
 		} else if upd.AlterValue != nil {
 			parsed, err := strconv.ParseFloat(*upd.AlterValue, 64)
 			if err != nil {
-				errorMap[upd.ID] = fmt.Errorf("failed to parse alter value '%s' for field %s: %v", *upd.AlterValue, upd.Field, err)
+				errorMap[upd.ID.String()] = fmt.Errorf("failed to parse alter value '%s' for field %s: %v", *upd.AlterValue, upd.Field, err)
 				continue
 			}
 			if alterUpdates[upd.Field] == nil {
 				alterUpdates[upd.Field] = make(map[string]float64)
 			}
-			alterUpdates[upd.Field][upd.ID] += parsed
+			alterUpdates[upd.Field][upd.ID.String()] += parsed
 		}
 	}
 
 	// Helper to convert new value to proper type and return SQL cast type.
 	convertNewValue := func(newVal string, fieldType reflect.Type) (interface{}, string, error) {
+		// Check if the field type is uuid.UUID
+		if fieldType == reflect.TypeOf(uuid.UUID{}) || fieldType == reflect.TypeOf(&uuid.UUID{}) {
+			uid, err := uuid.Parse(newVal)
+			if err != nil {
+				return nil, "", fmt.Errorf("failed to parse '%s' as UUID: %v", newVal, err)
+			}
+			return uid, "uuid", nil
+		}
 		switch fieldType.Kind() {
 		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
 			i, err := strconv.ParseInt(newVal, 10, 64)
@@ -536,6 +626,7 @@ func (d *EntityData[T]) Update(updates []*entity.EntityUpdateData) map[string]er
 			}
 			return f, "double precision", nil
 		default:
+			println("testing for ID column. Field type is ", fieldType.Kind().String())
 			return newVal, "text", nil
 		}
 	}
@@ -741,9 +832,12 @@ func (d *EntityData[T]) Delete(id string) error {
 	if id == "" {
 		return errors.New("DELETE: id is required")
 	}
-
 	var zero T
-	deleteResult := d.GetDatabaseSession().Delete(&zero, "id = ?", id)
+	uuid, err := convertID(id)
+	if err != nil {
+		return err
+	}
+	deleteResult := d.GetDatabaseSession().Delete(&zero, "id = ?", uuid)
 	if deleteResult.Error != nil {
 		log.Printf("error deleting %s: %s", id, deleteResult.Error.Error())
 		return deleteResult.Error
@@ -758,7 +852,11 @@ func (d *EntityData[T]) DeleteBulk(ids []string) map[string]error {
 
 	errorMap := make(map[string]error)
 	var zero T
-	deleteResult := d.GetDatabaseSession().Delete(&zero, "id IN ?", ids)
+	uids, errorMap := convertIDs(ids, errorMap)
+	if len(uids) == 0 {
+		return errorMap
+	}
+	deleteResult := d.GetDatabaseSession().Delete(&zero, "id IN ?", uids)
 	if deleteResult.Error != nil {
 		db := d.GetNewDatabaseSession()
 		tx := db.Begin()
@@ -775,9 +873,15 @@ func (d *EntityData[T]) DeleteBulk(ids []string) map[string]error {
 			spCounter++
 			spName := fmt.Sprintf("sp_%d", spCounter)
 			tx.SavePoint(spName)
+			uid, err := convertID(id)
+			if err != nil {
+				errorMap[id] = fmt.Errorf("failed to parse id %s: %v", id, err)
+				tx.RollbackTo(spName)
+				continue
+			}
 
 			// Try inserting the entity.
-			if err := tx.Delete(&zero, "id = ?", id).Error; err != nil {
+			if err := tx.Delete(&zero, "id = ?", uid).Error; err != nil {
 				// If an error occurs, rollback to the savepoint so that this insert is undone.
 				tx.RollbackTo(spName)
 				// Record the error keyed by the entity's ID.

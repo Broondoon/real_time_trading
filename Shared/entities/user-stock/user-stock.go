@@ -7,15 +7,19 @@ import (
 	"encoding/json"
 	"strconv"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 // For tracking stocks owned per user.
 
 type UserStockInterface interface {
-	GetUserID() string
-	SetUserID(userID string)
-	GetStockID() string
-	SetStockID(stockID string)
+	GetUserID() *uuid.UUID
+	GetUserIDString() string
+	SetUserID(userID *uuid.UUID)
+	GetStockID() *uuid.UUID
+	GetStockIDString() string
+	SetStockID(stockID *uuid.UUID)
 	GetStockName() string
 	SetStockName(stockName string)
 	GetQuantity() int
@@ -27,10 +31,10 @@ type UserStockInterface interface {
 }
 
 type UserStock struct {
-	UserID        string `json:"user_id" gorm:"type:text;column:user_id;not null"`
-	StockID       string `json:"stock_id" gorm:"type:text;not null"`
-	StockName     string `json:"stock_name" gorm:"not null"`
-	Quantity      int    `json:"quantity_owned" gorm:"not null"`
+	UserID        *uuid.UUID `json:"user_id" gorm:"type:uuid;column:user_id;not null"`
+	StockID       *uuid.UUID `json:"stock_id" gorm:"type:uuid;column:stock_id;not null"`
+	StockName     string     `json:"stock_name" gorm:"not null"`
+	Quantity      int        `json:"quantity_owned" gorm:"not null"`
 	entity.Entity `json:"Entity" gorm:"embedded"`
 }
 
@@ -47,19 +51,33 @@ func (us *UserStock) UpdateQuantity(quantityToAdd int) {
 	})
 }
 
-func (us *UserStock) GetUserID() string {
+func (us *UserStock) GetUserID() *uuid.UUID {
 	return us.UserID
 }
 
-func (us *UserStock) SetUserID(userID string) {
+func (us *UserStock) GetUserIDString() string {
+	if us.UserID == nil {
+		return ""
+	}
+	return us.UserID.String()
+}
+
+func (us *UserStock) SetUserID(userID *uuid.UUID) {
 	us.UserID = userID
 }
 
-func (us *UserStock) GetStockID() string {
+func (us *UserStock) GetStockID() *uuid.UUID {
 	return us.StockID
 }
 
-func (us *UserStock) SetStockID(stockID string) {
+func (us *UserStock) GetStockIDString() string {
+	if us.StockID == nil {
+		return ""
+	}
+	return us.StockID.String()
+}
+
+func (us *UserStock) SetStockID(stockID *uuid.UUID) {
 	us.StockID = stockID
 }
 
@@ -86,8 +104,8 @@ func (us *UserStock) SetUpdatedAt(updatedAt time.Time) {
 
 type NewUserStockParams struct {
 	entity.NewEntityParams `json:"Entity"`
-	UserID                 string               `json:"user_id"`
-	StockID                string               `json:"stock_id"`
+	UserID                 *uuid.UUID           `json:"user_id"`
+	StockID                *uuid.UUID           `json:"stock_id"`
 	StockName              string               `json:"stock_name"`
 	Quantity               int                  `json:"quantity_owned"`
 	User                   user.UserInterface   // use this or UserID
@@ -96,14 +114,14 @@ type NewUserStockParams struct {
 
 func New(params NewUserStockParams) *UserStock {
 	e := entity.NewEntity(params.NewEntityParams)
-	var userId string
+	var userId *uuid.UUID
 	if params.User != nil {
 		userId = params.User.GetId()
 	} else {
 		userId = params.UserID
 	}
 
-	var stockId string
+	var stockId *uuid.UUID
 	var stockName string
 	if params.Stock != nil {
 		stockId = params.Stock.GetId()

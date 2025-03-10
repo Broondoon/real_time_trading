@@ -4,6 +4,8 @@ import (
 	"Shared/database/database-service"
 	"Shared/entities/entity"
 	"log"
+
+	"github.com/google/uuid"
 )
 
 type EntityDataAccess[TEntity entity.EntityInterface, TInterface entity.EntityInterface] struct {
@@ -38,8 +40,8 @@ func (d *EntityDataAccess[TEntity, TInterface]) Disconnect() {
 	d.EntityDataServiceTemp.Disconnect()
 }
 
-func (d *EntityDataAccess[TEntity, TInterface]) GetByID(id string) (TInterface, error) {
-	entity, err := d.EntityDataServiceTemp.GetByID(id)
+func (d *EntityDataAccess[TEntity, TInterface]) GetByID(id *uuid.UUID) (TInterface, error) {
+	entity, err := d.EntityDataServiceTemp.GetByID(id.String())
 	if err != nil {
 		log.Fatal("Failed to get entity by ID: ", err)
 	}
@@ -57,7 +59,7 @@ func (d *EntityDataAccess[TEntity, TInterface]) GetAll() (*[]TInterface, error) 
 	}
 	return &converted, nil
 }
-func (d *EntityDataAccess[TEntity, TInterface]) GetByIDs(ids []string) (*[]TInterface, map[string]int, error) {
+func (d *EntityDataAccess[TEntity, TInterface]) GetByIDs(ids []*uuid.UUID) (*[]TInterface, map[string]int, error) {
 	panic("implement me") // TODO: Implement
 }
 
@@ -103,14 +105,14 @@ func (d *EntityDataAccess[TEntity, TInterface]) UpdateBulk(entities *[]TInterfac
 	panic("implement me") // TODO: Implement
 }
 
-func (d *EntityDataAccess[TEntity, TInterface]) Delete(id string) error {
-	err := d.EntityDataServiceTemp.Delete(id)
+func (d *EntityDataAccess[TEntity, TInterface]) Delete(id *uuid.UUID) error {
+	err := d.EntityDataServiceTemp.Delete(id.String())
 	if err != nil {
 		log.Fatal("Failed to delete entity: ", err)
 	}
 	return nil
 }
 
-func (d *EntityDataAccess[TEntity, TInterface]) DeleteBulk(ids []string) (map[string]int, error) {
+func (d *EntityDataAccess[TEntity, TInterface]) DeleteBulk(ids []*uuid.UUID) (map[string]int, error) {
 	panic("implement me") // TODO: Implement
 }

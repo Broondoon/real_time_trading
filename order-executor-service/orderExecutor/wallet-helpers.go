@@ -79,5 +79,5 @@ func createWalletTransaction(
 
 	// Set wallet transaction ID and return it
 	createdTx.SetWalletTXID()
-	return createdTx.GetId(), nil
+	return createdTx.GetIdString(), nil
 }
