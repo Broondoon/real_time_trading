@@ -280,6 +280,8 @@ func updateUserStocks(
 	log.Printf("%s", fmt.Sprintf("Step 1: Successfully retrieved user stock portfolios - Buyer: %s (%d stocks), Seller: %s (%d stocks)",
 		buyerID, len(*buyerPortfolio), sellerID, len(*sellerPortfolio)))
 
+	
+
 	// Step 2: Finds and validates seller's stock holding
 	sellerStock, err := handleSellerStock(sellerPortfolio, stockID, quantity)
 	if err != nil {

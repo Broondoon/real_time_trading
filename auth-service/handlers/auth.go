@@ -126,7 +126,6 @@ func Register(w network.ResponseWriter, data []byte, queryParams url.Values, req
 		return
 	}
 	_bulkRoutineRegisterGetByUsername.Insert(&UserBulk{UserEntity: input, ResponseWriter: w})
-
 }
 
 func registerUsers(data *[]*UserBulk, TransferParams any) error {

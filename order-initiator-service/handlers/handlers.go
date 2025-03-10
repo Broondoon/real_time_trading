@@ -38,6 +38,7 @@ type StockOrderBulk struct {
 	ResponseWriter network.ResponseWriter
 	userId         string
 	timeStamp      string
+	tempID         *uuid.UUID
 }
 
 func InitalizeHandlers(
@@ -85,11 +86,14 @@ func placeStockOrderHandler(responseWriter network.ResponseWriter, data []byte, 
 		responseWriter.WriteHeader(http.StatusBadRequest)
 		return
 	}
+	tempID := uuid.New()
+	stockOrder.SetId(&tempID)
 	stockOrder.SetUserID(&userUuid)
 	stockOrderCarry := &StockOrderBulk{
 		StockOrder:     stockOrder,
 		ResponseWriter: responseWriter,
 		userId:         queryParams.Get("userID"),
+		tempID:         &tempID,
 	}
 	_bulkRoutineStockOrderCheckUserStocks.Insert(stockOrderCarry)
 }
@@ -137,7 +141,7 @@ func checkUserStocks(data *[]*StockOrderBulk, TransferParams any) error {
 
 			// Verify seller has the stock and sufficient quantity
 			if sellerStock == nil {
-				log.Printf("seller does not own stock %s", stockOrder.StockOrder.GetStockID())
+				log.Printf("seller does not own stock %s", stockOrder.StockOrder.GetStockIDString())
 				stockOrder.ResponseWriter.WriteHeader(http.StatusBadRequest)
 				continue
 			}
@@ -211,8 +215,9 @@ func placeStockOrderResponse(data *[]*StockOrderBulk, TransferParams any) error 
 		newTransaction := transaction.NewStockTransaction(transaction.NewStockTransactionParams{
 			StockOrder:  stockOrder.StockOrder,
 			OrderStatus: "IN_PROGRESS",
-			TimeStamp:   time.Now(),
 		})
+		tempID := uuid.New()
+		newTransaction.SetStockID(&tempID)
 		bulkTransactions = append(bulkTransactions, newTransaction)
 		//get string version of time stamp
 
@@ -229,8 +234,19 @@ func placeStockOrderResponse(data *[]*StockOrderBulk, TransferParams any) error 
 
 	IdsByTimeStamp := make(map[string]*uuid.UUID)
 	for _, createdcreatedTransaction := range *createdTransactions {
+		json, _ := createdcreatedTransaction.ToJSON()
+		log.Println("created transaction with id: ", createdcreatedTransaction.GetIdString(), " and timestamp: ", createdcreatedTransaction.GetTimestamp().String(), " and json: ", string(json))
 		IdsByTimeStamp[createdcreatedTransaction.GetTimestamp().String()] = createdcreatedTransaction.GetId()
 	}
+	for _, createdcreatedTransaction := range *data {
+		val, ok := IdsByTimeStamp[createdcreatedTransaction.timeStamp]
+		if !ok {
+			log.Println("failed to find transaction id for timestamp: ", createdcreatedTransaction.timeStamp)
+		} else {
+			log.Println("checking stock Order with timestamp: ", createdcreatedTransaction.timeStamp, " and id: ", val.String())
+		}
+	}
+
 	for _, stockOrder := range *data {
 		if _, ok := errList[stockOrder.timeStamp]; ok {
 			if errList[stockOrder.timeStamp] != 0 {
@@ -240,8 +256,11 @@ func placeStockOrderResponse(data *[]*StockOrderBulk, TransferParams any) error 
 			}
 		}
 		stockOrder.StockOrder.SetId(IdsByTimeStamp[stockOrder.timeStamp])
+
 		go func() {
+			log.Println("sending to matching engine")
 			_, err = _networkQueueManager.MatchingEngine().Post("placeStockOrder", stockOrder.StockOrder)
+			log.Println("sent to matching engine")
 			if err != nil {
 				log.Printf("failed to send to matching engine: %v", err)
 				stockOrder.ResponseWriter.WriteHeader(http.StatusInternalServerError)

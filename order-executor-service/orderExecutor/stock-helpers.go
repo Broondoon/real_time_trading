@@ -57,17 +57,6 @@ func handleSellerStock(
 		}
 	}
 
-	if sellerStock == nil {
-		return nil, fmt.Errorf("seller does not own stock %s", stockID)
-	}
-
-	sellerQuantity := sellerStock.GetQuantity()
-	if sellerQuantity < quantity {
-		return nil, fmt.Errorf("seller does not have enough shares of stock %s (has: %d, needs: %d)",
-			stockID, sellerQuantity, quantity)
-	}
-
-	log.Printf("%s", fmt.Sprintf("Initially Seller has %d shares of StockID: %s", sellerQuantity, sellerStock.GetStockIDString()))
 	return sellerStock, nil
 }
 
@@ -117,14 +106,20 @@ func updateUserStockQuantities(
 	quantity int,
 	databaseAccessUser databaseAccessUserManagement.DatabaseAccessInterface,
 ) error {
-
-	sellerStock.UpdateQuantity(-quantity)
-	buyerStock.UpdateQuantity(quantity)
-
-	if err := databaseAccessUser.UserStock().Update(sellerStock); err != nil {
-		return fmt.Errorf("failed to update seller stock: %v", err)
+	log.Println("Updating user stock quantities")
+	log.Println(fmt.Sprintf("Initial -> Seller has %d shares of StockID: %s.", sellerStock.GetQuantity(), sellerStock.GetStockID()), "\n", fmt.Sprintf("Initial -> Buyer has %d shares of StockID: %s", buyerStock.GetQuantity(), buyerStock.GetStockID()), "\nQuantity: ", quantity)
+	buyerJson, err := buyerStock.ToJSON()
+	if err != nil {
+		return fmt.Errorf("failed to convert buyer stock to JSON: %v", err)
 	}
-	//log.Println(fmt.Sprintf("Final -> Seller  has %d shares of StockID: %s", sellerStock.GetQuantity(), sellerStock.GetStockID()))
+	log.Println("Buyer Stock: ", string(buyerJson))
+	sellerJson, err := sellerStock.ToJSON()
+	if err != nil {
+		return fmt.Errorf("failed to convert seller stock to JSON: %v", err)
+	}
+	log.Println("Seller Stock: ", string(sellerJson))
+
+	buyerStock.UpdateQuantity(quantity)
 
 	if err := databaseAccessUser.UserStock().Update(buyerStock); err != nil {
 		return fmt.Errorf("failed to update buyer stock: %v", err)
@@ -148,10 +143,10 @@ func updateTransactionStatus(
 	log.Printf("%s", fmt.Sprintf("BEFORE Update Status: %s", stockTx.GetOrderStatus()))
 
 	// Set the stock price in the transaction
-	stockTx.SetStockPrice(stockPrice)
 
 	// Handle partial matching for both buy and sell orders
 	if stockTx.GetIsBuy() {
+		stockTx.UpdateStockPrice(stockPrice)
 		if isBuyPartial {
 			stockTx.SetOrderStatus("PARTIALLY_COMPLETE")
 		} else {
@@ -179,10 +174,8 @@ func updateTransactionStatus(
 			ParentStockTransaction: stockTx,
 			OrderStatus:            "COMPLETED", // Child transaction is always COMPLETED
 			TimeStamp:              time.Now(),
+			StockPrice:             stockPrice,
 		})
-
-		// Set the stock price in the filled transaction
-		filledTx.SetStockPrice(stockPrice)
 
 		if _, err := databaseAccessTransact.StockTransaction().Create(filledTx); err != nil {
 			return fmt.Errorf("failed to create filled stock transaction: %v", err)

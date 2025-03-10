@@ -147,7 +147,7 @@ type EntityDataInterface[T entity.EntityInterface] interface {
 	GetByForeignID(foreignIDColumn string, foreignID string) (*[]T, error)
 	GetByForeignIDBulk(foreignIDColumn string, foreignIDs []string) (*[]T, map[string]error)
 	GetAll() (*[]T, error)
-	Create(entity T) error
+	Create(ent T) error
 	CreateBulk(entities *[]T) map[string]error
 	//Update(entity T) error
 	//UpdateBulk(entities *[]T) error
@@ -251,8 +251,8 @@ func (d *EntityData[T]) PrintOutEntities() {
 		log.Printf("error getting all: %s", err.Error())
 		return
 	}
-	for _, entity := range *entities {
-		json, _ := entity.ToJSON()
+	for _, ent := range *entities {
+		json, _ := ent.ToJSON()
 		log.Println(string(json))
 	}
 }
@@ -303,8 +303,8 @@ func (d *EntityData[T]) GetByIDs(ids []string) (*[]T, map[string]error) {
 	}
 	//get all ids in ids that are not in entities
 	idsFound := make(map[string]bool)
-	for _, entity := range entities {
-		idsFound[entity.GetIdString()] = true
+	for _, ent := range entities {
+		idsFound[ent.GetIdString()] = true
 	}
 	for _, id := range ids {
 		if val, ok := idsFound[id]; !ok && !val {
@@ -406,16 +406,12 @@ func (d *EntityData[T]) GetByForeignIDBulk(foreignIDKey string, foreignIDs []str
 
 	//get all ids in ids that are not in entities
 	idsFound := make(map[string]bool)
-	for _, entity := range entities {
-		val := reflect.ValueOf(entity)
+	for _, ent := range entities {
+		val := reflect.ValueOf(ent)
 		if val.Kind() == reflect.Ptr {
 			val = val.Elem()
 		}
 		fieldVal := val.FieldByName(foreignIDKey)
-		if !fieldVal.IsValid() {
-			errors[entity.GetIdString()] = fmt.Errorf("foreign key column %s not found", foreignIDKey)
-			continue
-		}
 		switch actual := fieldVal.Interface().(type) {
 		case uuid.UUID:
 			// If the field is a value type
@@ -472,10 +468,6 @@ func (d *EntityData[T]) CreateBulk(entities *[]T) map[string]error {
 		return errorMap
 	}
 
-	for _, entity := range *entities {
-		println("Entity ID pre insert: ", entity.GetIdString())
-	}
-
 	result := d.GetNewDatabaseSession().CreateInBatches(&entities, maxInsertCount)
 	if result.Error != nil {
 
@@ -492,40 +484,25 @@ func (d *EntityData[T]) CreateBulk(entities *[]T) map[string]error {
 
 		// Process each entity individually.
 		for i := range *entities {
-			entity := (*entities)[i]
+			ent := (*entities)[i]
 			spCounter++
 			spName := fmt.Sprintf("sp_%d", spCounter)
 			tx.SavePoint(spName)
 
 			// Try inserting the entity.
-			if err := tx.Create(&entity).Error; err != nil {
+			if err := tx.Create(&ent).Error; err != nil {
 				// If an error occurs, rollback to the savepoint so that this insert is undone.
-				val := reflect.ValueOf(entity)
+				val := reflect.ValueOf(ent)
 				if val.Kind() == reflect.Ptr {
 					val = val.Elem()
 				}
 				tx.RollbackTo(spName)
-				// Record the error keyed by the entity's ID.
-				if timestampColumn, ok := d.columnCache["timestamp"]; ok {
-					//get the timestamp
-					timestamp := val.FieldByName(timestampColumn.ColumnName).String()
-					errorMap[timestamp] = fmt.Errorf("error creating entity: %v", err)
-				} else if userColumn, ok := d.columnCache["user_id"]; ok {
-					//get the user_id
-					userID := val.FieldByName(userColumn.ColumnName).String()
-					errorMap[userID] = fmt.Errorf("error creating entity: %v", err)
-				} else if nameColumn, ok := d.columnCache["name"]; ok {
-					//get the name
-					name := val.FieldByName(nameColumn.ColumnName).String()
-					errorMap[name] = fmt.Errorf("error creating entity: %v", err)
-				} else {
-					errorMap[entity.GetIdString()] = fmt.Errorf("error creating entity: %v", err)
-				}
-				// Continue to the next entity.
-				continue
+				errorMap[ent.GetUniquePairing().String()] = fmt.Errorf("error creating entity: %v", err)
 			}
-			// Optionally, you can log successful insertions if needed.
+			// Continue to the next entity.
+			continue
 		}
+		// Optionally, you can log successful insertions if needed.
 
 		// Commit the transaction.
 		if err := tx.Commit().Error; err != nil {
@@ -533,23 +510,19 @@ func (d *EntityData[T]) CreateBulk(entities *[]T) map[string]error {
 			errorMap["transaction"] = fmt.Errorf("failed to commit transaction: %v", err)
 		}
 	}
-
-	for _, entity := range *entities {
-		println("Entity ID post insert: ", entity.GetIdString())
-	}
 	return errorMap
 }
 
-func (d *EntityData[T]) Create(entity T) error {
+func (d *EntityData[T]) Create(ent T) error {
 	// json, _ := entity.ToJSON()
 	// print("Creating entity: ", string(json))
-	result := d.GetNewDatabaseSession().Create(&entity)
+	result := d.GetNewDatabaseSession().Create(&ent)
 	//if we have a conflicting ID
 	if result.Error != nil {
-		entity.SetId(nil)
-		result = d.GetNewDatabaseSession().Create(&entity)
+		ent.SetId(nil)
+		result = d.GetNewDatabaseSession().Create(&ent)
 		if result.Error != nil {
-			log.Printf("error creating %s: %s", entity.GetId(), result.Error.Error())
+			log.Printf("error creating %s: %s", ent.GetId(), result.Error.Error())
 			return result.Error
 		}
 	}

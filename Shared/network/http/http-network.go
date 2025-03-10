@@ -86,6 +86,7 @@ func handleFunc(params network.HandlerParams, w http.ResponseWriter, r *http.Req
 			close(responseWriterWrapper.finished)
 			responseWriterWrapper.channelHasClosed = true
 		}
+		log.Println("HTTP Handle Error, request timed out")
 		break
 	}
 	//w.WriteHeader(http.StatusOK)

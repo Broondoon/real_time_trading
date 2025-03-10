@@ -27,7 +27,7 @@ type StockTransactionInterface interface {
 	SetIsBuy(isBuy bool)
 	GetOrderType() string
 	GetStockPrice() float64
-	SetStockPrice(stockPrice float64)
+	UpdateStockPrice(stockPrice float64)
 	GetQuantity() int
 	SetQuantity(quantity int)
 	GetTimestamp() time.Time
@@ -145,12 +145,12 @@ func (st *StockTransaction) GetStockPrice() float64 {
 	return st.StockPrice
 }
 
-func (st *StockTransaction) SetStockPrice(stockPrice float64) {
+func (st *StockTransaction) UpdateStockPrice(stockPrice float64) {
 	st.StockPrice = stockPrice
 	*st.GetUpdates() = append(*st.Updates, &entity.EntityUpdateData{
-		ID:       st.GetId(),
-		Field:    "StockPrice",
-		NewValue: func() *string { s := strconv.FormatFloat(stockPrice, 'f', -1, 64); return &s }(),
+		ID:         st.GetId(),
+		Field:      "StockPrice",
+		AlterValue: func() *string { s := strconv.FormatFloat(stockPrice, 'f', -1, 64); return &s }(),
 	})
 }
 
