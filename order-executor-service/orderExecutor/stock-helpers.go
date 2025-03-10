@@ -63,22 +63,31 @@ func handleSellerStock(
 
 
     var sellerStock userStock.UserStockInterface
+
+
+    var count int
     for _, stock := range *sellerStockPortfolio {
+        //(stock.ToParams().StockID)
+        //println(stock.ToParams().StockName)
+        //println(stock.ToParams().Quantity)
+        //count++
+        println(fmt.Sprintf("Portfolio Stock: %s, Portfolio Stock Quantity: %d", stock.GetStockID(), stock.GetQuantity()))
         if stock.GetStockID() == stockID {
             sellerStock = stock
             break
         }
     }
+    println(count)
 
-    if sellerStock == nil {
-        return nil, fmt.Errorf("seller does not own stock %s", stockID)
-    }
+
+
+
+
+    //println(fmt.Sprintf("Final -> Seller  has %d shares of StockID: %s", sellerStock.GetQuantity(), sellerStock.GetStockID()))
+
 
     sellerQuantity := sellerStock.GetQuantity()
-    if sellerQuantity < quantity {
-        return nil, fmt.Errorf("seller does not have enough shares of stock %s (has: %d, needs: %d)", 
-            stockID, sellerQuantity, quantity)
-    }
+
 
 
 
@@ -108,7 +117,7 @@ func handleBuyerStock(
             break
         }
     }
-    println(fmt.Sprintf("Initially Buyer has %d shares of StockID: %s", buyerStock.GetQuantity(), buyerStock.GetStockID()))
+    //println(fmt.Sprintf("Initially Buyer has %d shares of StockID: %s", buyerStock.GetQuantity(), buyerStock.GetStockID()))
 
     // If the buyer doesn't have any of the stock, a new stock holding is created
     // The quantity is originally set to zero and is updated after (otherwise there's an error where the quantity is double what it should be)
@@ -133,7 +142,6 @@ func handleBuyerStock(
 
 
 
-
 // Updates the user's stock quantities in the database
 func updateUserStockQuantities(
     buyerStock userStock.UserStockInterface,
@@ -144,7 +152,7 @@ func updateUserStockQuantities(
 
 
 
-    sellerStock.SetQuantity(sellerStock.GetQuantity() - quantity)
+    //sellerStock.SetQuantity(sellerStock.GetQuantity() - quantity)
     buyerStock.SetQuantity(buyerStock.GetQuantity() + quantity)
 
 
@@ -171,7 +179,6 @@ func updateUserStockQuantities(
 
 
 
-
 // Updates transaction status and creates filled transaction if needed
 func updateTransactionStatus(
     stockTx transaction.StockTransactionInterface,
@@ -185,12 +192,13 @@ func updateTransactionStatus(
     println(fmt.Sprintf("BEFORE Update Status: %s", stockTx.GetOrderStatus()))
 
     // Set the stock price in the transaction
-    stockTx.SetStockPrice(stockPrice)
+
 
 
 
     // Handle partial matching for both buy and sell orders
     if stockTx.GetIsBuy() {
+        stockTx.SetStockPrice(stockPrice + stockTx.GetStockPrice())
         if isBuyPartial {
             stockTx.SetOrderStatus("PARTIALLY_COMPLETE")
         } else {
@@ -220,15 +228,18 @@ func updateTransactionStatus(
     if isBuyPartial || isSellPartial {
         filledTx := transaction.NewStockTransaction(transaction.NewStockTransactionParams{
             ParentStockTransaction: stockTx,
-            OrderStatus:            "COMPLETED", // Child transaction is always COMPLETED
-            TimeStamp:              time.Now(),
+            //OrderStatus:            "COMPLETED", // Child transaction is always COMPLETED
+            //TimeStamp:              time.Now(),
         })
         
 
+
         // Set the stock price in the filled transaction
+        //filledTx.SetStockPrice(stockPrice)
+
+        filledTx.SetOrderStatus("COMPLETED")
         filledTx.SetStockPrice(stockPrice)
-
-
+        filledTx.SetTimestamp(time.Now())
         if _, err := databaseAccessTransact.StockTransaction().Create(filledTx); err != nil {
             return fmt.Errorf("failed to create filled stock transaction: %v", err)
         }
