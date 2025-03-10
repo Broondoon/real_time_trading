@@ -37,8 +37,6 @@ type StockOrderBulk struct {
 	UserStock      userStock.UserStockInterface
 	ResponseWriter network.ResponseWriter
 	userId         string
-	timeStamp      string
-	tempID         *uuid.UUID
 }
 
 func InitalizeHandlers(
@@ -61,8 +59,8 @@ func InitalizeHandlers(
 	})
 
 	//Add handlers
-	_networkHttpManager.AddHandleFuncProtected(network.HandlerParams{Pattern: os.Getenv("engine_route") + "/placeStockOrder", Handler: placeStockOrderHandler})
-	_networkHttpManager.AddHandleFuncProtected(network.HandlerParams{Pattern: os.Getenv("engine_route") + "/cancelStockTransaction", Handler: cancelStockTransactionHandler})
+	_networkHttpManager.AddHandleFuncProtected(network.HandlerParams{Pattern: os.Getenv("engine_route") + "/placeStockOrder", Handler: placeStockOrderHandlerOld})
+	_networkHttpManager.AddHandleFuncProtected(network.HandlerParams{Pattern: os.Getenv("engine_route") + "/cancelStockTransaction", Handler: cancelStockTransactionHandlerOld})
 	http.HandleFunc("/health", healthHandler)
 }
 
@@ -86,14 +84,11 @@ func placeStockOrderHandler(responseWriter network.ResponseWriter, data []byte, 
 		responseWriter.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	tempID := uuid.New()
-	stockOrder.SetId(&tempID)
 	stockOrder.SetUserID(&userUuid)
 	stockOrderCarry := &StockOrderBulk{
 		StockOrder:     stockOrder,
 		ResponseWriter: responseWriter,
 		userId:         queryParams.Get("userID"),
-		tempID:         &tempID,
 	}
 	_bulkRoutineStockOrderCheckUserStocks.Insert(stockOrderCarry)
 }
@@ -195,10 +190,10 @@ func updateUserStocks(data *[]*StockOrderBulk, TransferParams any) error {
 		if errorCode := errorList[stockOrder.UserStock.GetIdString()]; errorCode != 0 {
 			log.Println("Stock order with ID: ", stockOrder.UserStock.GetId(), " has Error code: ", errorCode)
 			if errorCode == http.StatusNotFound {
-				log.Printf("user stock %s not found", stockOrder.UserStock.GetId())
+				log.Printf("user stock %s not found", stockOrder.UserStock.GetIdString())
 				stockOrder.ResponseWriter.WriteHeader(http.StatusNotFound)
 			} else {
-				log.Printf("failed to update user stock %s", stockOrder.UserStock.GetId())
+				log.Printf("failed to update user stock %s", stockOrder.UserStock.GetIdString())
 				stockOrder.ResponseWriter.WriteHeader(http.StatusInternalServerError)
 			}
 			continue
@@ -216,12 +211,9 @@ func placeStockOrderResponse(data *[]*StockOrderBulk, TransferParams any) error 
 			StockOrder:  stockOrder.StockOrder,
 			OrderStatus: "IN_PROGRESS",
 		})
-		tempID := uuid.New()
-		newTransaction.SetStockID(&tempID)
+		newTransaction.SetStockID(stockOrder.StockOrder.GetStockID())
+		newTransaction.SetUnqiuePairing(stockOrder.StockOrder.GetUniquePairing())
 		bulkTransactions = append(bulkTransactions, newTransaction)
-		//get string version of time stamp
-
-		stockOrder.timeStamp = newTransaction.GetTimestamp().String()
 	}
 	createdTransactions, errList, err := _databaseAccess.StockTransaction().CreateBulk(&bulkTransactions)
 	if err != nil {
@@ -231,54 +223,37 @@ func placeStockOrderResponse(data *[]*StockOrderBulk, TransferParams any) error 
 			return fmt.Errorf("failed to create transactions: %v", err)
 		}
 	}
-
-	IdsByTimeStamp := make(map[string]*uuid.UUID)
-	for _, createdcreatedTransaction := range *createdTransactions {
-		json, _ := createdcreatedTransaction.ToJSON()
-		log.Println("created transaction with id: ", createdcreatedTransaction.GetIdString(), " and timestamp: ", createdcreatedTransaction.GetTimestamp().String(), " and json: ", string(json))
-		IdsByTimeStamp[createdcreatedTransaction.GetTimestamp().String()] = createdcreatedTransaction.GetId()
-	}
-	for _, createdcreatedTransaction := range *data {
-		val, ok := IdsByTimeStamp[createdcreatedTransaction.timeStamp]
-		if !ok {
-			log.Println("failed to find transaction id for timestamp: ", createdcreatedTransaction.timeStamp)
-		} else {
-			log.Println("checking stock Order with timestamp: ", createdcreatedTransaction.timeStamp, " and id: ", val.String())
-		}
+	createdTransactionIdsByPairing := make(map[string]*uuid.UUID)
+	for _, transaction := range *createdTransactions {
+		createdTransactionIdsByPairing[transaction.GetUniquePairing().String()] = transaction.GetId()
 	}
 
 	for _, stockOrder := range *data {
-		if _, ok := errList[stockOrder.timeStamp]; ok {
-			if errList[stockOrder.timeStamp] != 0 {
-				log.Printf("failed to create transaction %s", stockOrder.timeStamp)
-				stockOrder.ResponseWriter.WriteHeader(http.StatusInternalServerError)
-				continue
-			}
+		if val, ok := errList[stockOrder.StockOrder.GetUniquePairing().String()]; ok && val != 0 {
+			stockOrder.ResponseWriter.WriteHeader(http.StatusInternalServerError)
+			continue
 		}
-		stockOrder.StockOrder.SetId(IdsByTimeStamp[stockOrder.timeStamp])
-
-		go func() {
-			log.Println("sending to matching engine")
-			_, err = _networkQueueManager.MatchingEngine().Post("placeStockOrder", stockOrder.StockOrder)
-			log.Println("sent to matching engine")
-			if err != nil {
-				log.Printf("failed to send to matching engine: %v", err)
-				stockOrder.ResponseWriter.WriteHeader(http.StatusInternalServerError)
-				return
-			}
-			returnVal := network.ReturnJSON{
-				Success: true,
-				Data:    nil,
-			}
-			returnValJSON, err := json.Marshal(returnVal)
-			if err != nil {
-				log.Printf("failed to marshal return value: %v", err)
-				stockOrder.ResponseWriter.WriteHeader(http.StatusInternalServerError)
-				return
-			}
-			log.Println("value return")
-			stockOrder.ResponseWriter.Write(returnValJSON)
-		}()
+		stockOrder.StockOrder.SetId(createdTransactionIdsByPairing[stockOrder.StockOrder.GetUniquePairing().String()])
+		log.Println("sending to matching engine")
+		_, err = _networkQueueManager.MatchingEngine().Post("placeStockOrder", stockOrder.StockOrder)
+		log.Println("sent to matching engine")
+		if err != nil {
+			log.Printf("failed to send to matching engine: %v", err)
+			stockOrder.ResponseWriter.WriteHeader(http.StatusInternalServerError)
+			continue
+		}
+		returnVal := network.ReturnJSON{
+			Success: true,
+			Data:    nil,
+		}
+		returnValJSON, err := json.Marshal(returnVal)
+		if err != nil {
+			log.Printf("failed to marshal return value: %v", err)
+			stockOrder.ResponseWriter.WriteHeader(http.StatusInternalServerError)
+			continue
+		}
+		log.Println("value return")
+		stockOrder.ResponseWriter.Write(returnValJSON)
 	}
 	return nil
 }
@@ -325,6 +300,140 @@ func cancelStockTransaction(id string) error {
 	_, err = _networkQueueManager.MatchingEngine().Delete("deleteOrder/" + id)
 	if err != nil {
 		log.Println("Error: ", err.Error())
+		return err
+	}
+	return nil
+
+}
+
+func placeStockOrderHandlerOld(responseWriter network.ResponseWriter, data []byte, queryParams url.Values, requestType string) {
+	println("Placing stock order")
+	stockOrder, err := order.Parse(data)
+	if err != nil {
+		println("Error: ", err.Error())
+		responseWriter.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	uuidNew, err := uuid.Parse(queryParams.Get("userID"))
+	if err != nil {
+		println("Error: ", err.Error())
+		responseWriter.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	stockOrder.SetUserID(&uuidNew)
+	err = placeStockOrderOld(stockOrder)
+	if err != nil {
+		println("Error: ", err.Error())
+		responseWriter.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	returnVal := network.ReturnJSON{
+		Success: true,
+		Data:    nil,
+	}
+	returnValJSON, err := json.Marshal(returnVal)
+	if err != nil {
+		responseWriter.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	responseWriter.Write(returnValJSON)
+}
+
+func placeStockOrderOld(stockOrder order.StockOrderInterface) error {
+	var err error
+
+	if !stockOrder.GetIsBuy() {
+		// Get seller's current stock holdings
+		sellerStockPortfolio, err := _databaseAccessUser.UserStock().GetUserStocks(stockOrder.GetUserIDString())
+		if err != nil {
+			return fmt.Errorf("failed to get seller stocks: %v", err)
+		}
+
+		// Find the stock in the seller's portfolio
+		var sellerStock userStock.UserStockInterface
+		for _, stock := range *sellerStockPortfolio {
+			if stock.GetStockIDString() == stockOrder.GetStockIDString() {
+				sellerStock = stock
+				break
+			}
+		}
+
+		// Verify seller has the stock and sufficient quantity
+		if sellerStock == nil {
+			return fmt.Errorf("seller does not own stock %s", stockOrder.GetStockID())
+		}
+		if sellerStock.GetQuantity() < stockOrder.GetQuantity() {
+			return fmt.Errorf("insufficient stock quantity: has %d, wants to sell %d",
+				sellerStock.GetQuantity(), stockOrder.GetQuantity())
+		}
+
+		// Deduct the quantity from seller's portfolio but keep the record
+		sellerStock.UpdateQuantity(-stockOrder.GetQuantity())
+		err = _databaseAccessUser.UserStock().Update(sellerStock)
+		if err != nil {
+			return fmt.Errorf("failed to update seller stock quantity: %v", err)
+		}
+	}
+
+	transaction := transaction.NewStockTransaction(transaction.NewStockTransactionParams{
+		StockOrder:  stockOrder,
+		OrderStatus: "IN_PROGRESS",
+		TimeStamp:   time.Now(),
+	})
+
+	createdTransaction, err := _databaseAccess.StockTransaction().Create(transaction)
+	if err != nil {
+		println("Error: ", err.Error())
+		return err
+	}
+	stockOrder.SetId(createdTransaction.GetId())
+	//pass to matching engine
+	_, err = _networkQueueManager.MatchingEngine().Post("placeStockOrder", stockOrder)
+	return err
+}
+
+func cancelStockTransactionHandlerOld(responseWriter network.ResponseWriter, data []byte, queryParams url.Values, requestType string) {
+	println("Cancelling stock transaction")
+	var stockID network.StockTransactionID
+	err := json.Unmarshal(data, &stockID)
+	if err != nil {
+		println("Error: ", err.Error())
+		responseWriter.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	err = cancelStockTransactionOld(stockID.StockTransactionID)
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		responseWriter.WriteHeader(http.StatusNotFound)
+		return
+	}
+	if err != nil {
+		println("Error: ", err.Error())
+		responseWriter.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	returnVal := network.ReturnJSON{
+		Success: true,
+		Data:    nil,
+	}
+	returnValJSON, err := json.Marshal(returnVal)
+	if err != nil {
+		responseWriter.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	responseWriter.Write(returnValJSON)
+}
+
+func cancelStockTransactionOld(id string) error {
+	//pass to matching engine
+	_, err := _networkHttpManager.Transactions().Put("cancelStockTransaction/"+id, nil)
+	if err != nil {
+		println("Error: ", err.Error())
+		return err
+	}
+
+	_, err = _networkQueueManager.MatchingEngine().Delete("deleteOrder/" + id)
+	if err != nil {
+		println("Error: ", err.Error())
 		return err
 	}
 	return nil

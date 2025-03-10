@@ -49,8 +49,8 @@ type StockOrderInterface interface {
 }
 
 type StockOrder struct {
-	StockID            *uuid.UUID `json:"stock_id" gorm:"type:uuid;not null"` // use this or Stock
-	ParentStockOrderID *uuid.UUID `json:"ParentStockOrderID" gorm:"type:uuid"`
+	StockID            *uuid.UUID `json:"stock_id" gorm:"column:stock_id;type:uuid;not null"` // use this or Stock
+	ParentStockOrderID *uuid.UUID `json:"ParentStockOrderID" gorm:"column:parent_stock_order_id;type:uuid"`
 	IsBuy              bool       `json:"is_buy" gorm:"not null"`
 	OrderType          string     `json:"order_type" gorm:"not null"` // MARKET or LIMIT. This can't be changed later.
 	Quantity           int        `json:"quantity" gorm:"not null"`

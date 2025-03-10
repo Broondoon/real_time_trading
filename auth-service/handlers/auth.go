@@ -182,22 +182,23 @@ func createUser(data *[]*UserBulk, TransferParams any) error {
 	usersToCreate := make([]user.UserInterface, len(*data))
 	for i, d := range *data {
 		usersToCreate[i] = d.UserEntity
-		userMap[d.UserEntity.GetUsername()] = d
+		userMap[d.UserEntity.GetUniquePairing().String()] = d
 	}
 	users, errorList, err := _authDB.CreateBulk(&usersToCreate)
 	if err != nil {
 		log.Println("error creating users: ", err)
 		for _, d := range *users {
-			RespondError(userMap[d.GetUsername()].ResponseWriter, http.StatusInternalServerError, "Internal error")
+			RespondError(userMap[d.GetUniquePairing().String()].ResponseWriter, http.StatusInternalServerError, "Internal error")
 		}
 		return err
 	}
-	for username, d := range errorList {
-		log.Println("Error creating user: ", d)
-		RespondError(userMap[username].ResponseWriter, http.StatusInternalServerError, "Failed to add user to database.")
-	}
 	for _, d := range *users {
-		_bulkRoutineRegisterCreateWallet.Insert(&UserBulk{UserEntity: d, ResponseWriter: userMap[d.GetUsername()].ResponseWriter})
+		if _, ok := errorList[d.GetUniquePairing().String()]; ok {
+			log.Println("Error creating user: ", d)
+			RespondError(userMap[d.GetUniquePairing().String()].ResponseWriter, http.StatusInternalServerError, "Internal error")
+		} else {
+			_bulkRoutineRegisterCreateWallet.Insert(&UserBulk{UserEntity: d, ResponseWriter: userMap[d.GetUniquePairing().String()].ResponseWriter})
+		}
 	}
 	return nil
 }
@@ -206,12 +207,15 @@ func createWallet(data *[]*UserBulk, TransferParams any) error {
 	users := make(map[string]*UserBulk, len(*data))
 	wallets := make([]wallet.WalletInterface, len(*data))
 	for i, d := range *data {
-		users[d.UserEntity.GetIdString()] = d
-		wallets[i] = wallet.New(wallet.NewWalletParams{
+		users[d.UserEntity.GetUniquePairing().String()] = d
+		w := wallet.New(wallet.NewWalletParams{
 			NewEntityParams: entity.NewEntityParams{},
 			UserID:          d.UserEntity.GetId(),
 			Balance:         0.0,
 		})
+		w.SetUnqiuePairing(d.UserEntity.GetUniquePairing())
+		wallets[i] = w
+
 	}
 	newWallets, errorList, err := _walletAccess.CreateBulk(&wallets)
 	if err != nil {
@@ -222,12 +226,14 @@ func createWallet(data *[]*UserBulk, TransferParams any) error {
 		removeUser(data, nil)
 		return err
 	}
-	for userId := range errorList {
-		_bulkRoutineRegisterRemoveUser.Insert(users[userId])
-		RespondError(users[userId].ResponseWriter, http.StatusInternalServerError, "Internal error")
-	}
 	for _, d := range *newWallets {
-		RespondSuccess(users[d.GetUserIDString()].ResponseWriter, nil)
+		if _, ok := errorList[d.GetUniquePairing().String()]; ok {
+			log.Println("Error creating wallet: ", d)
+			_bulkRoutineRegisterRemoveUser.Insert(users[d.GetUniquePairing().String()])
+			RespondError(users[d.GetUniquePairing().String()].ResponseWriter, http.StatusInternalServerError, "Internal error")
+		} else {
+			RespondSuccess(users[d.GetUniquePairing().String()].ResponseWriter, nil)
+		}
 	}
 	return nil
 }

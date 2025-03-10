@@ -32,9 +32,9 @@ type WalletTransactionInterface interface {
 }
 
 type WalletTransaction struct {
-	WalletID           *uuid.UUID `json:"wallet_id" gorm:"type:uuid;not null"`
+	WalletID           *uuid.UUID `json:"wallet_id" gorm:"column:wallet_id;type:uuid;not null"`
 	WalletTXID         *uuid.UUID `json:"wallet_tx_id" gorm:"-"`
-	StockTransactionID *uuid.UUID `json:"stock_tx_id" gorm:"type:uuid;not null"`
+	StockTransactionID *uuid.UUID `json:"stock_tx_id" gorm:"column:stock_transaction_id;type:uuid;not null"`
 	IsDebit            bool       `json:"is_debit" gorm:"not null"`
 	Amount             float64    `json:"amount" gorm:"not null"`
 	Timestamp          time.Time  `json:"time_stamp"`

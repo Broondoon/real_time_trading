@@ -77,6 +77,7 @@ func New(params NewUserParams) *User {
 		Username: params.Username,
 		Password: params.Password,
 	}
+	e.GenUniquePairing()
 	return u
 }
 

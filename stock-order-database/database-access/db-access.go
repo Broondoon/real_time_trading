@@ -4,8 +4,6 @@ import (
 	databaseAccess "Shared/database/database-access"
 	"Shared/entities/order"
 	databaseServiceStockOrder "databaseServiceStockOrder/database-connection"
-
-	"github.com/google/uuid"
 )
 
 type EntityDataAccessInterface = databaseAccess.EntityDataAccessInterface[*order.StockOrder, order.StockOrderInterface]
@@ -13,7 +11,7 @@ type EntityDataAccessInterface = databaseAccess.EntityDataAccessInterface[*order
 type DatabaseAccessInterface interface {
 	databaseAccess.DatabaseAccessInterface
 	EntityDataAccessInterface
-	GetInitialStockOrdersForStock(stockID *uuid.UUID) *[]order.StockOrderInterface
+	GetInitialStockOrdersForStock(stockID string) *[]order.StockOrderInterface
 }
 
 type DatabaseAccess struct {
@@ -49,7 +47,7 @@ func NewDatabaseAccess(params *NewDatabaseAccessParams) DatabaseAccessInterface 
 	return dba
 }
 
-func (d *DatabaseAccess) GetInitialStockOrdersForStock(stockID *uuid.UUID) *[]order.StockOrderInterface {
+func (d *DatabaseAccess) GetInitialStockOrdersForStock(stockID string) *[]order.StockOrderInterface {
 	stockOrders, err := d.TEMPCONNECTION.GetInitialStockOrdersForStock(stockID)
 	if err != nil {
 		return nil

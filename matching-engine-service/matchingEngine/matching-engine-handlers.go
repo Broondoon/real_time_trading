@@ -17,7 +17,7 @@ import (
 	"gorm.io/gorm"
 )
 
-var _matchingEngineMap map[*uuid.UUID]MatchingEngineInterface
+var _matchingEngineMap map[string]MatchingEngineInterface
 var _databaseManager databaseAccessStockOrder.DatabaseAccessInterface
 var _networkHttpManager network.NetworkInterface
 var _networkQueueManager network.NetworkInterface
@@ -29,10 +29,10 @@ func InitalizeHandlers(stockIDs *[]*uuid.UUID,
 	_networkHttpManager = networkHttpManager
 	_networkQueueManager = networkQueueManager
 	_stockDatabaseAccess = stockDatabaseAccess
-	_matchingEngineMap = make(map[*uuid.UUID]MatchingEngineInterface)
+	_matchingEngineMap = make(map[string]MatchingEngineInterface)
 	//Create all matching engines for stocks.
 	for _, stockID := range *stockIDs {
-		AddNewStock(stockID)
+		AddNewStock(stockID.String())
 	}
 
 	//Add handlers
@@ -64,17 +64,17 @@ func AddNewStockHandler(responseWriter network.ResponseWriter, data []byte, quer
 		responseWriter.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	uid, err := uuid.Parse(stockID.StockID)
-	if err != nil {
-		log.Println("Error: ", err.Error())
-		responseWriter.WriteHeader(http.StatusBadRequest)
-		return
-	}
-	AddNewStock(&uid)
+	// uid, err := uuid.Parse(stockID.StockID)
+	// if err != nil {
+	// 	log.Println("Error: ", err.Error())
+	// 	responseWriter.WriteHeader(http.StatusBadRequest)
+	// 	return
+	// }
+	AddNewStock(stockID.StockID)
 	responseWriter.WriteHeader(http.StatusOK)
 }
 
-func AddNewStock(stockID *uuid.UUID) {
+func AddNewStock(stockID string) {
 	_, ok := _matchingEngineMap[stockID]
 	//if we don't have a matching engine for this stock, create one
 	if !ok {
@@ -112,7 +112,7 @@ func PlaceStockOrderHandler(responseWriter network.ResponseWriter, data []byte, 
 
 func PlaceStockOrder(stockOrder order.StockOrderInterface) bool {
 	log.Println("Placing stock order")
-	if me, ok := _matchingEngineMap[stockOrder.GetStockID()]; ok {
+	if me, ok := _matchingEngineMap[stockOrder.GetStockID().String()]; ok {
 		createdOrder, err := _databaseManager.Create(stockOrder)
 		if err != nil {
 			log.Println("Error: ", err.Error())
@@ -121,7 +121,7 @@ func PlaceStockOrder(stockOrder order.StockOrderInterface) bool {
 		me.AddOrder(createdOrder)
 		return true
 	}
-	log.Println("Error: Matching engine not found for ID: ", stockOrder.GetStockID())
+	log.Println("Error: Matching engine not found for ID: ", stockOrder.GetStockIDString())
 	return false
 }
 
@@ -157,12 +157,12 @@ func DeleteStockOrder(orderID *uuid.UUID) error {
 		log.Println("Error: ", err.Error())
 		return err
 	}
-	me, ok := _matchingEngineMap[order.GetStockID()]
+	me, ok := _matchingEngineMap[order.GetStockIDString()]
 	if !ok {
 		log.Println("Error: Matching engine not found for ID: ", order.GetStockID())
 		return nil
 	}
-	me.RemoveOrder(orderID, order.GetPrice())
+	me.RemoveOrder(orderID.String(), order.GetPrice())
 	return nil
 }
 
@@ -195,21 +195,21 @@ func GetStockPrices() (*[]network.StockPrice, error) {
 		return nil, err
 	}
 	//create a map from the stock ids to names
-	stockIDToName := make(map[*uuid.UUID]string)
+	stockIDToName := make(map[string]string)
 	for _, stock := range *stocks {
-		stockIDToName[stock.GetId()] = stock.GetName()
+		stockIDToName[stock.GetIdString()] = stock.GetName()
 	}
 	//get the prices for each stock
-	prices := make(map[*uuid.UUID]float64)
+	prices := make(map[string]float64)
 	for stockID, me := range _matchingEngineMap {
 		prices[stockID] = me.GetPrice()
 	}
-	//create the stock prices
+	//create the stocks prices
 	stockPrices := make([]network.StockPrice, len(prices))
 	i := 0
 	for stockID, price := range prices {
 		stockPrices[i] = network.StockPrice{
-			StockID:   stockID.String(),
+			StockID:   stockID,
 			StockName: stockIDToName[stockID],
 			Price:     price,
 		}

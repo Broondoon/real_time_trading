@@ -42,9 +42,9 @@ type StockTransactionInterface interface {
 
 type StockTransaction struct {
 	StockTXID                *uuid.UUID `json:"stock_tx_id" gorm:"-"` // Stock Transaction ID
-	StockID                  *uuid.UUID `json:"stock_id" gorm:"type:uuid;not null"`
-	ParentStockTransactionID *uuid.UUID `json:"parent_stock_tx_id" gorm:"type:uuid"`
-	WalletTransactionID      *uuid.UUID `json:"wallet_tx_id" gorm:"type:uuid"`
+	StockID                  *uuid.UUID `json:"stock_id" gorm:"column:stock_id;type:uuid;not null"`
+	ParentStockTransactionID *uuid.UUID `json:"parent_stock_tx_id" gorm:"column:parent_stock_transaction_id;type:uuid"`
+	WalletTransactionID      *uuid.UUID `json:"wallet_tx_id" gorm:"column:wallet_transaction_id;type:uuid"`
 	OrderStatus              string     `json:"order_status" gorm:"not null"`
 	IsBuy                    bool       `json:"is_buy" gorm:"not null"`
 	OrderType                string     `json:"order_type" gorm:"not null"`
