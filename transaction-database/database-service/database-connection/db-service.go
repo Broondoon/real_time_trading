@@ -52,6 +52,27 @@ func NewDatabaseService(params *NewDatabaseServiceParams) DatabaseServiceInterfa
 		params.WalletTransactionParams.Existing = newDBConnection
 	}
 
+	//CACHE IMPLEMENTATION
+	/* cachedStockTransaction := databaseService.NewCachedEntityData[*transaction.StockTransaction](&databaseService.NewCachedEntityDataParams{
+		NewEntityDataParams: params.StockTransactionParams,
+		RedisAddr:           os.Getenv("REDIS_ADDR"),
+		Password:            os.Getenv("REDIS_PASSWORD"),
+		DefaultTTL:          5 * time.Minute,
+	})
+
+	cachedWalletTransaction := databaseService.NewCachedEntityData[*transaction.WalletTransaction](&databaseService.NewCachedEntityDataParams{
+		NewEntityDataParams: params.WalletTransactionParams,
+		RedisAddr:           os.Getenv("REDIS_ADDR"),
+		Password:            os.Getenv("REDIS_PASSWORD"),
+		DefaultTTL:          5 * time.Minute,
+	})
+
+	db := &DatabaseService{
+		StockTransaction:  cachedStockTransaction,
+		WalletTransaction: cachedWalletTransaction,
+		DatabaseInterface: newDBConnection,
+	} */
+
 	db := &DatabaseService{
 		StockTransaction:  databaseService.NewEntityData[*transaction.StockTransaction](params.StockTransactionParams),
 		WalletTransaction: databaseService.NewEntityData[*transaction.WalletTransaction](params.WalletTransactionParams),

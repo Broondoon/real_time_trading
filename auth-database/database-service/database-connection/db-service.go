@@ -3,6 +3,8 @@ package databaseServiceAuth
 import (
 	databaseService "Shared/database/database-service"
 	"Shared/entities/user"
+	"os"
+	"time"
 )
 
 type UserDataServiceInterface interface {
@@ -37,8 +39,15 @@ func NewDatabaseService(params *NewDatabaseServiceParams) DatabaseServiceInterfa
 		params.UserParams.Existing = newDBConnection
 	}
 
+	cachedUser := databaseService.NewCachedEntityData[*user.User](&databaseService.NewCachedEntityDataParams{
+		NewEntityDataParams: params.UserParams,
+		RedisAddr:           os.Getenv("REDIS_ADDR"),
+		Password:            os.Getenv("REDIS_PASSWORD"),
+		DefaultTTL:          5 * time.Minute,
+	})
+
 	db := &DatabaseService{
-		UserInterface:     databaseService.NewEntityData[*user.User](params.UserParams),
+		UserInterface:     cachedUser,
 		DatabaseInterface: newDBConnection,
 	}
 	db.Connect()

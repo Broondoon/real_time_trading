@@ -1,17 +1,17 @@
 # ---------------------- User Management Tests ----------------------
 services:
-  #  user-management-tests:
-  #   build:
+#  user-management-tests:
+ #    build:
   #     context: .
-  #      dockerfile: ./user-management-tests/Dockerfile
-  #   env_file:
-  #      - .env
-  #   networks:
-  #    - go-network
-  #   depends_on:
-  #     user-management-service:
-  #      condition: service_healthy
-  # ---------------------- User Management Service ----------------------
+   #    dockerfile: ./user-management-tests/Dockerfile
+    # env_file:
+     #   - .env
+     #networks:
+     #- go-network
+     #depends_on:
+     #  user-management-service:
+     #   condition: service_healthy
+# ---------------------- User Management Service ----------------------
   user-management-service:
     build:
       context: .
@@ -23,12 +23,15 @@ services:
     environment:
       DATABASE_URL: ${USER_MANAGEMENT_DATABASE_URL}
       PORT: ${USER_MANAGEMENT_PORT}
+      REDIS_URL: redis://redis:6379
     networks:
       - go-network
     depends_on:
       user-management-database-service:
         condition: service_healthy
       stock-database-service:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     healthcheck:
       test:
@@ -45,6 +48,19 @@ services:
       replicas: ${REPLICATIONS}
       restart_policy:
         condition: on-failure
+
+  # ---------------------- Redis Service ----------------------
+  redis:
+    image: redis:latest
+    ports:
+      - "6379:6379"
+    networks:
+      - go-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
   # ---------------------- Existing Services ----------------------
   # microservice-template:
@@ -459,6 +475,16 @@ services:
       start_period: 10s # Allow 30 seconds for initialization before starting health checks
     networks:
       - go-network
+  
+  pgadmin:
+    image: dpage/pgadmin4
+    environment:
+      PGADMIN_DEFAULT_EMAIL: "admin@example.com"
+      PGADMIN_DEFAULT_PASSWORD: "secret"
+    ports:
+      - "5050:80"
+    networks:
+      - go-network
 
 volumes:
   user-management-db-data:
@@ -472,3 +498,5 @@ volumes:
 networks:
   go-network:
     driver: bridge
+
+

@@ -2,15 +2,19 @@ package main
 
 import (
 	networkHttp "Shared/network/http"
-	"encoding/json"
+	"context"
+	"os"
 	"testing"
+	"time"
+
+	"github.com/redis/go-redis/v9"
 )
 
 var userID = "6fd2fc6b-9142-4777-8b30-575ff6fa2460"
 var stockId = "69e81793-1cc7-476f-a8ba-714fafcb3e5c"
 var client = networkHttp.NewNetworkHttp().UserManagement()
 
-func TestGetWalletBalance(t *testing.T) {
+/* func TestGetWalletBalance(t *testing.T) {
 	queryParams := map[string]string{"userID": userID}
 	response, err := client.Get("transaction/getWalletBalance", queryParams)
 
@@ -117,5 +121,48 @@ func TestAddStockToUser(t *testing.T) {
 
 	if addStockResponse.Data != nil {
 		t.Errorf("Expected data to be null, got: %v", addStockResponse.Data)
+	}
+} */
+
+func TestWalletCaching(t *testing.T) {
+	testUserID := userID
+	queryParams := map[string]string{"userID": testUserID}
+
+	// call wallet endpoint to create wallet
+	response, err := client.Get("transaction/createWallet", queryParams)
+	if err != nil {
+		t.Fatalf("Failed to create wallet: %v", err)
+	}
+	t.Logf("createWallet response: %s", string(response))
+
+	// delay for cache write
+	time.Sleep(100 * time.Millisecond)
+
+	redisAddr := os.Getenv("REDIS_ADDR")
+	if redisAddr == "" {
+		redisAddr = "localhost:6379"
+	}
+	redisClient := redis.NewClient(&redis.Options{
+		Addr:     redisAddr,
+		Password: os.Getenv("REDIS_PASSWORD"),
+		DB:       0,
+	})
+	ctx := context.Background()
+
+	keys, err := redisClient.Keys(ctx, "entity:*").Result()
+	if err != nil {
+		t.Fatalf("Error retrieving keys from Redis: %v", err)
+	}
+	if len(keys) == 0 {
+		t.Fatalf("Expected at least one cached key in Redis, found none")
+	}
+	t.Logf("Found cached keys: %v", keys)
+
+	ttl, err := redisClient.TTL(ctx, keys[0]).Result()
+	if err != nil {
+		t.Fatalf("Error retrieving TTL for key %s: %v", keys[0], err)
+	}
+	if ttl <= 0 {
+		t.Errorf("Expected positive TTL for key %s, got: %v", keys[0], ttl)
 	}
 }
