@@ -63,7 +63,7 @@ func GetStockTransactions(responseWriter network.ResponseWriter, data []byte, qu
 			responseWriter.WriteHeader(http.StatusInternalServerError)
 			return
 		}
-		log.Println(string(json))
+		log.Println("transaction: ", string(json))
 	}
 
 	// Formatted response structure to match the expected output

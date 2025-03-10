@@ -3,6 +3,7 @@ package matchingEngine
 import (
 	"Shared/entities/order"
 	"Shared/network"
+	subfunctions "Shared/subfunctions/Multithreading"
 	"databaseAccessStock"
 	"databaseAccessStockOrder"
 	"encoding/json"
@@ -23,6 +24,13 @@ var _networkHttpManager network.NetworkInterface
 var _networkQueueManager network.NetworkInterface
 var _stockDatabaseAccess databaseAccessStock.DatabaseAccessInterface
 
+var _bulkStockOrderAdder subfunctions.BulkRoutineInterface[*StockOrderBulk]
+
+type StockOrderBulk struct {
+	StockOrder     order.StockOrderInterface
+	ResponseWriter network.ResponseWriter
+}
+
 func InitalizeHandlers(stockIDs *[]*uuid.UUID,
 	networkHttpManager network.NetworkInterface, networkQueueManager network.NetworkInterface, databaseManager databaseAccessStockOrder.DatabaseAccessInterface, stockDatabaseAccess databaseAccessStock.DatabaseAccessInterface) {
 	_databaseManager = databaseManager
@@ -34,6 +42,10 @@ func InitalizeHandlers(stockIDs *[]*uuid.UUID,
 	for _, stockID := range *stockIDs {
 		AddNewStock(stockID.String())
 	}
+
+	_bulkStockOrderAdder = subfunctions.NewBulkRoutine[*StockOrderBulk](&subfunctions.BulkRoutineParams[*StockOrderBulk]{
+		Routine: PlaceStockOrder,
+	})
 
 	//Add handlers
 	_networkHttpManager.AddHandleFuncUnprotected(network.HandlerParams{Pattern: "createStock", Handler: AddNewStockHandler})
@@ -103,14 +115,18 @@ func PlaceStockOrderHandler(responseWriter network.ResponseWriter, data []byte, 
 		responseWriter.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	if PlaceStockOrder(stockOrder) {
-		responseWriter.WriteHeader(http.StatusOK)
-	} else {
-		responseWriter.WriteHeader(http.StatusBadRequest)
-	}
+	_bulkStockOrderAdder.Insert(&StockOrderBulk{
+		StockOrder:     stockOrder,
+		ResponseWriter: responseWriter,
+	})
+	// if PlaceStockOrderOld(stockOrder) {
+	// 	responseWriter.WriteHeader(http.StatusOK)
+	// } else {
+	// 	responseWriter.WriteHeader(http.StatusBadRequest)
+	// }
 }
 
-func PlaceStockOrder(stockOrder order.StockOrderInterface) bool {
+func PlaceStockOrderOld(stockOrder order.StockOrderInterface) bool {
 	log.Println("Placing stock order")
 	if me, ok := _matchingEngineMap[stockOrder.GetStockID().String()]; ok {
 		createdOrder, err := _databaseManager.Create(stockOrder)
@@ -123,6 +139,43 @@ func PlaceStockOrder(stockOrder order.StockOrderInterface) bool {
 	}
 	log.Println("Error: Matching engine not found for ID: ", stockOrder.GetStockIDString())
 	return false
+}
+
+func PlaceStockOrder(data *[]*StockOrderBulk, TransferParams any) error {
+	stockOrderPairings := make(map[string]*StockOrderBulk, len(*data))
+	stockOrderList := make([]order.StockOrderInterface, len(*data))
+	for i, stockOrderBulk := range *data {
+		if _, ok := _matchingEngineMap[stockOrderBulk.StockOrder.GetStockIDString()]; !ok {
+			log.Println("Error: Matching engine not found for ID: ", stockOrderBulk.StockOrder.GetStockIDString(), " / ", stockOrderBulk.StockOrder.GetStockID())
+			stockOrderBulk.ResponseWriter.WriteHeader(http.StatusBadRequest)
+			continue
+		}
+		stockOrderPairings[stockOrderBulk.StockOrder.GetUniquePairing().String()] = stockOrderBulk
+		stockOrderList[i] = stockOrderBulk.StockOrder
+	}
+	if len(stockOrderList) == 0 {
+		log.Println("No stock orders to place")
+		return nil
+	}
+	var errors map[string]int
+
+	stockOrders, errors, err := _databaseManager.CreateBulk(&stockOrderList)
+	if err != nil {
+		log.Println("Error: ", err.Error())
+		for _, stockOrderBulk := range stockOrderPairings {
+			stockOrderBulk.ResponseWriter.WriteHeader(http.StatusInternalServerError)
+		}
+	}
+	for _, stockOrder := range *stockOrders {
+		if _, ok := errors[stockOrder.GetUniquePairing().String()]; ok {
+			stockOrderPairings[stockOrder.GetUniquePairing().String()].ResponseWriter.WriteHeader(http.StatusBadRequest)
+			continue
+		}
+		me := _matchingEngineMap[stockOrder.GetStockIDString()]
+		me.AddOrder(stockOrder)
+		stockOrderPairings[stockOrder.GetUniquePairing().String()].ResponseWriter.WriteHeader(http.StatusOK)
+	}
+	return nil
 }
 
 func DeleteStockOrderHandler(responseWriter network.ResponseWriter, data []byte, queryParams url.Values, requestType string) {

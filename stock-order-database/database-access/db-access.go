@@ -12,6 +12,7 @@ type DatabaseAccessInterface interface {
 	databaseAccess.DatabaseAccessInterface
 	EntityDataAccessInterface
 	GetInitialStockOrdersForStock(stockID string) *[]order.StockOrderInterface
+	CreateBulk(entities *[]order.StockOrderInterface) (*[]order.StockOrderInterface, map[string]int, error)
 }
 
 type DatabaseAccess struct {
@@ -57,4 +58,24 @@ func (d *DatabaseAccess) GetInitialStockOrdersForStock(stockID string) *[]order.
 		convertedStockOrders[i] = o
 	}
 	return &convertedStockOrders
+}
+
+func (d *DatabaseAccess) CreateBulk(entities *[]order.StockOrderInterface) (*[]order.StockOrderInterface, map[string]int, error) {
+	errors := make(map[string]int)
+	tempEntities := make([]*order.StockOrder, len(*entities))
+	for i, e := range *entities {
+		tempEntities[i] = e.(*order.StockOrder)
+	}
+	errMap := d.TEMPCONNECTION.CreateBulk(&tempEntities)
+	if _, ok := errMap["transaction"]; ok {
+		return nil, nil, errMap["transaction"]
+	}
+	for k := range errMap {
+		errors[k] = 500
+	}
+	converted := make([]order.StockOrderInterface, len(tempEntities))
+	for i, e := range tempEntities {
+		converted[i] = e
+	}
+	return &converted, errors, nil
 }

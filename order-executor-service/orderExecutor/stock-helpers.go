@@ -120,45 +120,59 @@ func updateUserStockQuantities(
 
 // Updates transaction status and creates filled transaction if needed
 func updateTransactionStatus(
-	stockTx transaction.StockTransactionInterface,
+	buyerStockTx transaction.StockTransactionInterface,
+	sellerStockTx transaction.StockTransactionInterface,
 	isBuyPartial bool,
 	isSellPartial bool,
 	stockPrice float64,
 	databaseAccessTransact databaseAccessTransaction.DatabaseAccessInterface,
+	quantity int,
 ) error {
 
-	log.Printf("%s", fmt.Sprintf("BEFORE Update Status: %s", stockTx.GetOrderStatus()))
-
-	// Set the stock price in the transaction
-
-	if stockTx.GetIsBuy() {
-		stockTx.UpdateStockPrice(stockPrice)
-		if isBuyPartial {
-			stockTx.SetOrderStatus("PARTIALLY_COMPLETE")
-		} else {
-			stockTx.SetOrderStatus("COMPLETED")
-		}
-	} else {
-		// For sell orders
-		if isSellPartial {
-			stockTx.SetOrderStatus("PARTIALLY_COMPLETE")
-		} else {
-			stockTx.SetOrderStatus("COMPLETED")
-		}
-	}
+	buyerStockTx.UpdateStockPrice(stockPrice)
+	// Handle partial matching for both buy and sell orders
+	updateTransaction(buyerStockTx, isBuyPartial, stockPrice, databaseAccessTransact, quantity)
+	updateTransaction(sellerStockTx, isSellPartial, stockPrice, databaseAccessTransact, quantity)
 
 	// Update in database
+
+	return nil
+}
+
+func updateTransaction(
+	stockTx transaction.StockTransactionInterface,
+	isPartial bool,
+	stockPrice float64,
+	databaseAccessTransact databaseAccessTransaction.DatabaseAccessInterface,
+	quantity int,
+) error {
+	if stockTx.GetOrderStatus() == "PARTIALLY_COMPLETE" {
+		partials, err := _databaseAccessTransact.StockTransaction().GetByForeignID("ParentStockTransactionID", stockTx.GetIdString())
+		if err != nil {
+			return fmt.Errorf("failed to get partial transactions: %v", err)
+		}
+		quantityTransfered := 0
+		for _, partial := range *partials {
+			quantityTransfered += partial.GetQuantity()
+		}
+		if quantityTransfered+quantity == stockTx.GetQuantity() {
+			stockTx.SetOrderStatus("COMPLETED")
+		}
+	} else if isPartial {
+		stockTx.SetOrderStatus("PARTIALLY_COMPLETE")
+	} else {
+		stockTx.SetOrderStatus("COMPLETED")
+	}
+
 	if err := databaseAccessTransact.StockTransaction().Update(stockTx); err != nil {
 		return fmt.Errorf("failed to update transaction status: %v", err)
 	}
 	log.Printf("%s", fmt.Sprintf("AFTER Update Status: %s", stockTx.GetOrderStatus()))
 
 	// Create filled transaction for partial orders
-	if isBuyPartial || isSellPartial {
+	if isPartial {
 		filledTx := transaction.NewStockTransaction(transaction.NewStockTransactionParams{
 			ParentStockTransaction: stockTx,
-			OrderStatus:            "COMPLETED", // Child transaction is always COMPLETED
-			TimeStamp:              time.Now(),
 		})
 
 		// Set the stock price in the filled transaction

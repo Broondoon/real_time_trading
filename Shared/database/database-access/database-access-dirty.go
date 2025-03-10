@@ -81,6 +81,26 @@ func (d *EntityDataAccess[TEntity, TInterface]) GetByForeignIDBulk(foreignIDColu
 
 func (d *EntityDataAccess[TEntity, TInterface]) CreateBulk(entities *[]TInterface) (*[]TInterface, map[string]int, error) {
 	panic("implement me") // TODO: Implement
+	// bulkEntities := make([]TEntity, len(*entities))
+	// if len(*entities) == 0 {
+	// 	return nil, nil, nil
+	// }
+	// for i, e := range *entities {
+	// 	bulkEntities[i] = interface{}(e).(TEntity)
+	// }
+	// errors := make(map[string]int)
+	// errMap := d.EntityDataServiceTemp.CreateBulk(&bulkEntities)
+	// if _, ok := errMap["transaction"]; ok {
+	// 	return nil, nil, errMap["transaction"]
+	// }
+	// for k := range errMap {
+	// 	errors[k] = 500
+	// }
+	// converted := make([]TInterface, len(*entities))
+	// for i, e := range *entities {
+	// 	converted[i] = interface{}(e).(TInterface)
+	// }
+	// return &converted, errors, nil
 }
 
 func (d *EntityDataAccess[TEntity, TInterface]) Create(entity TInterface) (TInterface, error) {

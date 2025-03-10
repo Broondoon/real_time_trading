@@ -58,8 +58,6 @@ services:
         condition: service_healthy
       stock-database-service:
         condition: service_healthy
-      redis:
-        condition: service_healthy
     healthcheck:
       test:
         [
@@ -356,6 +354,8 @@ services:
       - go-network
     depends_on:
       auth-db:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     healthcheck:
       test:

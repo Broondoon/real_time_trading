@@ -59,8 +59,8 @@ func InitalizeHandlers(
 	})
 
 	//Add handlers
-	_networkHttpManager.AddHandleFuncProtected(network.HandlerParams{Pattern: os.Getenv("engine_route") + "/placeStockOrder", Handler: placeStockOrderHandlerOld})
-	_networkHttpManager.AddHandleFuncProtected(network.HandlerParams{Pattern: os.Getenv("engine_route") + "/cancelStockTransaction", Handler: cancelStockTransactionHandlerOld})
+	_networkHttpManager.AddHandleFuncProtected(network.HandlerParams{Pattern: os.Getenv("engine_route") + "/placeStockOrder", Handler: placeStockOrderHandler})
+	_networkHttpManager.AddHandleFuncProtected(network.HandlerParams{Pattern: os.Getenv("engine_route") + "/cancelStockTransaction", Handler: cancelStockTransactionHandler})
 	http.HandleFunc("/health", healthHandler)
 }
 
@@ -108,6 +108,9 @@ func checkUserStocks(data *[]*StockOrderBulk, TransferParams any) error {
 			ordersByUserId[stockOrder.userId] = append(ordersByUserId[stockOrder.userId], stockOrder)
 			userIds = append(userIds, stockOrder.userId)
 		}
+	}
+	if len(userIds) == 0 {
+		return nil
 	}
 
 	handleSellOrders := func(userID string, sellerStockPortfolio *[]userStock.UserStockInterface, errorCode int) {
@@ -206,14 +209,14 @@ func updateUserStocks(data *[]*StockOrderBulk, TransferParams any) error {
 func placeStockOrderResponse(data *[]*StockOrderBulk, TransferParams any) error {
 	log.Println("Creating stock order transactions")
 	bulkTransactions := make([]transaction.StockTransactionInterface, len(*data))
-	for _, stockOrder := range *data {
+	for i, stockOrder := range *data {
 		newTransaction := transaction.NewStockTransaction(transaction.NewStockTransactionParams{
 			StockOrder:  stockOrder.StockOrder,
 			OrderStatus: "IN_PROGRESS",
 		})
 		newTransaction.SetStockID(stockOrder.StockOrder.GetStockID())
 		newTransaction.SetUnqiuePairing(stockOrder.StockOrder.GetUniquePairing())
-		bulkTransactions = append(bulkTransactions, newTransaction)
+		bulkTransactions[i] = newTransaction
 	}
 	createdTransactions, errList, err := _databaseAccess.StockTransaction().CreateBulk(&bulkTransactions)
 	if err != nil {
@@ -390,52 +393,4 @@ func placeStockOrderOld(stockOrder order.StockOrderInterface) error {
 	//pass to matching engine
 	_, err = _networkQueueManager.MatchingEngine().Post("placeStockOrder", stockOrder)
 	return err
-}
-
-func cancelStockTransactionHandlerOld(responseWriter network.ResponseWriter, data []byte, queryParams url.Values, requestType string) {
-	println("Cancelling stock transaction")
-	var stockID network.StockTransactionID
-	err := json.Unmarshal(data, &stockID)
-	if err != nil {
-		println("Error: ", err.Error())
-		responseWriter.WriteHeader(http.StatusBadRequest)
-		return
-	}
-	err = cancelStockTransactionOld(stockID.StockTransactionID)
-	if errors.Is(err, gorm.ErrRecordNotFound) {
-		responseWriter.WriteHeader(http.StatusNotFound)
-		return
-	}
-	if err != nil {
-		println("Error: ", err.Error())
-		responseWriter.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-	returnVal := network.ReturnJSON{
-		Success: true,
-		Data:    nil,
-	}
-	returnValJSON, err := json.Marshal(returnVal)
-	if err != nil {
-		responseWriter.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-	responseWriter.Write(returnValJSON)
-}
-
-func cancelStockTransactionOld(id string) error {
-	//pass to matching engine
-	_, err := _networkHttpManager.Transactions().Put("cancelStockTransaction/"+id, nil)
-	if err != nil {
-		println("Error: ", err.Error())
-		return err
-	}
-
-	_, err = _networkQueueManager.MatchingEngine().Delete("deleteOrder/" + id)
-	if err != nil {
-		println("Error: ", err.Error())
-		return err
-	}
-	return nil
-
 }

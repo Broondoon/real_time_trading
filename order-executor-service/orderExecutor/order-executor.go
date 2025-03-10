@@ -104,9 +104,6 @@ func ProcessTrade(orderData network.MatchingEngineToExecutionJSON, databaseAcces
 		return false, false, fmt.Errorf("expected 2 transactions, got %d", len(*transactionList))
 	}
 
-	stockTx := (*transactionList)[0]
-	log.Printf("%s", fmt.Sprintf("Grabbing first stock transaction in Transaction List: ID= %s, Order Status= %s", stockTx.GetId(), stockTx.GetOrderStatus()))
-
 	// 2. Go to User-Managment DB, get wallet of userID present on  Buy order transaction
 	walletList, errList, err := databaseAccessUser.Wallet().GetByIDs([]*uuid.UUID{&buyerID, &sellerID})
 
@@ -166,8 +163,18 @@ func ProcessTrade(orderData network.MatchingEngineToExecutionJSON, databaseAcces
 		return false, true, nil
 	}
 
+	var buyerStockTransaction transaction.StockTransactionInterface
+	var sellerStockTransaction transaction.StockTransactionInterface
+	for _, tx := range *transactionList {
+		if tx.GetUserIDString() == buyerID.String() {
+			buyerStockTransaction = tx
+		} else if tx.GetUserIDString() == sellerID.String() {
+			sellerStockTransaction = tx
+		}
+	}
+
 	// 4. Update buyer and seller wallet balances and create wallet transactions for these changes
-	err = updateUserWallets(buyerWallet, sellerWallet, totalCost, stockTx, databaseAccessUser, databaseAccessTransact)
+	err = updateUserWallets(buyerWallet, sellerWallet, totalCost, buyerStockTransaction, sellerStockTransaction, databaseAccessUser, databaseAccessTransact)
 	log.Println("Done updating wallets")
 	if len(*walletList) != 2 {
 		return false, false, fmt.Errorf("expected 2 wallets, got %d", len(*walletList))
@@ -179,7 +186,7 @@ func ProcessTrade(orderData network.MatchingEngineToExecutionJSON, databaseAcces
 
 	// 5. Update buyer and seller stock portfolios. Deduct the quantity from seller and add to buyer
 	log.Println("Updating user stocks...")
-	err = updateUserStocks(&buyerID, &sellerID, &stockID, quantity, stockTx, databaseAccessUser,
+	err = updateUserStocks(&buyerID, &sellerID, &stockID, quantity, buyerStockTransaction, sellerStockTransaction, databaseAccessUser,
 		databaseAccessTransact, isBuyPartial, isSellPartial, stockPrice)
 	if err != nil {
 		println("Error updating user stocks:", err.Error())
@@ -198,7 +205,8 @@ func updateUserWallets(
 	buyerWallet wallet.WalletInterface,
 	sellerWallet wallet.WalletInterface,
 	totalCost float64,
-	stockTransaction transaction.StockTransactionInterface,
+	buyerStockTransaction transaction.StockTransactionInterface,
+	sellerStockTransaction transaction.StockTransactionInterface,
 	databaseAccessUser databaseAccessUserManagement.DatabaseAccessInterface,
 	databaseAccessTransact databaseAccessTransaction.DatabaseAccessInterface,
 ) error {
@@ -222,7 +230,7 @@ func updateUserWallets(
 		sellerWallet.GetBalance(), totalCost))
 
 	// Step 3: Create wallet transactions for buyer
-	buyerWalletTxID, err := createWalletTransaction(buyerWallet, stockTransaction, true, totalCost, databaseAccessTransact)
+	buyerWalletTxID, err := createWalletTransaction(buyerWallet, buyerStockTransaction, true, totalCost, databaseAccessTransact)
 	if err != nil {
 		return fmt.Errorf("buyer wallet transaction failed: %v", err)
 	}
@@ -230,7 +238,7 @@ func updateUserWallets(
 		buyerWalletTxID, buyerWallet.GetUserID(), totalCost))
 
 	// Step 4: Create wallet transactions for seller
-	sellerWalletTxID, err := createWalletTransaction(sellerWallet, stockTransaction, false, totalCost, databaseAccessTransact)
+	sellerWalletTxID, err := createWalletTransaction(sellerWallet, sellerStockTransaction, false, totalCost, databaseAccessTransact)
 	if err != nil {
 		return fmt.Errorf("seller wallet transaction failed: %v", err)
 	}
@@ -251,7 +259,8 @@ func updateUserStocks(
 	sellerID *uuid.UUID,
 	stockID *uuid.UUID,
 	quantity int,
-	stockTx transaction.StockTransactionInterface,
+	buyerStockTx transaction.StockTransactionInterface,
+	sellerStockTx transaction.StockTransactionInterface,
 	databaseAccessUser databaseAccessUserManagement.DatabaseAccessInterface,
 	databaseAccessTransact databaseAccessTransaction.DatabaseAccessInterface,
 	isBuyPartial bool,
@@ -291,7 +300,7 @@ func updateUserStocks(
 		quantity))
 
 	// Step 5: Update transaction status
-	if err := updateTransactionStatus(stockTx, isBuyPartial, isSellPartial, stockPrice, databaseAccessTransact); err != nil {
+	if err := updateTransactionStatus(buyerStockTx, sellerStockTx, isBuyPartial, isSellPartial, stockPrice, databaseAccessTransact, quantity); err != nil {
 		return err
 	}
 	log.Printf("%s", fmt.Sprintf("Step 5: Successfully updated transaction status - Buy Partial: %t, Sell Partial: %t",

@@ -251,6 +251,7 @@ func NewStockTransaction(params NewStockTransactionParams) *StockTransaction {
 			stockPrice = params.StockOrder.GetPrice()
 			quantity = params.StockOrder.GetQuantity()
 			userID = params.StockOrder.GetUserID()
+
 		} else {
 			if params.Stock != nil {
 				stockID = params.Stock.GetId()
