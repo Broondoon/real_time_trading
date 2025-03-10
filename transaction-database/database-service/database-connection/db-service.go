@@ -3,8 +3,6 @@ package databaseServiceTransaction
 import (
 	databaseService "Shared/database/database-service"
 	"Shared/entities/transaction"
-	"os"
-	"time"
 )
 
 type StockTransactionDataServiceInterface = databaseService.EntityDataInterface[*transaction.StockTransaction]
@@ -54,7 +52,8 @@ func NewDatabaseService(params *NewDatabaseServiceParams) DatabaseServiceInterfa
 		params.WalletTransactionParams.Existing = newDBConnection
 	}
 
-	cachedStockTransaction := databaseService.NewCachedEntityData[*transaction.StockTransaction](&databaseService.NewCachedEntityDataParams{
+	//CACHE IMPLEMENTATION
+	/* cachedStockTransaction := databaseService.NewCachedEntityData[*transaction.StockTransaction](&databaseService.NewCachedEntityDataParams{
 		NewEntityDataParams: params.StockTransactionParams,
 		RedisAddr:           os.Getenv("REDIS_ADDR"),
 		Password:            os.Getenv("REDIS_PASSWORD"),
@@ -71,6 +70,12 @@ func NewDatabaseService(params *NewDatabaseServiceParams) DatabaseServiceInterfa
 	db := &DatabaseService{
 		StockTransaction:  cachedStockTransaction,
 		WalletTransaction: cachedWalletTransaction,
+		DatabaseInterface: newDBConnection,
+	} */
+
+	db := &DatabaseService{
+		StockTransaction:  databaseService.NewEntityData[*transaction.StockTransaction](params.StockTransactionParams),
+		WalletTransaction: databaseService.NewEntityData[*transaction.WalletTransaction](params.WalletTransactionParams),
 		DatabaseInterface: newDBConnection,
 	}
 	db.Connect()

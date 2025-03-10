@@ -3,8 +3,6 @@ package databaseServiceStock
 import (
 	databaseService "Shared/database/database-service"
 	"Shared/entities/stock"
-	"os"
-	"time"
 )
 
 type DatabaseServiceInterface interface {
@@ -25,7 +23,8 @@ func NewDatabaseService(params *NewDatabaseServiceParams) DatabaseServiceInterfa
 		params.NewEntityDataParams = &databaseService.NewEntityDataParams{}
 	}
 
-	cachedStock := databaseService.NewCachedEntityData[*stock.Stock](&databaseService.NewCachedEntityDataParams{
+	//CACHE IMPLEMENTATION
+	/* cachedStock := databaseService.NewCachedEntityData[*stock.Stock](&databaseService.NewCachedEntityDataParams{
 		NewEntityDataParams: params.NewEntityDataParams,
 		RedisAddr:           os.Getenv("REDIS_ADDR"),
 		Password:            os.Getenv("REDIS_PASSWORD"),
@@ -34,7 +33,12 @@ func NewDatabaseService(params *NewDatabaseServiceParams) DatabaseServiceInterfa
 
 	db := &DatabaseService{
 		EntityDataInterface: cachedStock,
+	} */
+
+	db := &DatabaseService{
+		EntityDataInterface: databaseService.NewEntityData[*stock.Stock](params.NewEntityDataParams),
 	}
+
 	db.Connect()
 	db.GetDatabaseSession().AutoMigrate(&stock.Stock{})
 	return db

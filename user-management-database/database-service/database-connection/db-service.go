@@ -1,9 +1,6 @@
 package databaseServiceUserManagement
 
 import (
-	"os"
-	"time"
-
 	databaseService "Shared/database/database-service"
 	userStock "Shared/entities/user-stock"
 	"Shared/entities/wallet"
@@ -63,7 +60,8 @@ func NewDatabaseService(params *NewDatabaseServiceParams) DatabaseServiceInterfa
 		params.WalletParams.Existing = newDBConnection
 	}
 
-	cachedUserStock := databaseService.NewCachedEntityData[*userStock.UserStock](&databaseService.NewCachedEntityDataParams{
+	//Cache stuff
+	/* cachedUserStock := databaseService.NewCachedEntityData[*userStock.UserStock](&databaseService.NewCachedEntityDataParams{
 		NewEntityDataParams: params.UserStockParams,
 		RedisAddr:           os.Getenv("REDIS_ADDR"),
 		Password:            os.Getenv("REDIS_PASSWORD"),
@@ -80,6 +78,11 @@ func NewDatabaseService(params *NewDatabaseServiceParams) DatabaseServiceInterfa
 	db := &DatabaseService{
 		UserStock:         cachedUserStock,
 		Wallet:            cachedWallet,
+		DatabaseInterface: newDBConnection,
+	} */
+	db := &DatabaseService{
+		UserStock:         databaseService.NewEntityData[*userStock.UserStock](params.UserStockParams),
+		Wallet:            databaseService.NewEntityData[*wallet.Wallet](params.WalletParams),
 		DatabaseInterface: newDBConnection,
 	}
 
