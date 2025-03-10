@@ -1,12 +1,14 @@
 package handlers
 
 import (
-	user "Shared/entities/user"
+	"Shared/entities/entity"
+	"Shared/entities/user"
+	"Shared/entities/wallet"
 	"Shared/network"
-	databaseAccessAuth "databaseAccessAuth"
-	"encoding/json"
+	subfunctions "Shared/subfunctions/Multithreading"
+	"databaseAccessAuth"
+	"databaseAccessUserManagement"
 	"fmt"
-	"io"
 	"log"
 	"net/http"
 	"net/url"
@@ -14,6 +16,7 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -40,129 +43,267 @@ func GenerateToken(userID string) (string, error) {
 
 // ---------- Response Helpers ----------
 
-func RespondSuccess(w http.ResponseWriter, data interface{}) {
-	w.Header().Set("Content-Type", "application/json")
+func RespondSuccess(w network.ResponseWriter, data interface{}) {
 	response := map[string]interface{}{
 		"success": true,
 		"data":    data,
 	}
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(response)
+	w.EncodeResponse(http.StatusOK, response)
 }
 
-func RespondError(w http.ResponseWriter, statusCode int, errorMsg string) {
-	w.Header().Set("Content-Type", "application/json")
+func RespondError(w network.ResponseWriter, statusCode int, errorMsg string) {
+	log.Println("RespondError: ", errorMsg)
+	log.Println("RespondErrorCode: ", statusCode)
 	response := map[string]interface{}{
 		"success": false,
 		"error":   errorMsg,
 	}
-	w.WriteHeader(statusCode)
-	json.NewEncoder(w).Encode(response)
+	w.EncodeResponse(statusCode, response)
 }
 
 // ---------- Dependency Injection ----------
 
 // authDB is the dependency injected from main.go.
 // It implements databaseAccessAdduth.AuthDataAccessInterface.
-var _authDB databaseAccessAuth.UserDataAccessInterface
+var _authDB databaseAccessAuth.DatabaseAccessInterface
+var _bulkRoutineRegisterGetByUsername subfunctions.BulkRoutineInterface[*UserBulk]
+var _bulkRoutineRegisterCreateUser subfunctions.BulkRoutineInterface[*UserBulk]
+var _bulkRoutineRegisterCreateWallet subfunctions.BulkRoutineInterface[*UserBulk]
+var _bulkRoutineRegisterRemoveUser subfunctions.BulkRoutineInterface[*UserBulk]
+var _bulkRoutineLoginGetByUsername subfunctions.BulkRoutineInterface[*UserBulk]
+
+type UserBulk struct {
+	UserEntity     user.UserInterface
+	ResponseWriter network.ResponseWriter
+}
+
+var _networkManager network.NetworkInterface
+var _walletAccess databaseAccessUserManagement.WalletDataAccessInterface
 
 // InitializeAuthHandlers sets up the dependency for the handlers.
-func InitializeUser(db databaseAccessAuth.UserDataAccessInterface, networkManager network.NetworkInterface) {
+func InitializeUser(db databaseAccessAuth.DatabaseAccessInterface, networkManager network.NetworkInterface, walletAccess databaseAccessUserManagement.WalletDataAccessInterface) {
 	_authDB = db
-	networkManager.AddHandleFuncUnprotected(network.HandlerParams{Pattern: "authentication/register", Handler: Register})
-	networkManager.AddHandleFuncUnprotected(network.HandlerParams{Pattern: "authentication/login", Handler: Login})
+	_walletAccess = walletAccess
+	_bulkRoutineRegisterGetByUsername = subfunctions.NewBulkRoutine(&subfunctions.BulkRoutineParams[*UserBulk]{
+		Routine: registerUsers,
+	})
+	_bulkRoutineRegisterCreateUser = subfunctions.NewBulkRoutine(&subfunctions.BulkRoutineParams[*UserBulk]{
+		Routine: createUser,
+	})
+	_bulkRoutineRegisterCreateWallet = subfunctions.NewBulkRoutine(&subfunctions.BulkRoutineParams[*UserBulk]{
+		Routine: createWallet,
+	})
+	_bulkRoutineRegisterRemoveUser = subfunctions.NewBulkRoutine(&subfunctions.BulkRoutineParams[*UserBulk]{
+		Routine: removeUser,
+	})
+	_bulkRoutineLoginGetByUsername = subfunctions.NewBulkRoutine(&subfunctions.BulkRoutineParams[*UserBulk]{
+		Routine: loginUsers,
+	})
+	_networkManager = networkManager
+
+	_networkManager.AddHandleFuncUnprotected(network.HandlerParams{Pattern: "authentication/register", Handler: Register})
+	_networkManager.AddHandleFuncUnprotected(network.HandlerParams{Pattern: "authentication/login", Handler: Login})
+	http.HandleFunc("/health", healthHandler)
+
 }
 
 // ---------- HTTP Handlers ----------
+
+func healthHandler(w http.ResponseWriter, r *http.Request) {
+	// Simple check: you might expand this to test database connectivity, etc.
+	w.WriteHeader(http.StatusOK)
+	//log.Println(w, "OK")
+}
+
 // Register handles user registration.
 func Register(w network.ResponseWriter, data []byte, queryParams url.Values, requestType string) {
 	log.Println("Register() called by handler in Auth-service.")
 
 	// Decode the JSON body into a User object.
-	var input user.User
-	if err := json.Unmarshal(data, &input); err != nil {
+	input, err := user.Parse(data)
+	if err != nil {
 		RespondError(w, http.StatusBadRequest, fmt.Sprintf("Invalid JSON: %v", err))
 		return
 	}
+	_bulkRoutineRegisterGetByUsername.Insert(&UserBulk{UserEntity: input, ResponseWriter: w})
+}
 
-	// Check if the username already exists.
-	existingUser, err := _authDB.GetUserByUsername(input.GetUsername())
-	if existingUser != nil {
-		log.Printf("Username exists?: %s", existingUser)
-		RespondError(w, http.StatusBadRequest, "Username already exists.")
-		return
-	} else if err != nil && err.Error() != "user not found" {
-		// Unexpected error.
-		log.Printf("Couldn't find user? %s", err.Error())
-		RespondError(w, http.StatusInternalServerError, "Internal error")
-		return
+func registerUsers(data *[]*UserBulk, TransferParams any) error {
+	log.Println("registering users")
+	userMap := make(map[string]*UserBulk)
+	usernames := make([]string, len(*data))
+	for i, d := range *data {
+		username := d.UserEntity.GetUsername()
+		if _, ok := userMap[username]; ok {
+			RespondError(d.ResponseWriter, http.StatusBadRequest, "Username already exists.")
+			continue
+		}
+		userMap[username] = d
+		usernames[i] = username
 	}
-
-	// Hash the password.
-	hashedPassword, err := HashPassword(input.GetPassword())
+	_, errorList, err := _authDB.GetByForeignIDBulk("Username", usernames)
 	if err != nil {
-		log.Printf("error hashing: %s", err)
-		RespondError(w, http.StatusInternalServerError, "Error hashing password.")
-		return
-	}
-	input.Password = hashedPassword
-
-	// Create the user.
-	if err := _authDB.CreateUser(&input); err != nil {
-		log.Printf("Failed to add user to database: %s", err)
-		RespondError(w, http.StatusInternalServerError, "Failed to add user to database.")
-		return
-	}
-	//TODO: Checking if the user exists, then creating, and then fetching
-	// the user from the DB again is not very efficient.
-	getUser, err := _authDB.GetUserByUsername(input.Username)
-
-	// Call the wallet creation endpoint.
-	umHost := os.Getenv("USER_MANAGEMENT_HOST")
-	umPort := os.Getenv("USER_MANAGEMENT_PORT")
-	if umHost == "" || umPort == "" {
-		log.Printf("Host and Port:: %s:%s", umHost, umPort)
-		RespondError(w, http.StatusInternalServerError, "User management service not found.")
-		return
+		log.Println("error getting users: ", err)
+		for _, d := range userMap {
+			RespondError(d.ResponseWriter, http.StatusInternalServerError, "Internal error")
+		}
+		return err
 	}
 
-	walletURL := fmt.Sprintf("http://%s:%s/transaction/createWallet?userID=%s", umHost, umPort, getUser.GetId())
-	log.Printf("This is the input obj: %s", getUser.GetId())
-	resp, err := http.Get(walletURL)
+	for _, d := range userMap {
+		log.Println("checking user: ", d.UserEntity.GetUsername())
+		if errCode, exists := errorList[d.UserEntity.GetUsername()]; exists {
+			log.Println("User has Error: ", errCode, " for user: ", d.UserEntity.GetUsername(), ". If this is 404, this is desirable.")
+			if errorList[d.UserEntity.GetUsername()] == http.StatusNotFound {
+				hashedPassword, err := HashPassword(d.UserEntity.GetPassword())
+				if err != nil {
+					log.Printf("error hashing: %s", err)
+					RespondError(d.ResponseWriter, http.StatusInternalServerError, "Error hashing password.")
+					continue
+				}
+				d.UserEntity.SetPassword(hashedPassword)
+				_bulkRoutineRegisterCreateUser.Insert(d)
+				continue
+			} else {
+				log.Println("Error checking user: ", errCode)
+				RespondError(d.ResponseWriter, http.StatusInternalServerError, "Internal error")
+				continue
+			}
+		}
+		log.Println("User already exists: ", d.UserEntity.GetUsername())
+		RespondError(d.ResponseWriter, http.StatusBadRequest, "Username already exists.")
+	}
+	return nil
+}
+
+func createUser(data *[]*UserBulk, TransferParams any) error {
+	log.Println("creating users")
+	userMap := make(map[string]*UserBulk)
+	usersToCreate := make([]user.UserInterface, len(*data))
+	for i, d := range *data {
+		usersToCreate[i] = d.UserEntity
+		userMap[d.UserEntity.GetUniquePairing().String()] = d
+	}
+	users, errorList, err := _authDB.CreateBulk(&usersToCreate)
 	if err != nil {
-		RespondError(w, http.StatusInternalServerError, "Error with wallet creation request.")
-		return
+		log.Println("error creating users: ", err)
+		for _, d := range *users {
+			RespondError(userMap[d.GetUniquePairing().String()].ResponseWriter, http.StatusInternalServerError, "Internal error")
+		}
+		return err
 	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		bodyBytes, _ := io.ReadAll(resp.Body)
-		RespondError(w, resp.StatusCode, string(bodyBytes))
-		return
+	for _, d := range *users {
+		if _, ok := errorList[d.GetUniquePairing().String()]; ok {
+			log.Println("Error creating user: ", d)
+			RespondError(userMap[d.GetUniquePairing().String()].ResponseWriter, http.StatusInternalServerError, "Internal error")
+		} else {
+			_bulkRoutineRegisterCreateWallet.Insert(&UserBulk{UserEntity: d, ResponseWriter: userMap[d.GetUniquePairing().String()].ResponseWriter})
+		}
 	}
+	return nil
+}
 
-	// Return a success response.
-	RespondSuccess(w, nil)
+func createWallet(data *[]*UserBulk, TransferParams any) error {
+	users := make(map[string]*UserBulk, len(*data))
+	wallets := make([]wallet.WalletInterface, len(*data))
+	for i, d := range *data {
+		users[d.UserEntity.GetUniquePairing().String()] = d
+		w := wallet.New(wallet.NewWalletParams{
+			NewEntityParams: entity.NewEntityParams{},
+			UserID:          d.UserEntity.GetId(),
+			Balance:         0.0,
+		})
+		w.SetUnqiuePairing(d.UserEntity.GetUniquePairing())
+		wallets[i] = w
+
+	}
+	newWallets, errorList, err := _walletAccess.CreateBulk(&wallets)
+	if err != nil {
+		log.Printf("Error creating wallet: %v\n", err.Error())
+		for _, d := range *data {
+			RespondError(d.ResponseWriter, http.StatusInternalServerError, "Internal error")
+		}
+		removeUser(data, nil)
+		return err
+	}
+	for _, d := range *newWallets {
+		if _, ok := errorList[d.GetUniquePairing().String()]; ok {
+			log.Println("Error creating wallet: ", d)
+			_bulkRoutineRegisterRemoveUser.Insert(users[d.GetUniquePairing().String()])
+			RespondError(users[d.GetUniquePairing().String()].ResponseWriter, http.StatusInternalServerError, "Internal error")
+		} else {
+			RespondSuccess(users[d.GetUniquePairing().String()].ResponseWriter, nil)
+		}
+	}
+	return nil
+}
+
+func removeUser(data *[]*UserBulk, TransferParams any) error {
+	log.Printf("Error creating wallets. We need to delete any users we created for this.\n")
+	userIDs := make([]*uuid.UUID, len(*data))
+	for i, d := range *data {
+		userIDs[i] = d.UserEntity.GetId()
+	}
+	errorList, err := _authDB.DeleteBulk(userIDs)
+	if err != nil {
+		return err
+	}
+	for _, d := range errorList {
+		log.Println("WARNING WARNING: Error deleting user: ", d)
+	}
+	return nil
 }
 
 // Login handles user login.
 func Login(w network.ResponseWriter, data []byte, queryParams url.Values, requestType string) {
-	var input user.User
-	if err := json.Unmarshal(data, &input); err != nil {
+	input, err := user.Parse(data)
+	if err != nil {
 		RespondError(w, http.StatusBadRequest, fmt.Sprintf("Invalid JSON: %v", err))
 		return
 	}
+	_bulkRoutineLoginGetByUsername.Insert(&UserBulk{UserEntity: input, ResponseWriter: w})
+}
 
-	u, err := _authDB.GetUserByUsername(input.GetUsername())
-	if err != nil || u == nil || !CheckPasswordHash(input.GetPassword(), u.GetPassword()) {
-		RespondError(w, http.StatusBadRequest, "Invalid Credentials.")
-		return
+func loginUsers(data *[]*UserBulk, TransferParams any) error {
+	userMap := make(map[string]*UserBulk)
+	usernames := make([]string, len(*data))
+	for i, d := range *data {
+		username := d.UserEntity.GetUsername()
+		userMap[username] = d
+		usernames[i] = username
 	}
-
-	token, err := GenerateToken(u.GetId())
+	users, errorList, err := _authDB.GetByForeignIDBulk("Username", usernames)
 	if err != nil {
-		RespondError(w, http.StatusInternalServerError, "Token generation failed.")
-		return
+		for _, d := range *users {
+			RespondError(userMap[d.GetUsername()].ResponseWriter, http.StatusInternalServerError, "Internal error")
+		}
+		return err
 	}
 
-	RespondSuccess(w, map[string]interface{}{"token": token})
+	for _, user := range *users {
+		d := userMap[user.GetUsername()]
+		if errCode, exists := errorList[user.GetUsername()]; exists {
+			log.Println("User has Error: ", errCode)
+			if errorList[d.UserEntity.GetUsername()] == http.StatusNotFound {
+				RespondError(d.ResponseWriter, http.StatusBadRequest, "Invalid Credentials.")
+				continue
+			} else {
+				log.Println("Error checking user: ", errCode)
+				RespondError(d.ResponseWriter, http.StatusBadRequest, "Invalid Credentials.")
+				continue
+			}
+		}
+		log.Println("Checking password for user: ", user.GetUsername(), " with password: ", d.UserEntity.GetPassword(), " and hash: ", user.GetPassword())
+		if CheckPasswordHash(d.UserEntity.GetPassword(), user.GetPassword()) {
+			token, err := GenerateToken(user.GetIdString())
+			if err != nil {
+				RespondError(d.ResponseWriter, http.StatusInternalServerError, "Token generation failed.")
+				continue
+			}
+			RespondSuccess(d.ResponseWriter, map[string]interface{}{"token": token})
+		} else {
+			RespondError(d.ResponseWriter, http.StatusBadRequest, "Invalid Credentials.")
+		}
+	}
+	return nil
 }

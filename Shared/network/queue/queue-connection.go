@@ -52,11 +52,11 @@ func NewNetworkQueueConnection(params *NewNetworkQueueConnectionParams) QueueCon
 }
 
 func (b *NetworkQueueConnection) GetConnection() *amqp.Connection {
-	println("Getting connection")
+	log.Println("Getting connection")
 	if !b.connected {
 		b.Connect()
 	}
-	println("Returning connection")
+	log.Println("Returning connection")
 	return b.connection
 }
 
@@ -154,7 +154,8 @@ func (n *NetworkQueueConnection) CloseChannel(channel *amqp.Channel) {
 
 func failOnError(err error, msg string) {
 	if err != nil {
-		log.Panicf("%s: %s", msg, err)
+		log.Printf("Queue %s: %s", msg, err)
+		//log.Panicf("%s: %s", msg, err)
 	}
 }
 

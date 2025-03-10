@@ -4,6 +4,8 @@ import (
 	"Shared/database/database-service"
 	"Shared/entities/entity"
 	"log"
+
+	"github.com/google/uuid"
 )
 
 type EntityDataAccess[TEntity entity.EntityInterface, TInterface entity.EntityInterface] struct {
@@ -38,8 +40,8 @@ func (d *EntityDataAccess[TEntity, TInterface]) Disconnect() {
 	d.EntityDataServiceTemp.Disconnect()
 }
 
-func (d *EntityDataAccess[TEntity, TInterface]) GetByID(id string) (TInterface, error) {
-	entity, err := d.EntityDataServiceTemp.GetByID(id)
+func (d *EntityDataAccess[TEntity, TInterface]) GetByID(id *uuid.UUID) (TInterface, error) {
+	entity, err := d.EntityDataServiceTemp.GetByID(id.String())
 	if err != nil {
 		log.Fatal("Failed to get entity by ID: ", err)
 	}
@@ -57,16 +59,8 @@ func (d *EntityDataAccess[TEntity, TInterface]) GetAll() (*[]TInterface, error) 
 	}
 	return &converted, nil
 }
-func (d *EntityDataAccess[TEntity, TInterface]) GetByIDs(ids []string) (*[]TInterface, error) {
-	entities, err := d.EntityDataServiceTemp.GetByIDs(ids)
-	if err != nil {
-		log.Fatal("Failed to get entities by Ids: ", err)
-	}
-	converted := make([]TInterface, len(*entities))
-	for i, e := range *entities {
-		converted[i] = interface{}(e).(TInterface)
-	}
-	return &converted, nil
+func (d *EntityDataAccess[TEntity, TInterface]) GetByIDs(ids []*uuid.UUID) (*[]TInterface, map[string]int, error) {
+	panic("implement me") // TODO: Implement
 }
 
 func (d *EntityDataAccess[TEntity, TInterface]) GetByForeignID(foreignIDColumn string, foreignID string) (*[]TInterface, error) {
@@ -81,8 +75,32 @@ func (d *EntityDataAccess[TEntity, TInterface]) GetByForeignID(foreignIDColumn s
 	return &converted, nil
 }
 
-func (d *EntityDataAccess[TEntity, TInterface]) CreateBulk(entities *[]TInterface) error {
-	panic("Not implemented")
+func (d *EntityDataAccess[TEntity, TInterface]) GetByForeignIDBulk(foreignIDColumn string, foreignIDs []string) (*[]TInterface, map[string]int, error) {
+	panic("implement me") // TODO: Implement
+}
+
+func (d *EntityDataAccess[TEntity, TInterface]) CreateBulk(entities *[]TInterface) (*[]TInterface, map[string]int, error) {
+	panic("implement me") // TODO: Implement
+	// bulkEntities := make([]TEntity, len(*entities))
+	// if len(*entities) == 0 {
+	// 	return nil, nil, nil
+	// }
+	// for i, e := range *entities {
+	// 	bulkEntities[i] = interface{}(e).(TEntity)
+	// }
+	// errors := make(map[string]int)
+	// errMap := d.EntityDataServiceTemp.CreateBulk(&bulkEntities)
+	// if _, ok := errMap["transaction"]; ok {
+	// 	return nil, nil, errMap["transaction"]
+	// }
+	// for k := range errMap {
+	// 	errors[k] = 500
+	// }
+	// converted := make([]TInterface, len(*entities))
+	// for i, e := range *entities {
+	// 	converted[i] = interface{}(e).(TInterface)
+	// }
+	// return &converted, errors, nil
 }
 
 func (d *EntityDataAccess[TEntity, TInterface]) Create(entity TInterface) (TInterface, error) {
@@ -94,17 +112,27 @@ func (d *EntityDataAccess[TEntity, TInterface]) Create(entity TInterface) (TInte
 }
 
 func (d *EntityDataAccess[TEntity, TInterface]) Update(entity TInterface) error {
-	err := d.EntityDataServiceTemp.Update(interface{}(entity).(TEntity))
-	if err != nil {
-		log.Fatal("Failed to update entity: ", err)
+	err := d.EntityDataServiceTemp.Update(*entity.GetUpdates())
+	if len(err) > 0 {
+		for _, e := range err {
+			log.Fatal("Failed to update entity: ", e)
+		}
 	}
 	return nil
 }
 
-func (d *EntityDataAccess[TEntity, TInterface]) Delete(id string) error {
-	err := d.EntityDataServiceTemp.Delete(id)
+func (d *EntityDataAccess[TEntity, TInterface]) UpdateBulk(entities *[]TInterface) (map[string]int, error) {
+	panic("implement me") // TODO: Implement
+}
+
+func (d *EntityDataAccess[TEntity, TInterface]) Delete(id *uuid.UUID) error {
+	err := d.EntityDataServiceTemp.Delete(id.String())
 	if err != nil {
 		log.Fatal("Failed to delete entity: ", err)
 	}
 	return nil
+}
+
+func (d *EntityDataAccess[TEntity, TInterface]) DeleteBulk(ids []*uuid.UUID) (map[string]int, error) {
+	panic("implement me") // TODO: Implement
 }

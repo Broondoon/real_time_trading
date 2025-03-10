@@ -4,6 +4,7 @@ import (
 	"Shared/network"
 	"context"
 	"encoding/json"
+	"log"
 	"net/http"
 	"net/url"
 	"time"
@@ -51,8 +52,8 @@ func NewQueueCluster(exchangeKey string, handler network.HandlerParams, params *
 	if params.NewNetworkQueueConnectionParams == nil {
 		params.NewNetworkQueueConnectionParams = &NewNetworkQueueConnectionParams{}
 	}
-	println("New Queue Cluster")
-	println("Exchange Key: ", exchangeKey)
+	log.Println("New Queue Cluster")
+	log.Println("Exchange Key: ", exchangeKey)
 	return &QueueCluster{
 		QueueConnectionInterface: NewNetworkQueueConnection(params.NewNetworkQueueConnectionParams),
 		HandlerParams:            handler,
@@ -84,14 +85,14 @@ func GetDefaults() *NewQueueClusterParams {
 // Exchange Key. Bind this queue to an exchange with this key. We then filter incomming messages by pattern
 func (n *QueueCluster) SpawnQueue() {
 	exchangeParams := ExchangeParamsDefaults()
-	println("Exchange Key: ", n.ExchangeKey)
+	log.Println("Exchange Key: ", n.ExchangeKey)
 	exchangeParams.Name = n.ExchangeKey
 	ch := n.SpawnChannel(exchangeParams)
-	println("#######")
-	println("Spawning Queue")
-	println("ExchangeKey: ", n.ExchangeKey)
-	println("QueueCluster: ", n.HandlerParams.Pattern)
-	println("#######")
+	log.Println("#######")
+	log.Println("Spawning Queue")
+	log.Println("ExchangeKey: ", n.ExchangeKey)
+	log.Println("QueueCluster: ", n.HandlerParams.Pattern)
+	log.Println("#######")
 	defer n.CloseChannel(ch)
 	q, err := ch.QueueDeclare(
 		"",           // name
@@ -102,7 +103,7 @@ func (n *QueueCluster) SpawnQueue() {
 		n.Args,       // arguments
 	)
 	failOnError(err, "Failed to declare a queue")
-	println("Queue: ", q.Name)
+	log.Println("Queue: ", q.Name)
 	err = ch.QueueBind(
 		q.Name,                  // queue name
 		n.HandlerParams.Pattern, // routing key
@@ -111,7 +112,7 @@ func (n *QueueCluster) SpawnQueue() {
 		nil,
 	)
 	failOnError(err, "Failed to bind a queue")
-	println("Queue Bound: ", q.Name)
+	log.Println("Queue Bound: ", q.Name)
 
 	msg, err := ch.Consume(
 		q.Name, // queue
@@ -123,11 +124,11 @@ func (n *QueueCluster) SpawnQueue() {
 		n.ConsumeArgs,
 	)
 	failOnError(err, "Failed to register a consumer")
-	println("Consumer registered: ", q.Name)
+	log.Println("Consumer registered: ", q.Name)
 	go func() {
 		for d := range msg {
-			println("Received message")
-			println("Message: ", string(d.Body))
+			log.Println("Received message")
+			log.Println("Message: ", string(d.Body))
 			responseHandler := NewQueueResponseHandler(d, ch)
 			data := QueueJSONData{}
 			if json.Unmarshal(d.Body, &data) != nil {
@@ -162,10 +163,10 @@ func NewQueueResponseHandler(d amqp091.Delivery, ch *amqp.Channel) network.Respo
 }
 
 func (n *QueueResponseHandler) WriteHeader(statusCode int) {
-	println("Writing header: ", statusCode)
+	log.Println("Writing header: ", statusCode)
 	switch statusCode {
 	case http.StatusOK:
-		// println("Acking")
+		// log.Println("Acking")
 		// n.d.Ack(false)
 		n.Write([]byte("OK")) //Bad situation here, since we need to make a few adjustments to the response. We have to send back a body right now
 	case http.StatusNotFound:
@@ -182,7 +183,7 @@ func (n *QueueResponseHandler) WriteHeader(statusCode int) {
 func (n *QueueResponseHandler) Write(body []byte) (int, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	println("Writing body: ", string(body))
+	log.Println("Writing body: ", string(body))
 	err := n.ch.PublishWithContext(
 		ctx,
 		"",
@@ -196,11 +197,11 @@ func (n *QueueResponseHandler) Write(body []byte) (int, error) {
 		})
 
 	if err != nil {
-		println("Failed to publish response: ", err.Error())
+		log.Println("Failed to publish response: ", err.Error())
 		defer n.d.Nack(false, true)
 		return http.StatusInternalServerError, err
 	}
-	println("Response published")
+	log.Println("Response published")
 	defer n.d.Ack(false)
 	return http.StatusOK, nil
 }
@@ -215,4 +216,14 @@ func (n *QueueResponseHandler) Header() http.Header {
 		header.Add(k, string(jsonData))
 	}
 	return header
+}
+
+func (n *QueueResponseHandler) EncodeResponse(statusCode int, data map[string]interface{}) {
+	jsonData, err := json.Marshal(data)
+	if err != nil {
+		n.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	n.WriteHeader(statusCode)
+	n.Write(jsonData)
 }

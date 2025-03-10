@@ -12,6 +12,8 @@ import (
 	"net/url"
 	"sort"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 type AddStock struct {
@@ -30,44 +32,6 @@ func InitializeUserStock(userStockAccess databaseAccessUserManagement.UserStocks
 	//TODO:
 	//testFuncInsertUserStock("6fd2fc6b-9142-4777-8b30-575ff6fa2460")
 }
-
-// TODO: delete this is for testing
-/*
-func testFuncInsertUserStock(userID string) {
-	stockID1 := uuid.New().String()
-	stockID2 := uuid.New().String()
-
-	createdUserStock1, err := _userStockAccess.Create(userStock.New(userStock.NewUserStockParams{
-		NewEntityParams: entity.NewEntityParams{
-			ID: uuid.New().String(),
-		},
-		UserID:    userID,
-		StockID:   stockID1,
-		Quantity:  100,
-		StockName: "AAPL",
-	}))
-	if err != nil {
-		log.Fatalf("Failed to create user stock 1: %v", err)
-	}
-	fmt.Printf("Created user stock for user %s with stockID %s and quantity %d\n",
-		createdUserStock1.GetUserID(), stockID1, createdUserStock1.GetQuantity())
-
-	createdUserStock2, err := _userStockAccess.Create(userStock.New(userStock.NewUserStockParams{
-		NewEntityParams: entity.NewEntityParams{
-			ID: uuid.New().String(),
-		},
-		UserID:    userID,
-		StockID:   stockID2,
-		Quantity:  100,
-		StockName: "GOOGL",
-	}))
-	if err != nil {
-		log.Fatalf("Failed to create user stock 2: %v", err)
-	}
-	fmt.Printf("Created user stock for user %s with stockID %s and quantity %d\n",
-		createdUserStock2.GetUserID(), stockID2, createdUserStock2.GetQuantity())
-}
-*/
 
 func getStockPortfolioHandler(responseWriter network.ResponseWriter, data []byte, queryParams url.Values, requestType string) {
 	log.Println("[DEBUG] getStockPortfolioHandler invoked")
@@ -102,7 +66,7 @@ func getStockPortfolioHandler(responseWriter network.ResponseWriter, data []byte
 		log.Printf("[DEBUG] Processing stock: ID=%s, Name=%s, Quantity=%d", stock.GetStockID(), stock.GetStockName(), stock.GetQuantity())
 		if stock.GetQuantity() > 0 { // Only include stocks with quantity > 0
 			portfolioResponse = append(portfolioResponse, StockPortfolioResponse{
-				StockID:       stock.GetStockID(),
+				StockID:       stock.GetStockIDString(),
 				StockName:     stock.GetStockName(),
 				QuantityOwned: stock.GetQuantity(),
 				UpdatedAt:     stock.GetUpdatedAt(),
@@ -168,9 +132,22 @@ func addStockToUser(responseWriter network.ResponseWriter, data []byte, queryPar
 		stockName = "Unknown" // Fallback to "Unknown" if not found
 	}
 
+	userUuid, err := uuid.Parse(userID)
+	if err != nil {
+		log.Printf("ERROR: Failed to parse userID %s: %v", userID, err)
+		responseWriter.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	stockUuid, err := uuid.Parse(stockRequest.StockID)
+	if err != nil {
+		log.Printf("ERROR: Failed to parse stockID %s: %v", stockRequest.StockID, err)
+		responseWriter.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
 	newUserStock := userStock.New(userStock.NewUserStockParams{
-		UserID:    userID,
-		StockID:   stockRequest.StockID,
+		UserID:    &userUuid,
+		StockID:   &stockUuid,
 		Quantity:  stockRequest.Quantity,
 		StockName: stockName, // Use the retrieved stock name
 	})
@@ -214,10 +191,7 @@ func getStockName(stockID string) (string, error) {
 	}
 	stockIDToName := make(map[string]string)
 	for _, stock := range *stocks {
-		id := stock.GetId()
-		name := stock.GetName()
-		stockIDToName[id] = name
-		log.Printf("[getStockName Debug] Stock found: ID=%s, Name=%s", id, name)
+		stockIDToName[stock.GetIdString()] = stock.GetName()
 	}
 	if name, exists := stockIDToName[stockID]; exists {
 		log.Printf("[getStockName Debug] Found stock name for ID %s: %s", stockID, name)

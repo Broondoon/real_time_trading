@@ -2,6 +2,8 @@ package databaseAccess
 
 import (
 	"Shared/entities/entity"
+
+	"github.com/google/uuid"
 )
 
 type BaseDatabaseAccessInterface interface {
@@ -24,12 +26,15 @@ func NewBaseDatabaseAccess(params *NewDatabaseAccessParams) BaseDatabaseAccessIn
 
 type EntityDataAccessInterface[TEntity entity.EntityInterface, TInterface entity.EntityInterface] interface {
 	DatabaseAccessInterface
-	GetByID(id string) (TInterface, error)
+	GetByID(id *uuid.UUID) (TInterface, error)
 	GetAll() (*[]TInterface, error)
-	GetByIDs(ids []string) (*[]TInterface, error)
+	GetByIDs(ids []*uuid.UUID) (*[]TInterface, map[string]int, error)
 	GetByForeignID(foreignIDColumn string, foreignID string) (*[]TInterface, error)
+	GetByForeignIDBulk(foreignIDColumn string, foreignIDs []string) (*[]TInterface, map[string]int, error)
 	Create(entity TInterface) (TInterface, error)
-	CreateBulk(entities *[]TInterface) error
+	CreateBulk(entities *[]TInterface) (*[]TInterface, map[string]int, error)
 	Update(entity TInterface) error
-	Delete(id string) error
+	UpdateBulk(entities *[]TInterface) (map[string]int, error)
+	Delete(id *uuid.UUID) error
+	DeleteBulk(ids []*uuid.UUID) (map[string]int, error)
 }

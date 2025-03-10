@@ -2,13 +2,18 @@ package networkHttp
 
 import (
 	"Shared/network"
+	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"net/url"
 	"os"
 	"strings"
+	"time"
 )
+
+const TIMEOUT = 5000 * time.Millisecond
 
 type NetworkHttp struct {
 	network.BaseNetworkInterface
@@ -25,19 +30,23 @@ func NewNetworkHttp() network.NetworkInterface {
 }
 
 func handleFunc(params network.HandlerParams, w http.ResponseWriter, r *http.Request) {
-	// fmt.Println("Handling request for: ", r.URL.Path)
+	responseWriterWrapper := &responseWriterWrapper{ResponseWriter: w, currentCode: http.StatusOK, finished: make(chan bool, 1), channelHasClosed: false}
 	var body []byte
 	var err error
-	queryParams := make(url.Values)
+	var queryParams url.Values
 	queryParams, err = url.ParseQuery(r.URL.RawQuery)
+	for key, value := range r.Header {
+		for _, v := range value {
+			queryParams.Add(key, v)
+		}
+	}
 	if err != nil {
-		fmt.Println("Error, there was an issue with reading the message:", err)
-		w.WriteHeader(http.StatusBadRequest)
+		log.Println("HTTP Handle Error, there was an issue with reading the message:", err)
+		responseWriterWrapper.WriteHeader(http.StatusBadRequest)
 		return
 	}
 	if r.Method == http.MethodGet || r.Method == http.MethodDelete || r.Method == http.MethodPut {
 		//decode params
-		queryParams = r.URL.Query()
 		id := strings.TrimPrefix(r.URL.Path, "/"+params.Pattern)
 		if id != "" {
 			queryParams.Add("id", id)
@@ -47,8 +56,8 @@ func handleFunc(params network.HandlerParams, w http.ResponseWriter, r *http.Req
 	if r.Method == http.MethodPost || r.Method == http.MethodPut {
 		body, err = io.ReadAll(r.Body)
 		if err != nil {
-			fmt.Println("Error, there was an issue with reading the message:", err)
-			w.WriteHeader(http.StatusInternalServerError)
+			log.Println("HTTP Handle Error, there was an issue with reading the message:", err)
+			responseWriterWrapper.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 		defer r.Body.Close()
@@ -65,17 +74,69 @@ func handleFunc(params network.HandlerParams, w http.ResponseWriter, r *http.Req
 		}
 	}
 
-	params.Handler(w, body, queryParams, r.Method)
+	go params.Handler(responseWriterWrapper, body, queryParams, r.Method)
+	select {
+	case <-responseWriterWrapper.finished:
+		close(responseWriterWrapper.finished)
+		responseWriterWrapper.channelHasClosed = true
+		break
+	case <-time.After(TIMEOUT):
+		if !responseWriterWrapper.channelHasClosed {
+			responseWriterWrapper.ResponseWriter.WriteHeader(http.StatusRequestTimeout)
+			close(responseWriterWrapper.finished)
+			responseWriterWrapper.channelHasClosed = true
+		}
+		log.Println("HTTP Handle Error, request timed out")
+		break
+	}
 	//w.WriteHeader(http.StatusOK)
+}
+
+type responseWriterWrapper struct {
+	http.ResponseWriter
+	currentCode      int
+	finished         chan bool
+	channelHasClosed bool
+}
+
+func (rw *responseWriterWrapper) WriteHeader(statusCode int) {
+	rw.currentCode = statusCode
+	rw.ResponseWriter.WriteHeader(statusCode)
+	//check if finished is closed
+	if !rw.channelHasClosed {
+		rw.finished <- true
+	}
+}
+
+func (rw *responseWriterWrapper) Write(data []byte) (int, error) {
+	int, err := rw.ResponseWriter.Write(data)
+	if !rw.channelHasClosed {
+		rw.finished <- true
+	}
+	return int, err
+
+}
+
+func (rw *responseWriterWrapper) Header() http.Header {
+	return rw.ResponseWriter.Header()
+}
+
+func (rw *responseWriterWrapper) EncodeResponse(statusCode int, response map[string]interface{}) {
+	//rw.Header().Set("Content-Type", "application/json")
+	if statusCode != http.StatusOK {
+		rw.ResponseWriter.WriteHeader(statusCode)
+	}
+	j, _ := json.Marshal(response)
+	rw.Write(j)
 }
 
 // For Internal handlers
 func (n *NetworkHttp) AddHandleFuncUnprotected(params network.HandlerParams) {
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		handleFunc(params, w, r)
+
 	})
 	http.Handle("/"+params.Pattern, handler)
-
 }
 
 // For Protected handlers (I.E exposed to the outside)

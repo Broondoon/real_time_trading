@@ -94,10 +94,10 @@ func (d *DatabaseService) WalletTransactions() WalletTransactionDataServiceInter
 
 func (d *DatabaseService) Connect() {
 	d.StockTransactions().Connect()
-	d.StockTransactions().Connect()
+	d.WalletTransactions().Connect()
 }
 
 func (d *DatabaseService) Disconnect() {
 	d.StockTransactions().Disconnect()
-	d.StockTransactions().Disconnect()
+	d.WalletTransactions().Disconnect()
 }
