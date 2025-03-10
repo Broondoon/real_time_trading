@@ -439,14 +439,9 @@ func (c *CachedEntityData[T]) GetByID(id string) (T, error) {
 	log.Printf("[Cache] GetByID: ✅ Successfully retrieved entity from database [ID: %s]: %+v", id, dbEntity)
 
 	// Step 3: Store in cache
-	jsonBytes, err := json.MarshalIndent(dbEntity, "", "  ")
-	if err != nil {
-		log.Printf("[Cache] GetByID: ❌ Error marshaling entity for cache [ID: %s]: %v", id, err)
-	} else {
-		if err := c.redisClient.Set(ctx, key, jsonBytes, c.defaultTTL).Err(); err != nil {
-			log.Printf("[Cache] GetByID: ❌ Error caching entity [Key: %s]: %v", key, err)
-		} else {
-			log.Printf("[Cache] GetByID: ✅ Cached entity in Redis [Key: %s]:\n%s", key, string(jsonBytes))
+	if jsonBytes, err := json.Marshal(dbEntity); err == nil {
+		if err := c.redisClient.Set(ctx, key, jsonBytes, c.defaultTTL).Err(); err == nil {
+			log.Printf("[Cache] GetByID: ✅ Cached entity in Redis [Key: %s]", key)
 		}
 	}
 

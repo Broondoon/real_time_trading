@@ -25,6 +25,8 @@ func NewDatabaseService(params NewDatabaseServiceParams) DatabaseServiceInterfac
 	}
 
 	//CACHE IMPLEMENTATION
+	//THIS ONE IS DISABLED BECAUSE AS OF MARCH 9/25 THIS DOES NOT IMPROVE PERFORMANCE DUE TO STOCKORDER NOT BEING
+	//STOCKORDER BEING CREATED BUT NOT RETRIEVED FROM THE CACHE
 	/* cachedStockOrder := databaseService.NewCachedEntityData[*order.StockOrder](&databaseService.NewCachedEntityDataParams{
 		NewEntityDataParams: params.NewEntityDataParams,
 		RedisAddr:           os.Getenv("REDIS_ADDR"),
