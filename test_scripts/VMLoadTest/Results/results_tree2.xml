@@ -1,0 +1,3 @@
+timeStamp,elapsed,label,responseCode,responseMessage,threadName,dataType,success,failureMessage,bytes,sentBytes,grpThreads,allThreads,URL,Latency,IdleTime,Connect
+1741560616909,4,2 Register Request,400,Bad Request,Initial Setup 1-1,text,false,,216,266,1,1,http://localhost:3001/authentication/register,4,0,0
+1741560617414,47,3 Failed Login Request,400,Bad Request,Initial Setup 1-1,text,false,,212,240,1,1,http://localhost:3001/authentication/login,47,0,0

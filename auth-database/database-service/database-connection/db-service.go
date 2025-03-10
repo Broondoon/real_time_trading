@@ -3,6 +3,8 @@ package databaseServiceAuth
 import (
 	databaseService "Shared/database/database-service"
 	"Shared/entities/user"
+	"os"
+	"time"
 )
 
 type DatabaseServiceInterface interface {
@@ -21,9 +23,12 @@ func NewDatabaseService(params *NewDatabaseServiceParams) DatabaseServiceInterfa
 	if params.NewEntityDataParams == nil {
 		params.NewEntityDataParams = &databaseService.NewEntityDataParams{}
 	}
+	
 
 	db := &DatabaseService{
-		EntityDataInterface: databaseService.NewEntityData[*user.User](params.NewEntityDataParams),
+<<<<<<< HEAD
+		EntityDataInterface: cachedUser,
+
 	}
 	db.Connect()
 	db.GetDatabaseSession().AutoMigrate(&user.User{})

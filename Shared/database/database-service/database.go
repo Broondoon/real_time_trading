@@ -2,6 +2,8 @@ package database
 
 import (
 	"Shared/entities/entity"
+	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
@@ -13,16 +15,19 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/redis/go-redis/v9"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/gorm/schema"
 )
 
+// BaseDatabase and related types.
 type BaseDatabaseInterface interface {
 	GetDBUrl() string
 	IsConnected() bool
 	SetConnected(connected bool)
 }
+
 type BaseDatabase struct {
 	DatabaseURLEnv string
 	Connected      bool
@@ -42,9 +47,9 @@ func NewBaseDatabase(params *NewBaseDatabaseParams) BaseDatabaseInterface {
 		Connected:      false,
 	}
 }
+
 func (d *BaseDatabase) GetDBUrl() string {
-	dsn := os.Getenv(d.DatabaseURLEnv) // "DATABASE_URL" is an ENV variable that
-	// is set in docker-compose.yml
+	dsn := os.Getenv(d.DatabaseURLEnv) // "DATABASE_URL" is an ENV variable set in docker-compose.yml
 	if dsn == "" {
 		log.Fatal("DATABASE_URL environment variable is not set.")
 	}
@@ -59,6 +64,7 @@ func (d *BaseDatabase) SetConnected(connected bool) {
 	d.Connected = connected
 }
 
+// DatabaseInterface and PostGresDatabaseInterface.
 type DatabaseInterface interface {
 	BaseDatabaseInterface
 	Connect()
@@ -140,6 +146,7 @@ func (d *PostGresDatabase) GetNewDatabaseSession() *gorm.DB {
 	return d.GetDatabaseSession().Session(&gorm.Session{NewDB: true})
 }
 
+// EntityDataInterface and EntityData implementation.
 type EntityDataInterface[T entity.EntityInterface] interface {
 	PostGresDatabaseInterface
 	GetByID(ID string) (T, error)
@@ -172,7 +179,7 @@ type EntityData[T entity.EntityInterface] struct {
 }
 
 type NewEntityDataParams struct {
-	*NewPostGresDatabaseParams                           // leave nil for default, Not used if existing is provided
+	*NewPostGresDatabaseParams                           // leave nil for default, not used if existing is provided
 	Existing                   PostGresDatabaseInterface // leave nil for new database connection
 }
 
@@ -918,4 +925,445 @@ func (d *EntityData[T]) getColumnName(fieldName string) (string, error) {
 		return "", fmt.Errorf("field %s not found in schema", fieldName)
 	}
 	return fieldSchema.DBName, nil
+}
+
+// Caching code below
+type CachedEntityData[T entity.EntityInterface] struct {
+	underlying  EntityDataInterface[T]
+	redisClient *redis.Client
+	defaultTTL  time.Duration
+}
+
+type NewCachedEntityDataParams struct {
+	*NewEntityDataParams
+	RedisAddr  string
+	Password   string
+	DefaultTTL time.Duration
+}
+
+func NewCachedEntityData[T entity.EntityInterface](params *NewCachedEntityDataParams) *CachedEntityData[T] {
+	log.Printf("[Cache Init] Creating Redis client with Addr=%s, TTL=%s", params.RedisAddr, params.DefaultTTL)
+	rdb := redis.NewClient(&redis.Options{
+		Addr:     params.RedisAddr,
+		Password: params.Password,
+		DB:       0,
+	})
+	return &CachedEntityData[T]{
+		underlying:  NewEntityData[T](params.NewEntityDataParams),
+		redisClient: rdb,
+		defaultTTL:  params.DefaultTTL,
+	}
+}
+
+func (c *CachedEntityData[T]) redisKey(id string) string {
+	key := "entity:" + id
+	log.Printf("[Cache Key] Generated key: %s", key)
+	return key
+}
+
+// Delegate BaseDatabaseInterface methods.
+func (c *CachedEntityData[T]) GetDBUrl() string {
+	return c.underlying.GetDBUrl()
+}
+
+func (c *CachedEntityData[T]) IsConnected() bool {
+	return c.underlying.IsConnected()
+}
+
+func (c *CachedEntityData[T]) SetConnected(connected bool) {
+	c.underlying.SetConnected(connected)
+}
+
+// Delegate DatabaseInterface methods.
+func (c *CachedEntityData[T]) Connect() {
+	log.Println("[Cache] Connect called")
+	c.underlying.Connect()
+}
+
+func (c *CachedEntityData[T]) Disconnect() {
+	log.Println("[Cache] Disconnect called")
+	c.underlying.Disconnect()
+}
+
+// Delegate PostGresDatabaseInterface methods.
+func (c *CachedEntityData[T]) GetDatabaseSession() *gorm.DB {
+	return c.underlying.GetDatabaseSession()
+}
+
+func (c *CachedEntityData[T]) GetNewDatabaseSession() *gorm.DB {
+	return c.underlying.GetNewDatabaseSession()
+}
+
+func (c *CachedEntityData[T]) Exists(ID string) (bool, error) {
+	return c.underlying.Exists(ID)
+}
+
+func (c *CachedEntityData[T]) GetByID(id string) (T, error) {
+	ctx := context.Background()
+	var zero T
+	key := c.redisKey(id)
+	log.Printf("[Cache] GetByID: 🔍 Looking for entity in cache [Key: %s]", key)
+
+	// Step 1: Check cache
+	data, err := c.redisClient.Get(ctx, key).Result()
+	if err == nil {
+		log.Printf("[Cache] GetByID: ✅ Cache hit for key [%s]", key)
+
+		var cachedEntity T
+		if err = json.Unmarshal([]byte(data), &cachedEntity); err == nil {
+			log.Printf("[Cache] GetByID: 🔄 Successfully unmarshaled cached entity [ID: %s]: %+v", id, cachedEntity)
+			return cachedEntity, nil
+		}
+		log.Printf("[Cache] GetByID: ❌ Error unmarshaling cached data [Key: %s]: %v", key, err)
+	} else if err != redis.Nil {
+		log.Printf("[Cache] GetByID: ❌ Redis GET error [Key: %s]: %v", key, err)
+	} else {
+		log.Printf("[Cache] GetByID: ❌ Cache miss [Key: %s]", key)
+	}
+
+	// Step 2: Fetch from database
+	log.Printf("[Cache] GetByID: 📡 Querying database for ID: %s", id)
+	dbEntity, err := c.underlying.GetByID(id)
+	if err != nil {
+		log.Printf("[Cache] GetByID: ❌ Database error for ID [%s]: %v", id, err)
+		return zero, err
+	}
+	log.Printf("[Cache] GetByID: ✅ Successfully retrieved entity from database [ID: %s]: %+v", id, dbEntity)
+
+	// Step 3: Store in cache
+	jsonBytes, err := json.MarshalIndent(dbEntity, "", "  ")
+	if err != nil {
+		log.Printf("[Cache] GetByID: ❌ Error marshaling entity for cache [ID: %s]: %v", id, err)
+	} else {
+		if err := c.redisClient.Set(ctx, key, jsonBytes, c.defaultTTL).Err(); err != nil {
+			log.Printf("[Cache] GetByID: ❌ Error caching entity [Key: %s]: %v", key, err)
+		} else {
+			log.Printf("[Cache] GetByID: ✅ Cached entity in Redis [Key: %s]:\n%s", key, string(jsonBytes))
+		}
+	}
+
+	return dbEntity, nil
+}
+
+func (c *CachedEntityData[T]) GetByIDs(ids []string) (*[]T, error) {
+	ctx := context.Background()
+	entityMap := make(map[string]T)
+	keys := make([]string, len(ids))
+	for i, id := range ids {
+		keys[i] = c.redisKey(id)
+	}
+	log.Printf("[Cache] GetByIDs: 🔍 Looking up multiple keys: %v", keys)
+
+	// Step 1: Fetch from cache
+	results, err := c.redisClient.MGet(ctx, keys...).Result()
+	if err != nil {
+		log.Printf("[Cache] GetByIDs: ❌ Redis MGET error: %v", err)
+	}
+	var missingIds []string
+	for i, res := range results {
+		id := ids[i]
+		if res == nil {
+			log.Printf("[Cache] GetByIDs: ❌ Cache miss for ID %s", id)
+			missingIds = append(missingIds, id)
+			continue
+		}
+		str, ok := res.(string)
+		if !ok {
+			log.Printf("[Cache] GetByIDs: ❌ Invalid data type in cache for ID %s", id)
+			missingIds = append(missingIds, id)
+			continue
+		}
+		var cachedEntity T
+		if err := json.Unmarshal([]byte(str), &cachedEntity); err != nil {
+			log.Printf("[Cache] GetByIDs: ❌ Error unmarshaling cached entity for ID %s: %v", id, err)
+			missingIds = append(missingIds, id)
+		} else {
+			log.Printf("[Cache] GetByIDs: ✅ Successfully retrieved from cache [ID: %s]:\n%s", id, str)
+			entityMap[id] = cachedEntity
+		}
+	}
+
+	// Step 2: Fetch missing IDs from database
+	if len(missingIds) > 0 {
+		log.Printf("[Cache] GetByIDs: 📡 Fetching missing IDs from database: %v", missingIds)
+		dbEntities, err := c.underlying.GetByIDs(missingIds)
+		if err != nil {
+			log.Printf("[Cache] GetByIDs: ❌ Database error for missing IDs %v: %v", missingIds, err)
+			return nil, err
+		}
+
+		// Step 3: Cache newly retrieved entities
+		for _, entity := range *dbEntities {
+			id := entity.GetId()
+			entityMap[id] = entity
+			jsonBytes, err := json.MarshalIndent(entity, "", "  ")
+			if err != nil {
+				log.Printf("[Cache] GetByIDs: ❌ Error marshaling entity for cache [ID: %s]: %v", id, err)
+				continue
+			}
+			if err := c.redisClient.Set(ctx, c.redisKey(id), jsonBytes, c.defaultTTL).Err(); err != nil {
+				log.Printf("[Cache] GetByIDs: ❌ Error caching entity [ID: %s]: %v", id, err)
+			} else {
+				log.Printf("[Cache] GetByIDs: ✅ Cached entity in Redis [ID: %s]:\n%s", id, string(jsonBytes))
+			}
+		}
+	}
+
+	// Step 4: Aggregate results
+	finalEntities := make([]T, 0, len(ids))
+	for _, id := range ids {
+		if entity, exists := entityMap[id]; exists {
+			finalEntities = append(finalEntities, entity)
+		} else {
+			log.Printf("[Cache] GetByIDs: ❌ No entity found for ID %s", id)
+		}
+	}
+	return &finalEntities, nil
+}
+
+/* func (c *CachedEntityData[T]) GetByForeignID(foreignIDColumn string, foreignID string) (*[]T, error) {
+	ctx := context.Background()
+	cacheKey := fmt.Sprintf("foreign:%s:%s", foreignIDColumn, foreignID)
+	log.Printf("[Cache] GetByForeignID: Looking up key %s", cacheKey)
+	var zero []T
+	data, err := c.redisClient.Get(ctx, cacheKey).Result()
+	if err == nil {
+		log.Printf("[Cache] GetByForeignID: Found data for key %s: %s", cacheKey, data)
+		var cachedEntities []T
+		if err = json.Unmarshal([]byte(data), &cachedEntities); err == nil {
+			log.Printf("[Cache] GetByForeignID: Successfully unmarshaled data for key %s", cacheKey)
+			return &cachedEntities, nil
+		}
+		log.Printf("[Cache] GetByForeignID: Error unmarshaling cache for key %s: %v", cacheKey, err)
+	} else if err != redis.Nil {
+		log.Printf("[Cache] GetByForeignID: Redis GET error for key %s: %v", cacheKey, err)
+	} else {
+		log.Printf("[Cache] GetByForeignID: Cache miss for key %s", cacheKey)
+	}
+
+	dbEntities, err := c.underlying.GetByForeignID(foreignIDColumn, foreignID)
+	if err != nil {
+		log.Printf("[Cache] GetByForeignID: DB error for foreign id %s: %v", foreignID, err)
+		return &zero, err
+	}
+
+	if len(*dbEntities) > 0 {
+		if jsonBytes, err := json.Marshal(dbEntities); err == nil {
+			if err := c.redisClient.Set(ctx, cacheKey, jsonBytes, c.defaultTTL).Err(); err == nil {
+				log.Printf("[Cache] GetByForeignID: Cached DB result for key %s", cacheKey)
+			} else {
+				log.Printf("[Cache] GetByForeignID: Error setting cache for key %s: %v", cacheKey, err)
+			}
+		} else {
+			log.Printf("[Cache] GetByForeignID: Error marshaling DB result for key %s: %v", cacheKey, err)
+		}
+		// not caching the db results if the db result is empty
+	} else {
+		log.Printf("[Cache] GetByForeignID: DB result is empty; not caching for key %s", cacheKey)
+	}
+	return dbEntities, nil
+} */
+
+func (c *CachedEntityData[T]) GetByForeignID(foreignIDColumn, foreignID string) (*[]T, error) {
+	ctx := context.Background()
+	cacheKey := fmt.Sprintf("foreign:%s:%s", foreignIDColumn, foreignID)
+
+	// Attempt to fetch from cache
+	if data, err := c.redisClient.Get(ctx, cacheKey).Result(); err == nil {
+		var cachedEntities []T
+		if json.Unmarshal([]byte(data), &cachedEntities) == nil {
+			log.Printf("[Cache] GetByForeignID: Cache hit for key %s", cacheKey)
+			return &cachedEntities, nil
+		}
+	} else if err != redis.Nil {
+		log.Printf("[Cache] Redis error for key %s: %v", cacheKey, err)
+	} else {
+		log.Printf("[Cache] GetByForeignID: Cache miss for key %s", cacheKey)
+	}
+
+	// Fetch from DB if cache miss
+	dbEntities, err := c.underlying.GetByForeignID(foreignIDColumn, foreignID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Cache non-empty results
+	if len(*dbEntities) > 0 {
+		if jsonBytes, err := json.Marshal(dbEntities); err == nil {
+			c.redisClient.Set(ctx, cacheKey, jsonBytes, c.defaultTTL)
+			log.Printf("[Cache] GetByForeignID: Cached DB result for key %s", cacheKey)
+		}
+	}
+
+	return dbEntities, nil
+}
+
+func (c *CachedEntityData[T]) Create(entity T) error {
+	if err := c.underlying.Create(entity); err != nil {
+		return err
+	}
+
+	ctx := context.Background()
+	entityKey := c.redisKey(entity.GetId())
+
+	// Cache entity after DB insertion
+	if jsonBytes, err := json.Marshal(entity); err == nil {
+		c.redisClient.Set(ctx, entityKey, jsonBytes, c.defaultTTL)
+		log.Printf("[Cache] Create: Cached entity with key %s", entityKey)
+	}
+
+	return nil
+}
+
+func (c *CachedEntityData[T]) GetAll() (*[]T, error) {
+	ctx := context.Background()
+	cacheKey := "all_entities"
+	log.Printf("[Cache] GetAll: Looking for key %s", cacheKey)
+
+	var zero []T
+	data, err := c.redisClient.Get(ctx, cacheKey).Result()
+	if err == nil {
+		log.Printf("[Cache] GetAll: Found cached data for key %s: %s", cacheKey, data)
+		var cachedEntities []T
+		if err = json.Unmarshal([]byte(data), &cachedEntities); err == nil {
+			log.Printf("[Cache] GetAll: Successfully unmarshaled cached data for key %s", cacheKey)
+			return &cachedEntities, nil
+		}
+		log.Printf("[Cache] GetAll: Error unmarshaling cached data for key %s: %v", cacheKey, err)
+	} else if err != redis.Nil {
+		log.Printf("[Cache] GetAll: Redis GET error for key %s: %v", cacheKey, err)
+	} else {
+		log.Printf("[Cache] GetAll: Cache miss for key %s", cacheKey)
+	}
+
+	// Fallback to the underlying database if cache miss or error.
+	dbEntities, err := c.underlying.GetAll()
+	if err != nil {
+		log.Printf("[Cache] GetAll: DB error: %v", err)
+		return &zero, err
+	}
+
+	// Cache the result from the database.
+	if jsonBytes, err := json.Marshal(dbEntities); err == nil {
+		if err := c.redisClient.Set(ctx, cacheKey, jsonBytes, c.defaultTTL).Err(); err != nil {
+			log.Printf("[Cache] GetAll: Error caching DB result for key %s: %v", cacheKey, err)
+		} else {
+			log.Printf("[Cache] GetAll: Cached DB result for key %s", cacheKey)
+		}
+	} else {
+		log.Printf("[Cache] GetAll: Error marshaling DB result for key %s: %v", cacheKey, err)
+	}
+	return dbEntities, nil
+}
+
+/* func (c *CachedEntityData[T]) Create(entity T) error {
+	log.Printf("[Cache] Create: Attempting to create entity with ID: %s", entity.GetId())
+
+	// Step 1: Insert into the database
+	if err := c.underlying.Create(entity); err != nil {
+		log.Printf("[Cache] Create: ❌ Failed to create entity in DB [ID: %s]: %v", entity.GetId(), err)
+		return err
+	}
+	log.Printf("[Cache] Create: ✅ Successfully created entity in DB [ID: %s]", entity.GetId())
+
+	// Step 2: Store entity in Redis cache
+	ctx := context.Background()
+	entityKey := c.redisKey(entity.GetId())
+
+	jsonBytes, err := json.MarshalIndent(entity, "", "  ") // Pretty-print JSON for debugging
+	if err != nil {
+		log.Printf("[Cache] Create: ❌ Error marshaling entity [ID: %s]: %v", entity.GetId(), err)
+		return nil // Not fatal, DB operation was successful
+	}
+
+	if err := c.redisClient.Set(ctx, entityKey, jsonBytes, c.defaultTTL).Err(); err != nil {
+		log.Printf("[Cache] Create: ❌ Failed to cache entity in Redis [Key: %s]: %v", entityKey, err)
+	} else {
+		log.Printf("[Cache] Create: ✅ Cached entity in Redis [Key: %s]:\n%s", entityKey, string(jsonBytes))
+	}
+
+	// Step 3: Optional - Mark `GetAll()` cache as stale
+	cacheKey := "all_entities"
+	if err := c.redisClient.Expire(ctx, cacheKey, 10*time.Second).Err(); err != nil {
+		log.Printf("[Cache] Create: ⚠️ Failed to mark `all_entities` cache as stale: %v", err)
+	} else {
+		log.Printf("[Cache] Create: 🔄 Marked `all_entities` cache as stale (TTL: 10s)")
+	}
+
+	return nil
+} */
+
+func (c *CachedEntityData[T]) Update(entity T) error {
+	log.Printf("[Cache] Update: Attempting to update entity with ID: %s", entity.GetId())
+
+	// Step 1: Update entity in the database
+	if err := c.underlying.Update(entity); err != nil {
+		log.Printf("[Cache] Update: ❌ Failed to update entity in DB [ID: %s]: %v", entity.GetId(), err)
+		return err
+	}
+	log.Printf("[Cache] Update: ✅ Successfully updated entity in DB [ID: %s]", entity.GetId())
+
+	// Step 2: Remove outdated cache entry
+	ctx := context.Background()
+	key := c.redisKey(entity.GetId())
+
+	if err := c.redisClient.Del(ctx, key).Err(); err != nil {
+		log.Printf("[Cache] Update: ❌ Failed to delete stale cache for [Key: %s]: %v", key, err)
+	} else {
+		log.Printf("[Cache] Update: ✅ Deleted stale cache for [Key: %s]", key)
+	}
+
+	// Step 3: Store updated entity in Redis
+	jsonBytes, err := json.MarshalIndent(entity, "", "  ")
+	if err != nil {
+		log.Printf("[Cache] Update: ❌ Error marshaling updated entity [ID: %s]: %v", entity.GetId(), err)
+		return nil
+	}
+
+	if err := c.redisClient.Set(ctx, key, jsonBytes, c.defaultTTL).Err(); err != nil {
+		log.Printf("[Cache] Update: ❌ Failed to cache updated entity in Redis [Key: %s]: %v", key, err)
+	} else {
+		log.Printf("[Cache] Update: ✅ Cached updated entity in Redis [Key: %s]:\n%s", key, string(jsonBytes))
+	}
+
+	return nil
+}
+
+func (c *CachedEntityData[T]) Delete(id string) error {
+	log.Printf("[Cache] Delete: Deleting entity with id %s", id)
+	if err := c.underlying.Delete(id); err != nil {
+		log.Printf("[Cache] Delete: Underlying DB delete failed for id %s: %v", id, err)
+		return err
+	}
+	ctx := context.Background()
+	key := c.redisKey(id)
+	if err := c.redisClient.Del(ctx, key).Err(); err != nil {
+		log.Printf("[Cache] Delete: Error deleting cache for key %s: %v", key, err)
+	} else {
+		log.Printf("[Cache] Delete: Successfully deleted cache for key %s", key)
+	}
+	return nil
+}
+
+func (c *CachedEntityData[T]) CreateBulk(entities *[]T) error {
+	log.Printf("[Cache] CreateBulk: Creating %d entities", len(*entities))
+	if err := c.underlying.CreateBulk(entities); err != nil {
+		log.Printf("[Cache] CreateBulk: Underlying DB bulk create failed: %v", err)
+		return err
+	}
+	ctx := context.Background()
+	for _, entity := range *entities {
+		jsonBytes, err := json.Marshal(entity)
+		if err != nil {
+			log.Printf("[Cache] CreateBulk: Error marshaling entity with id %s: %v", entity.GetId(), err)
+			continue
+		}
+		key := c.redisKey(entity.GetId())
+		if err := c.redisClient.Set(ctx, key, jsonBytes, c.defaultTTL).Err(); err != nil {
+			log.Printf("[Cache] CreateBulk: Error caching entity with key %s: %v", key, err)
+		} else {
+			log.Printf("[Cache] CreateBulk: Successfully cached entity with key %s", key)
+		}
+	}
+	return nil
 }

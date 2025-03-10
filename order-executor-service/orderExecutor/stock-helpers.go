@@ -58,6 +58,7 @@ func handleSellerStock(
 	}
 
 	return sellerStock, nil
+	//println(fmt.Sprintf("Final -> Seller  has %d shares of StockID: %s", sellerStock.GetQuantity(), sellerStock.GetStockID()))
 }
 
 // Creates or retrieves buyer's stock holding
@@ -77,8 +78,6 @@ func handleBuyerStock(
 			break
 		}
 	}
-	log.Printf("%s", fmt.Sprintf("Initially Buyer has %d shares of StockID: %s", buyerStock.GetQuantity(), buyerStock.GetStockID()))
-
 	// If the buyer doesn't have any of the stock, a new stock holding is created
 	// The quantity is originally set to zero and is updated after (otherwise there's an error where the quantity is double what it should be)
 
@@ -106,18 +105,6 @@ func updateUserStockQuantities(
 	quantity int,
 	databaseAccessUser databaseAccessUserManagement.DatabaseAccessInterface,
 ) error {
-	log.Println("Updating user stock quantities")
-	log.Println(fmt.Sprintf("Initial -> Seller has %d shares of StockID: %s.", sellerStock.GetQuantity(), sellerStock.GetStockID()), "\n", fmt.Sprintf("Initial -> Buyer has %d shares of StockID: %s", buyerStock.GetQuantity(), buyerStock.GetStockID()), "\nQuantity: ", quantity)
-	buyerJson, err := buyerStock.ToJSON()
-	if err != nil {
-		return fmt.Errorf("failed to convert buyer stock to JSON: %v", err)
-	}
-	log.Println("Buyer Stock: ", string(buyerJson))
-	sellerJson, err := sellerStock.ToJSON()
-	if err != nil {
-		return fmt.Errorf("failed to convert seller stock to JSON: %v", err)
-	}
-	log.Println("Seller Stock: ", string(sellerJson))
 
 	buyerStock.UpdateQuantity(quantity)
 
@@ -152,7 +139,6 @@ func updateTransactionStatus(
 		} else {
 			stockTx.SetOrderStatus("COMPLETED")
 		}
-
 	} else {
 		// For sell orders
 		if isSellPartial {
@@ -174,9 +160,12 @@ func updateTransactionStatus(
 			ParentStockTransaction: stockTx,
 			OrderStatus:            "COMPLETED", // Child transaction is always COMPLETED
 			TimeStamp:              time.Now(),
-			StockPrice:             stockPrice,
 		})
 
+		// Set the stock price in the filled transaction
+		filledTx.UpdateStockPrice(stockPrice)
+		filledTx.SetOrderStatus("COMPLETED")
+		filledTx.SetTimestamp(time.Now())
 		if _, err := databaseAccessTransact.StockTransaction().Create(filledTx); err != nil {
 			return fmt.Errorf("failed to create filled stock transaction: %v", err)
 		}

@@ -11,7 +11,6 @@ import (
 	"databaseAccessTransaction"
 	"databaseAccessUserManagement"
 	"fmt"
-	"strings"
 
 	"github.com/google/uuid"
 )
@@ -45,7 +44,6 @@ func ProcessTrade(orderData network.MatchingEngineToExecutionJSON, databaseAcces
 	quantity := orderData.Quantity
 
 	totalCost := calculateTotalTransactionCost(quantity, stockPrice)
-
 	log.Printf("%s", fmt.Sprintf(`
 	Buyer ID: %s
 	Seller ID: %s
@@ -184,18 +182,7 @@ func ProcessTrade(orderData network.MatchingEngineToExecutionJSON, databaseAcces
 	err = updateUserStocks(&buyerID, &sellerID, &stockID, quantity, stockTx, databaseAccessUser,
 		databaseAccessTransact, isBuyPartial, isSellPartial, stockPrice)
 	if err != nil {
-		// This error handling is pretty ugly but it works for now. It's just checking if this specific
-		// string for this error was thrown in the handeSellerStock() function:
-
-		// Special case: if the seller doesn't have enough shares, the buy succeeds but sell fails
-		if err.Error() == "seller does not have enough shares of stock "+stockID.String() ||
-			strings.Contains(err.Error(), "seller does not have enough shares of stock "+stockID.String()) { // Support new error format
-			log.Println("Error:", err.Error())
-			return true, false, nil // Buy succeeds, sell fails
-		}
-
-		// Any other error means the entire transaction failed
-		log.Println("Error updating user stocks:", err.Error())
+		println("Error updating user stocks:", err.Error())
 		return false, false, fmt.Errorf("failed to update user stocks: %v", err)
 	}
 	log.Println("Done updating user stocks")
@@ -256,6 +243,7 @@ func updateUserWallets(
 		sellerWallet.GetBalance()))
 
 	return nil
+	return nil
 }
 
 // Coordinates the stock update process in stock-helpers.go
@@ -265,6 +253,10 @@ func updateUserStocks(
 	stockID *uuid.UUID,
 	quantity int,
 	stockTx transaction.StockTransactionInterface,
+	databaseAccessUser databaseAccessUserManagement.DatabaseAccessInterface,
+	databaseAccessTransact databaseAccessTransaction.DatabaseAccessInterface,
+	isBuyPartial bool,
+	isSellPartial bool,
 	databaseAccessUser databaseAccessUserManagement.DatabaseAccessInterface,
 	databaseAccessTransact databaseAccessTransaction.DatabaseAccessInterface,
 	isBuyPartial bool,
@@ -280,14 +272,12 @@ func updateUserStocks(
 	log.Printf("%s", fmt.Sprintf("Step 1: Successfully retrieved user stock portfolios - Buyer: %s (%d stocks), Seller: %s (%d stocks)",
 		buyerID, len(*buyerPortfolio), sellerID, len(*sellerPortfolio)))
 
-	
-
 	// Step 2: Finds and validates seller's stock holding
 	sellerStock, err := handleSellerStock(sellerPortfolio, stockID, quantity)
 	if err != nil {
 		return err
 	}
-	log.Printf("%s", fmt.Sprintf("Step 2: Successfully validated seller's stock - Seller has %d shares of %s",
+	println(fmt.Sprintf("Step 2: Successfully validated seller's stock - Seller has %d shares of %s",
 		sellerStock.GetQuantity(), stockID))
 
 	// Step 3: Creates or retrieves buyer's stock holding
