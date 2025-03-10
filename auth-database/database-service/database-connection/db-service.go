@@ -23,12 +23,14 @@ func NewDatabaseService(params *NewDatabaseServiceParams) DatabaseServiceInterfa
 	if params.NewEntityDataParams == nil {
 		params.NewEntityDataParams = &databaseService.NewEntityDataParams{}
 	}
-	
 
 	db := &DatabaseService{
-<<<<<<< HEAD
-		EntityDataInterface: cachedUser,
-
+		EntityDataInterface: databaseService.NewCachedEntityData[*user.User](&databaseService.NewCachedEntityDataParams{
+			NewEntityDataParams: params.NewEntityDataParams,
+			RedisAddr:           os.Getenv("REDIS_ADDR"),
+			Password:            os.Getenv("REDIS_PASSWORD"),
+			DefaultTTL:          5 * time.Minute,
+		}),
 	}
 	db.Connect()
 	db.GetDatabaseSession().AutoMigrate(&user.User{})

@@ -243,7 +243,6 @@ func updateUserWallets(
 		sellerWallet.GetBalance()))
 
 	return nil
-	return nil
 }
 
 // Coordinates the stock update process in stock-helpers.go
@@ -253,10 +252,6 @@ func updateUserStocks(
 	stockID *uuid.UUID,
 	quantity int,
 	stockTx transaction.StockTransactionInterface,
-	databaseAccessUser databaseAccessUserManagement.DatabaseAccessInterface,
-	databaseAccessTransact databaseAccessTransaction.DatabaseAccessInterface,
-	isBuyPartial bool,
-	isSellPartial bool,
 	databaseAccessUser databaseAccessUserManagement.DatabaseAccessInterface,
 	databaseAccessTransact databaseAccessTransaction.DatabaseAccessInterface,
 	isBuyPartial bool,

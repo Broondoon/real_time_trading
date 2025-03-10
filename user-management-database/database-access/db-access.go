@@ -125,6 +125,11 @@ func (d *UserStocksDataAccess) GetUserStocks(userID string) (*[]userStock.UserSt
 }
 
 func (d *UserStocksDataAccess) GetUserStocksBulk(userIDs []string, routine func(userID string, userStocks *[]userStock.UserStockInterface, errorCode int)) error {
+
+	if len(userIDs) == 0 {
+		log.Println("DEBUG: GetUserStocksBulk called with empty userIDs\n")
+		return nil
+	}
 	log.Println("DEBUG: GetUserStocksBulk called for userIDs %s\n", userIDs)
 	userStocks, errList, err := d.GetByForeignIDBulk("UserID", userIDs)
 	//lets make a variant which is get by foregin ids. Get back multiple, then perform a function for each userId

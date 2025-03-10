@@ -131,7 +131,6 @@ func updateTransactionStatus(
 
 	// Set the stock price in the transaction
 
-	// Handle partial matching for both buy and sell orders
 	if stockTx.GetIsBuy() {
 		stockTx.UpdateStockPrice(stockPrice)
 		if isBuyPartial {
