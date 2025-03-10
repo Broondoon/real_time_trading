@@ -1,0 +1,15 @@
+timeStamp,elapsed,label,responseCode,responseMessage,threadName,dataType,success,failureMessage,bytes,sentBytes,grpThreads,allThreads,URL,Latency,IdleTime,Connect
+1741560616304,89,1 Register Request,200,OK,Initial Setup 1-1,text,true,,183,267,1,1,http://localhost:3001/authentication/register,87,0,20
+1741560616909,4,2 Register Request,400,Bad Request,Initial Setup 1-1,text,false,,216,266,1,1,http://localhost:3001/authentication/register,4,0,0
+1741560617414,47,3 Failed Login Request,400,Bad Request,Initial Setup 1-1,text,false,,212,240,1,1,http://localhost:3001/authentication/login,47,0,0
+1741560617962,47,4 Login Request,200,OK,Initial Setup 1-1,text,true,,357,239,1,1,http://localhost:3001/authentication/login,47,0,0
+1741560618511,13,5 Create Google Stock Request,200,OK,Initial Setup 1-1,text,true,,238,383,1,1,http://localhost:3001/setup/createStock,13,0,0
+1741560619025,10,6 Add Google Stock Request,201,Created,Initial Setup 1-1,text,true,,187,441,1,1,http://localhost:3001/setup/addStockToUser,10,0,0
+1741560619536,6,7 Create Apple Stock Request,200,OK,Initial Setup 1-1,text,true,,238,382,1,1,http://localhost:3001/setup/createStock,6,0,0
+1741560620417,9,8 Add Apple Stock Request,201,Created,Initial Setup 1-1,text,true,,187,441,1,1,http://localhost:3001/setup/addStockToUser,9,0,0
+1741560620927,5,9 Get Stock Portfolio Request,200,OK,Initial Setup 1-1,text,true,,470,351,1,1,http://localhost:3001/transaction/getStockPortfolio,4,0,0
+1741560621434,34,10 Place Stock Order Request,200,OK,Initial Setup 1-1,text,true,,191,493,1,1,http://localhost:3001/engine/placeStockOrder,34,0,0
+1741560621969,25,11 Place Stock Order Request,200,OK,Initial Setup 1-1,text,true,,191,493,1,1,http://localhost:3001/engine/placeStockOrder,25,0,0
+1741560622495,4,12 Get Stock Portfolio Request,200,OK,Initial Setup 1-1,text,true,,180,351,1,1,http://localhost:3001/transaction/getStockPortfolio,4,0,0
+1741560623000,11,13 Get Stock Transactions Request,200,OK,Initial Setup 1-1,text,true,,789,354,1,1,http://localhost:3001/transaction/getStockTransactions,11,0,0
+1741560623019,2,Debug Sampler,200,OK,Initial Setup 1-1,text,true,,1557,0,1,1,null,0,0,0
