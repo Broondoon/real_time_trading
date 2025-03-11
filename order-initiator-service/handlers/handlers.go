@@ -80,7 +80,7 @@ func placeStockOrderHandler(responseWriter network.ResponseWriter, data []byte, 
 	}
 	userUuid, err := uuid.Parse(queryParams.Get("userID"))
 	if err != nil {
-		log.Println("Error: ", err.Error())
+		log.Println("Error: ", err.Error(), "userID: ", queryParams.Get("userID"))
 		responseWriter.WriteHeader(http.StatusBadRequest)
 		return
 	}

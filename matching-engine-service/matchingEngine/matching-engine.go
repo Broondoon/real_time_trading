@@ -18,7 +18,7 @@ type MatchingEngineInterface interface {
 	RemoveOrder(orderID string, priceKey float64)
 	RunMatchingEngineOrders()
 	RunMatchingEngineUpdates()
-	GetPrice() float64
+	GetPrice() network.StockPrice
 }
 
 type MatchingEngine struct {
@@ -30,7 +30,7 @@ type MatchingEngine struct {
 	SendToOrderExection func(buyOrder order.StockOrderInterface, sellOrder order.StockOrderInterface) (network.ExecutorToMatchingEngineJSON, error)
 	//dirty fix
 	DatabaseManager databaseAccessStockOrder.DatabaseAccessInterface
-	UpdatePrice     *chan network.StockPrice
+	StockName       string
 }
 
 type NewMatchingEngineParams struct {
@@ -38,7 +38,7 @@ type NewMatchingEngineParams struct {
 	InitalOrders             *[]order.StockOrderInterface
 	SendToOrderExecutionFunc func(buyOrder order.StockOrderInterface, sellOrder order.StockOrderInterface) (network.ExecutorToMatchingEngineJSON, error)
 	DatabaseManager          databaseAccessStockOrder.DatabaseAccessInterface
-	UpdatePrice              *chan network.StockPrice
+	StockName                string
 }
 
 func NewMatchingEngineForStock(params *NewMatchingEngineParams) MatchingEngineInterface {
@@ -59,11 +59,7 @@ func NewMatchingEngineForStock(params *NewMatchingEngineParams) MatchingEngineIn
 		updateChannel:       make(chan *UpdateParams, 1000),
 		SendToOrderExection: params.SendToOrderExecutionFunc,
 		DatabaseManager:     params.DatabaseManager,
-		UpdatePrice:         params.UpdatePrice,
-	}
-	(*me.UpdatePrice) <- network.StockPrice{
-		StockID: me.StockId,
-		Price:   me.GetPrice(),
+		StockName:           params.StockName,
 	}
 	return me
 }
@@ -100,11 +96,6 @@ func (me *MatchingEngine) RunMatchingEngineOrders() {
 				log.Println("Sell Order is nil, Returning buy order")
 				me.BuyOrderBook.ReturnOrder(buyOrder)
 				buyOrder = nil
-			}
-		} else {
-			(*me.UpdatePrice) <- network.StockPrice{
-				StockID: me.StockId,
-				Price:   sellOrder.GetPrice(),
 			}
 		}
 		if buyOrder != nil && sellOrder != nil {
@@ -217,8 +208,13 @@ func (me *MatchingEngine) RemoveOrder(orderID string, priceKey float64) {
 	}
 }
 
-func (me *MatchingEngine) GetPrice() float64 {
-	return me.SellOrderBook.GetBestPrice()
+func (me *MatchingEngine) GetPrice() network.StockPrice {
+	return network.StockPrice{
+		StockID:   me.StockId,
+		Price:     me.SellOrderBook.GetBestPrice(),
+		StockName: me.StockName,
+	}
+
 }
 
 //fake matching engine mock for testing
