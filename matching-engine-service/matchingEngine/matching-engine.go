@@ -30,6 +30,7 @@ type MatchingEngine struct {
 	SendToOrderExection func(buyOrder order.StockOrderInterface, sellOrder order.StockOrderInterface) (network.ExecutorToMatchingEngineJSON, error)
 	//dirty fix
 	DatabaseManager databaseAccessStockOrder.DatabaseAccessInterface
+	UpdatePrice     chan network.StockPrice
 }
 
 type NewMatchingEngineParams struct {
@@ -37,6 +38,7 @@ type NewMatchingEngineParams struct {
 	InitalOrders             *[]order.StockOrderInterface
 	SendToOrderExecutionFunc func(buyOrder order.StockOrderInterface, sellOrder order.StockOrderInterface) (network.ExecutorToMatchingEngineJSON, error)
 	DatabaseManager          databaseAccessStockOrder.DatabaseAccessInterface
+	UpdatePrice              chan network.StockPrice
 }
 
 func NewMatchingEngineForStock(params *NewMatchingEngineParams) MatchingEngineInterface {
@@ -53,10 +55,15 @@ func NewMatchingEngineForStock(params *NewMatchingEngineParams) MatchingEngineIn
 		StockId:             params.StockID,
 		BuyOrderBook:        matchingEngineStructures.DefaultBuyOrderBook(&marketOrders),
 		SellOrderBook:       matchingEngineStructures.DefaultSellOrderBook(&limitOrders),
-		orderChannel:        make(chan int),
-		updateChannel:       make(chan *UpdateParams),
+		orderChannel:        make(chan int, 1000),
+		updateChannel:       make(chan *UpdateParams, 1000),
 		SendToOrderExection: params.SendToOrderExecutionFunc,
 		DatabaseManager:     params.DatabaseManager,
+		UpdatePrice:         params.UpdatePrice,
+	}
+	me.UpdatePrice <- network.StockPrice{
+		StockID: me.StockId,
+		Price:   me.GetPrice(),
 	}
 	return me
 }
@@ -93,6 +100,11 @@ func (me *MatchingEngine) RunMatchingEngineOrders() {
 				log.Println("Sell Order is nil, Returning buy order")
 				me.BuyOrderBook.ReturnOrder(buyOrder)
 				buyOrder = nil
+			}
+		} else {
+			me.UpdatePrice <- network.StockPrice{
+				StockID: me.StockId,
+				Price:   sellOrder.GetPrice(),
 			}
 		}
 		if buyOrder != nil && sellOrder != nil {

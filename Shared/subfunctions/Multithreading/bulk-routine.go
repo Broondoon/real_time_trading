@@ -58,7 +58,7 @@ func NewBulkRoutine[T any](params *BulkRoutineParams[T]) BulkRoutineInterface[T]
 	b := BulkRoutine[T]{
 		routine:         params.Routine,
 		objects:         func() *[]T { s := make([]T, 0, maxQueueSize); return &s }(),
-		insert:          make(chan T, maxQueueSize*concurrency),
+		insert:          make(chan T, 2*maxQueueSize*concurrency),
 		routineDelay:    timeOutEnv,
 		workerSemaphore: make(chan struct{}, concurrency),
 	}
@@ -73,6 +73,7 @@ func NewBulkRoutine[T any](params *BulkRoutineParams[T]) BulkRoutineInterface[T]
 				case object := <-b.insert:
 					*b.objects = append(*b.objects, object)
 					if len(*b.objects) >= maxQueueSize {
+						log.Println("Bulk routine queue full, executing routine.")
 						if !timer.Stop() {
 							select {
 							case <-timer.C:

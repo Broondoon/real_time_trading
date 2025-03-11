@@ -56,10 +56,15 @@ type SendParams struct {
 }
 
 func DefaultPublishParams() SendParams {
+	timeOutEnv, err := time.ParseDuration(os.Getenv("HTTP_TIMEOUT"))
+	if err != nil {
+		log.Println("TIMEOUT env variable not set, defaulting to 20s")
+		timeOutEnv = 20000 * time.Millisecond
+	}
 	return SendParams{
 		Mandatory: false,
 		Immediate: false,
-		Timeout:   5 * time.Second,
+		Timeout:   timeOutEnv,
 	}
 }
 
@@ -77,7 +82,12 @@ func (n *QueueClient) SendWithReturn(route string, message []byte, params SendPa
 	}
 	ch := n.SpawnChannel(exchangeParams)
 	if params.Timeout == 0 {
-		params.Timeout = 5 * time.Second
+		timeOutEnv, err := time.ParseDuration(os.Getenv("HTTP_TIMEOUT"))
+		if err != nil {
+			log.Println("TIMEOUT env variable not set, defaulting to 20s")
+			timeOutEnv = 20000 * time.Millisecond
+		}
+		params.Timeout = timeOutEnv
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), params.Timeout)
 	defer cancel()
