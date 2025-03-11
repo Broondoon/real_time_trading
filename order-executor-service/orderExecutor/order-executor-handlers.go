@@ -5,8 +5,6 @@ import (
 	"databaseAccessTransaction"
 	"databaseAccessUserManagement"
 	"encoding/json"
-	"fmt"
-	"log"
 	"net/http"
 	"net/url"
 )
@@ -46,7 +44,6 @@ func executorHandler(responseWriter network.ResponseWriter, data []byte, queryPa
 		responseWriter.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	log.Println(fmt.Sprintf("Done ProcessTrade - buySuccess: %t, sellSuccess: %t", buySuccess, sellSuccess))
 	// Independent failure flags //
 	// If the match was successful, both IsBuyFailure and IsSellFailure will be false
 	// If the match was unsuccessful, only one of IsBuyFailure and IsSellFailure will be true
@@ -56,7 +53,6 @@ func executorHandler(responseWriter network.ResponseWriter, data []byte, queryPa
 		IsSellFailure: !sellSuccess,
 	}
 
-	log.Println(fmt.Sprintf("IsBuyFailure: %t, IsSellFailure: %t", responseEntity.IsBuyFailure, responseEntity.IsSellFailure))
 	jsonResponseToMatchingEngine, err := json.Marshal(responseEntity)
 	if err != nil {
 		responseWriter.WriteHeader(http.StatusInternalServerError)

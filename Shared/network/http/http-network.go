@@ -81,19 +81,27 @@ func handleFunc(params network.HandlerParams, w http.ResponseWriter, r *http.Req
 	}
 
 	go params.Handler(responseWriterWrapper, body, queryParams, r.Method)
+	timer := time.NewTimer(timeout)
 	select {
 	case <-responseWriterWrapper.finished:
+		log.Println("Request Finished: ", r.URL.String())
 		close(responseWriterWrapper.finished)
 		responseWriterWrapper.channelHasClosed = true
-		break
-	case <-time.After(timeout):
+		if !timer.Stop() {
+			select {
+			case <-timer.C:
+			default:
+			}
+		}
+		return
+	case <-timer.C:
 		if !responseWriterWrapper.channelHasClosed {
 			responseWriterWrapper.ResponseWriter.WriteHeader(http.StatusRequestTimeout)
 			close(responseWriterWrapper.finished)
 			responseWriterWrapper.channelHasClosed = true
 		}
-		log.Println("HTTP Handle Error, request timed out")
-		break
+		log.Println("HTTP Handle Error, request timed out: ", r.URL.String())
+		return
 	}
 	//w.WriteHeader(http.StatusOK)
 }

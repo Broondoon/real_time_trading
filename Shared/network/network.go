@@ -140,14 +140,14 @@ type HandlerParams struct {
 
 func CreateNetworkEntityHandlers[T entity.EntityInterface](network NetworkInterface, entityName string, databaseManager databaseService.EntityDataInterface[T], Parse func(jsonBytes []byte) (T, error), ParseList func(jsonBytes []byte) (*[]T, error)) {
 	defaults := func(responseWriter ResponseWriter, data []byte, queryParams url.Values, requestType string) {
-		log.Println("-----------------\nRequest:")
-		log.Println("entityName: ", entityName)
-		if requestType == "POST" || requestType == "PUT" {
-			log.Println("data: ", string(data))
-		}
-		log.Println("queryParams: ", queryParams.Encode())
-		log.Println("requestType: ", requestType)
-		log.Println("-----------------")
+		// log.Println("-----------------\nRequest:")
+		// log.Println("entityName: ", entityName)
+		// if requestType == "POST" || requestType == "PUT" {
+		// 	log.Println("data: ", string(data))
+		// }
+		// log.Println("queryParams: ", queryParams.Encode())
+		// log.Println("requestType: ", requestType)
+		// log.Println("-----------------")
 		bulkRequest := queryParams.Get("Isbulk") != ""
 		useEntities := false
 		noReturns := false

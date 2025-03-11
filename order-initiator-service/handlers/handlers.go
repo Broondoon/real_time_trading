@@ -71,7 +71,7 @@ func healthHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func placeStockOrderHandler(responseWriter network.ResponseWriter, data []byte, queryParams url.Values, requestType string) {
-	log.Println("Placing stock order")
+	//log.Println("Placing stock order")
 	stockOrder, err := order.Parse(data)
 	if err != nil {
 		log.Println("Error: ", err.Error())
@@ -94,7 +94,7 @@ func placeStockOrderHandler(responseWriter network.ResponseWriter, data []byte, 
 }
 
 func checkUserStocks(data *[]*StockOrderBulk, TransferParams any) error {
-	log.Println("Checking user stocks")
+	//log.Println("Checking user stocks")
 	// bul routine, taking in stock order.
 	//then we organize the stock order's by USer IDS
 	//then we run the bulk routine on user stocks. That will give us back
@@ -170,7 +170,7 @@ func checkUserStocks(data *[]*StockOrderBulk, TransferParams any) error {
 }
 
 func updateUserStocks(data *[]*StockOrderBulk, TransferParams any) error {
-	log.Println("Updating user stocks")
+	//log.Println("Updating user stocks")
 	//map user stocks by id and by stock id
 	//then map then map them to the stock orders
 	//then we
@@ -207,7 +207,7 @@ func updateUserStocks(data *[]*StockOrderBulk, TransferParams any) error {
 }
 
 func placeStockOrderResponse(data *[]*StockOrderBulk, TransferParams any) error {
-	log.Println("Creating stock order transactions")
+	//log.Println("Creating stock order transactions")
 	bulkTransactions := make([]transaction.StockTransactionInterface, len(*data))
 	for i, stockOrder := range *data {
 		newTransaction := transaction.NewStockTransaction(transaction.NewStockTransactionParams{
@@ -237,9 +237,9 @@ func placeStockOrderResponse(data *[]*StockOrderBulk, TransferParams any) error 
 			continue
 		}
 		stockOrder.StockOrder.SetId(createdTransactionIdsByPairing[stockOrder.StockOrder.GetUniquePairing().String()])
-		log.Println("sending to matching engine")
+		//log.Println("sending to matching engine")
 		_, err = _networkHttpManager.MatchingEngine().Post("placeStockOrder", stockOrder.StockOrder)
-		log.Println("sent to matching engine")
+		//log.Println("sent to matching engine")
 		if err != nil {
 			log.Printf("failed to send to matching engine: %v", err)
 			stockOrder.ResponseWriter.WriteHeader(http.StatusInternalServerError)
@@ -255,14 +255,14 @@ func placeStockOrderResponse(data *[]*StockOrderBulk, TransferParams any) error 
 			stockOrder.ResponseWriter.WriteHeader(http.StatusInternalServerError)
 			continue
 		}
-		log.Println("value return")
+		//log.Println("value return")
 		stockOrder.ResponseWriter.Write(returnValJSON)
 	}
 	return nil
 }
 
 func cancelStockTransactionHandler(responseWriter network.ResponseWriter, data []byte, queryParams url.Values, requestType string) {
-	log.Println("Cancelling stock transaction")
+	//log.Println("Cancelling stock transaction")
 	var stockID network.StockTransactionID
 	err := json.Unmarshal(data, &stockID)
 	if err != nil {
@@ -310,7 +310,7 @@ func cancelStockTransaction(id string) error {
 }
 
 func placeStockOrderHandlerOld(responseWriter network.ResponseWriter, data []byte, queryParams url.Values, requestType string) {
-	println("Placing stock order")
+	//println("Placing stock order")
 	stockOrder, err := order.Parse(data)
 	if err != nil {
 		println("Error: ", err.Error())

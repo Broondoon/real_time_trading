@@ -42,7 +42,7 @@ func NewBulkRoutine[T any](params *BulkRoutineParams[T]) BulkRoutineInterface[T]
 		log.Println("Error getting max insert count: ", err.Error())
 		maxQueueSize = 100
 	}
-	timeOutEnv, err := time.ParseDuration(os.Getenv("HTTP_TIMEOUT"))
+	timeOutEnv, err := time.ParseDuration(os.Getenv("BULK_ROUTINE_DELAY"))
 	if err != nil {
 		log.Println("Error getting bulk routine delay: ", err.Error())
 		timeOutEnv = 500 * time.Millisecond

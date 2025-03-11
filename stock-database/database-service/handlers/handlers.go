@@ -56,14 +56,14 @@ func GetStockIDsHandler(responseWriter network.ResponseWriter, data []byte, quer
 func AddNewStockHandler(responseWriter network.ResponseWriter, data []byte, queryParams url.Values, requestType string) {
 	newStock, err := stock.Parse(data)
 
-	log.Println("Parsed Stock: ", newStock.GetId())
+	//log.Println("Parsed Stock: ", newStock.GetId())
 	if err != nil {
 		log.Println("Error: ", err.Error())
 		responseWriter.WriteHeader(http.StatusBadRequest)
 		return
 	}
 	err = _databaseManager.Create(newStock)
-	log.Println("Created Stock: ", newStock.GetId())
+	//log.Println("Created Stock: ", newStock.GetId())
 	if err != nil {
 		log.Println("Error: ", err.Error())
 		responseWriter.WriteHeader(http.StatusInternalServerError)

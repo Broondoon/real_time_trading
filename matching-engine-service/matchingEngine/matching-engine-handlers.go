@@ -65,10 +65,6 @@ func healthHandler(w http.ResponseWriter, r *http.Request) {
 // Expected input is a stock ID in the body of the request
 // we're expecting {"StockID":"{id value}"}
 func AddNewStockHandler(responseWriter network.ResponseWriter, data []byte, queryParams url.Values, requestType string) {
-	log.Println("Adding new stock")
-	log.Println("Data: ", string(data))
-	log.Println("Query Params: ", queryParams.Encode())
-	log.Println("Request Type: ", requestType)
 	var stockID network.StockID
 	err := json.Unmarshal(data, &stockID)
 	if err != nil {
@@ -106,8 +102,6 @@ func AddNewStock(stockID string) {
 }
 
 func PlaceStockOrderHandler(responseWriter network.ResponseWriter, data []byte, queryParams url.Values, requestType string) {
-	log.Println("Received stock order")
-	log.Println("Data: ", string(data))
 	//parse the stock order
 	stockOrder, err := order.Parse(data)
 	if err != nil {
@@ -127,7 +121,6 @@ func PlaceStockOrderHandler(responseWriter network.ResponseWriter, data []byte, 
 }
 
 func PlaceStockOrderOld(stockOrder order.StockOrderInterface) bool {
-	log.Println("Placing stock order")
 	if me, ok := _matchingEngineMap[stockOrder.GetStockID().String()]; ok {
 		createdOrder, err := _databaseManager.Create(stockOrder)
 		if err != nil {
@@ -179,7 +172,6 @@ func PlaceStockOrder(data *[]*StockOrderBulk, TransferParams any) error {
 }
 
 func DeleteStockOrderHandler(responseWriter network.ResponseWriter, data []byte, queryParams url.Values, requestType string) {
-	log.Println("Deleting stock order")
 	orderID, err := uuid.Parse(queryParams.Get("id"))
 	if err != nil {
 		log.Println("Error: ", err.Error())
@@ -220,7 +212,6 @@ func DeleteStockOrder(orderID *uuid.UUID) error {
 }
 
 func GetStockPricesHandler(responseWriter network.ResponseWriter, data []byte, queryParams url.Values, requestType string) {
-	log.Println("Getting stock prices")
 	prices, err := GetStockPrices()
 	if err != nil {
 		log.Println("Error: ", err.Error())
@@ -301,7 +292,6 @@ func SendToOrderExection(buyOrder order.StockOrderInterface, sellOrder order.Sto
 		log.Println("Error: ", err.Error())
 		return network.ExecutorToMatchingEngineJSON{}, err
 	}
-	print("Matched Data: ", string(data))
 	var matchedData network.ExecutorToMatchingEngineJSON
 	// matchedData = network.ExecutorToMatchingEngineJSON{
 	// 	IsBuyFailure:  false,

@@ -117,7 +117,6 @@ func healthHandler(w http.ResponseWriter, r *http.Request) {
 
 // Register handles user registration.
 func Register(w network.ResponseWriter, data []byte, queryParams url.Values, requestType string) {
-	log.Println("Register() called by handler in Auth-service.")
 
 	// Decode the JSON body into a User object.
 	input, err := user.Parse(data)
@@ -129,7 +128,6 @@ func Register(w network.ResponseWriter, data []byte, queryParams url.Values, req
 }
 
 func registerUsers(data *[]*UserBulk, TransferParams any) error {
-	log.Println("registering users")
 	userMap := make(map[string]*UserBulk)
 	usernames := make([]string, len(*data))
 	for i, d := range *data {
@@ -151,7 +149,6 @@ func registerUsers(data *[]*UserBulk, TransferParams any) error {
 	}
 
 	for _, d := range userMap {
-		log.Println("checking user: ", d.UserEntity.GetUsername())
 		if errCode, exists := errorList[d.UserEntity.GetUsername()]; exists {
 			log.Println("User has Error: ", errCode, " for user: ", d.UserEntity.GetUsername(), ". If this is 404, this is desirable.")
 			if errorList[d.UserEntity.GetUsername()] == http.StatusNotFound {
@@ -177,7 +174,6 @@ func registerUsers(data *[]*UserBulk, TransferParams any) error {
 }
 
 func createUser(data *[]*UserBulk, TransferParams any) error {
-	log.Println("creating users")
 	userMap := make(map[string]*UserBulk)
 	usersToCreate := make([]user.UserInterface, len(*data))
 	for i, d := range *data {
@@ -293,7 +289,6 @@ func loginUsers(data *[]*UserBulk, TransferParams any) error {
 				continue
 			}
 		}
-		log.Println("Checking password for user: ", user.GetUsername(), " with password: ", d.UserEntity.GetPassword(), " and hash: ", user.GetPassword())
 		if CheckPasswordHash(d.UserEntity.GetPassword(), user.GetPassword()) {
 			token, err := GenerateToken(user.GetIdString())
 			if err != nil {
