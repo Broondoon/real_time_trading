@@ -39,6 +39,7 @@ func InitalizeHandlers(stockIDs *[]network.StockPrice,
 	_networkQueueManager = networkQueueManager
 	_stockDatabaseAccess = stockDatabaseAccess
 	_matchingEngineMap = make(map[string]MatchingEngineInterface)
+	stockNames = make(map[string]string)
 	//Create all matching engines for stocks.
 	for _, stockID := range *stockIDs {
 		AddNewStock(stockID.StockID, stockID.StockName)
