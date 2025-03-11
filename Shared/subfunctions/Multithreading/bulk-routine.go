@@ -42,10 +42,10 @@ func NewBulkRoutine[T any](params *BulkRoutineParams[T]) BulkRoutineInterface[T]
 		log.Println("Error getting max insert count: ", err.Error())
 		maxQueueSize = 100
 	}
-	routineDelay, err := strconv.Atoi(os.Getenv("BULK_ROUTINE_DELAY"))
+	timeOutEnv, err := time.ParseDuration(os.Getenv("HTTP_TIMEOUT"))
 	if err != nil {
 		log.Println("Error getting bulk routine delay: ", err.Error())
-		routineDelay = 500
+		timeOutEnv = 500 * time.Millisecond
 	}
 	concurrency := params.Concurrency
 	if concurrency <= 0 {
@@ -59,7 +59,7 @@ func NewBulkRoutine[T any](params *BulkRoutineParams[T]) BulkRoutineInterface[T]
 		routine:         params.Routine,
 		objects:         func() *[]T { s := make([]T, 0, maxQueueSize); return &s }(),
 		insert:          make(chan T, maxQueueSize*concurrency),
-		routineDelay:    time.Duration(routineDelay) * time.Millisecond,
+		routineDelay:    timeOutEnv,
 		workerSemaphore: make(chan struct{}, concurrency),
 	}
 	go func(passParams any) {

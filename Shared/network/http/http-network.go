@@ -13,8 +13,6 @@ import (
 	"time"
 )
 
-const TIMEOUTBACKUP = 20000 * time.Millisecond
-
 type NetworkHttp struct {
 	network.BaseNetworkInterface
 	timeout time.Duration
@@ -24,7 +22,7 @@ func NewNetworkHttp() network.NetworkInterface {
 	timeOutEnv, err := time.ParseDuration(os.Getenv("HTTP_TIMEOUT"))
 	if err != nil {
 		log.Println("TIMEOUT env variable not set, defaulting to 20s")
-		timeOutEnv = TIMEOUTBACKUP
+		timeOutEnv = 20000 * time.Millisecond
 	}
 
 	nh := &NetworkHttp{
