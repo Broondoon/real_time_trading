@@ -13,23 +13,31 @@ import (
 	"time"
 )
 
-const TIMEOUT = 5000 * time.Millisecond
+const TIMEOUTBACKUP = 20000 * time.Millisecond
 
 type NetworkHttp struct {
 	network.BaseNetworkInterface
+	timeout time.Duration
 }
 
 func NewNetworkHttp() network.NetworkInterface {
+	timeOutEnv, err := time.ParseDuration(os.Getenv("HTTP_TIMEOUT"))
+	if err != nil {
+		log.Println("TIMEOUT env variable not set, defaulting to 20s")
+		timeOutEnv = TIMEOUTBACKUP
+	}
+
 	nh := &NetworkHttp{
 		BaseNetworkInterface: network.NewNetwork(func(serviceString string) network.ClientInterface {
 			return newHttpClient(os.Getenv("BASE_URL_PREFIX") + serviceString + os.Getenv("BASE_URL_POSTFIX"))
 		}),
+		timeout: timeOutEnv,
 	}
 	return nh
 
 }
 
-func handleFunc(params network.HandlerParams, w http.ResponseWriter, r *http.Request) {
+func handleFunc(params network.HandlerParams, w http.ResponseWriter, r *http.Request, timeout time.Duration) {
 	responseWriterWrapper := &responseWriterWrapper{ResponseWriter: w, currentCode: http.StatusOK, finished: make(chan bool, 1), channelHasClosed: false}
 	var body []byte
 	var err error
@@ -80,7 +88,7 @@ func handleFunc(params network.HandlerParams, w http.ResponseWriter, r *http.Req
 		close(responseWriterWrapper.finished)
 		responseWriterWrapper.channelHasClosed = true
 		break
-	case <-time.After(TIMEOUT):
+	case <-time.After(timeout):
 		if !responseWriterWrapper.channelHasClosed {
 			responseWriterWrapper.ResponseWriter.WriteHeader(http.StatusRequestTimeout)
 			close(responseWriterWrapper.finished)
@@ -133,7 +141,7 @@ func (rw *responseWriterWrapper) EncodeResponse(statusCode int, response map[str
 // For Internal handlers
 func (n *NetworkHttp) AddHandleFuncUnprotected(params network.HandlerParams) {
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		handleFunc(params, w, r)
+		handleFunc(params, w, r, n.timeout)
 
 	})
 	http.Handle("/"+params.Pattern, handler)
@@ -142,7 +150,7 @@ func (n *NetworkHttp) AddHandleFuncUnprotected(params network.HandlerParams) {
 // For Protected handlers (I.E exposed to the outside)
 func (n *NetworkHttp) AddHandleFuncProtected(params network.HandlerParams) {
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		handleFunc(params, w, r)
+		handleFunc(params, w, r, n.timeout)
 	})
 	//To reable after testing is done.
 	protectedHandler := TokenAuthMiddleware(handler)

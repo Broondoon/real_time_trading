@@ -238,7 +238,7 @@ func placeStockOrderResponse(data *[]*StockOrderBulk, TransferParams any) error 
 		}
 		stockOrder.StockOrder.SetId(createdTransactionIdsByPairing[stockOrder.StockOrder.GetUniquePairing().String()])
 		log.Println("sending to matching engine")
-		_, err = _networkQueueManager.MatchingEngine().Post("placeStockOrder", stockOrder.StockOrder)
+		_, err = _networkHttpManager.MatchingEngine().Post("placeStockOrder", stockOrder.StockOrder)
 		log.Println("sent to matching engine")
 		if err != nil {
 			log.Printf("failed to send to matching engine: %v", err)
@@ -300,7 +300,7 @@ func cancelStockTransaction(id string) error {
 		return err
 	}
 
-	_, err = _networkQueueManager.MatchingEngine().Delete("deleteOrder/" + id)
+	_, err = _networkHttpManager.MatchingEngine().Delete("deleteOrder/" + id)
 	if err != nil {
 		log.Println("Error: ", err.Error())
 		return err
@@ -391,6 +391,6 @@ func placeStockOrderOld(stockOrder order.StockOrderInterface) error {
 	}
 	stockOrder.SetId(createdTransaction.GetId())
 	//pass to matching engine
-	_, err = _networkQueueManager.MatchingEngine().Post("placeStockOrder", stockOrder)
+	_, err = _networkHttpManager.MatchingEngine().Post("placeStockOrder", stockOrder)
 	return err
 }

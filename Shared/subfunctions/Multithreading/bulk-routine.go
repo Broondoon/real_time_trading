@@ -49,7 +49,11 @@ func NewBulkRoutine[T any](params *BulkRoutineParams[T]) BulkRoutineInterface[T]
 	}
 	concurrency := params.Concurrency
 	if concurrency <= 0 {
-		concurrency = 10
+		concurrency, err = strconv.Atoi(os.Getenv("MAX_BULK_ROUTINE_COUNT"))
+		if err != nil {
+			log.Println("Error getting bulk routine concurrency: ", err.Error())
+			concurrency = 10
+		}
 	}
 	b := BulkRoutine[T]{
 		routine:         params.Routine,
