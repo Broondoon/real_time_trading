@@ -10,6 +10,7 @@ type MatchingEngineToExecutionJSON struct {
 	IsSellPartial bool    `json:"is_sell_partial"`
 	StockPrice    float64 `json:"stock_price"`
 	Quantity      int     `json:"quantity"`
+	Name          string  `json:"stock_name"`
 }
 
 type StockPrice struct {

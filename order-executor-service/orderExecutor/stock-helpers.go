@@ -22,23 +22,23 @@ func findUserStockPortfolios(
 	buyerID *uuid.UUID,
 	sellerID *uuid.UUID,
 	databaseAccessUser databaseAccessUserManagement.DatabaseAccessInterface,
-) (*[]userStock.UserStockInterface, *[]userStock.UserStockInterface, error) {
+) (*[]userStock.UserStockInterface, error) {
 
 	// Get buyer's current stock holdings
 	buyerStockPortfolio, err := databaseAccessUser.UserStock().GetUserStocks(buyerID.String())
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to get buyer stocks: %v", err)
+		return nil, fmt.Errorf("failed to get buyer stocks: %v", err)
 	}
 	//log.Printf("Retrieved buyer portfolio with %d stocks", len(*buyerStockPortfolio))
 
-	// Get seller's current stock holdings
-	sellerStockPortfolio, err := databaseAccessUser.UserStock().GetUserStocks(sellerID.String())
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to get seller stocks: %v", err)
-	}
-	//log.Printf("%s", fmt.Sprintf("Retrieved seller portfolio with %d stocks", len(*sellerStockPortfolio)))
+	// // Get seller's current stock holdings
+	// sellerStockPortfolio, err := databaseAccessUser.UserStock().GetUserStocks(sellerID.String())
+	// if err != nil {
+	// 	return nil, nil, fmt.Errorf("failed to get seller stocks: %v", err)
+	// }
+	// //log.Printf("%s", fmt.Sprintf("Retrieved seller portfolio with %d stocks", len(*sellerStockPortfolio)))
 
-	return buyerStockPortfolio, sellerStockPortfolio, nil
+	return buyerStockPortfolio, nil
 }
 
 // Finds and validates seller's stock holding
@@ -66,7 +66,7 @@ func handleBuyerStock(
 	buyerID *uuid.UUID,
 	stockID *uuid.UUID,
 	//quantity int,
-	sellerStock userStock.UserStockInterface,
+	stockName string,
 	databaseAccessUser databaseAccessUserManagement.DatabaseAccessInterface,
 ) (userStock.UserStockInterface, error) {
 
@@ -84,7 +84,7 @@ func handleBuyerStock(
 		buyerStock = userStock.New(userStock.NewUserStockParams{
 			UserID:    buyerID,
 			StockID:   stockID,
-			StockName: sellerStock.GetStockName(),
+			StockName: stockName,
 			Quantity:  0,
 		})
 		createdStock, err := databaseAccessUser.UserStock().Create(buyerStock)
@@ -100,7 +100,6 @@ func handleBuyerStock(
 // Updates the user's stock quantities in the database
 func updateUserStockQuantities(
 	buyerStock userStock.UserStockInterface,
-	sellerStock userStock.UserStockInterface,
 	quantity int,
 	databaseAccessUser databaseAccessUserManagement.DatabaseAccessInterface,
 ) error {

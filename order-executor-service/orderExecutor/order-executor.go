@@ -42,6 +42,7 @@ func ProcessTrade(orderData network.MatchingEngineToExecutionJSON, databaseAcces
 	isSellPartial := orderData.IsSellPartial
 	stockPrice := orderData.StockPrice
 	quantity := orderData.Quantity
+	stockName := orderData.Name
 
 	totalCost := calculateTotalTransactionCost(quantity, stockPrice)
 	// log.Printf("%s", fmt.Sprintf(`
@@ -187,7 +188,7 @@ func ProcessTrade(orderData network.MatchingEngineToExecutionJSON, databaseAcces
 	// 5. Update buyer and seller stock portfolios. Deduct the quantity from seller and add to buyer
 	//log.Println("Updating user stocks...")
 	err = updateUserStocks(&buyerID, &sellerID, &stockID, quantity, buyerStockTransaction, sellerStockTransaction, databaseAccessUser,
-		databaseAccessTransact, isBuyPartial, isSellPartial, stockPrice)
+		databaseAccessTransact, isBuyPartial, isSellPartial, stockPrice, stockName)
 	if err != nil {
 		println("Error updating user stocks:", err.Error())
 		return false, false, fmt.Errorf("failed to update user stocks: %v", err)
@@ -214,34 +215,34 @@ func updateUserWallets(
 	//log.Printf("%s", fmt.Sprintf("Initial balances - Buyer: %.2f, Seller: %.2f", buyerWallet.GetBalance(), sellerWallet.GetBalance()))
 
 	// Step 1: Update buyer's wallet (debit)
-	if err := updateWalletBalance(buyerWallet, totalCost, true, databaseAccessUser); err != nil {
+	if err := updateWalletBalance(buyerWallet, sellerWallet, totalCost, databaseAccessUser); err != nil {
 		return fmt.Errorf("buyer wallet update failed: %v", err)
 	}
 	//log.Printf("%s", fmt.Sprintf("Buyer wallet updated - New balance: %.2f (deducted %.2f)",
 	//		buyerWallet.GetBalance(), totalCost))
 
-	// Step 2: Update seller's wallet (credit)
-	if err := updateWalletBalance(sellerWallet, totalCost, false, databaseAccessUser); err != nil {
-		// Rollback buyer's wallet if seller update fails
-		updateWalletBalance(buyerWallet, totalCost, false, databaseAccessUser)
-		return fmt.Errorf("seller wallet update failed: %v", err)
-	}
+	// // Step 2: Update seller's wallet (credit)
+	// if err := updateWalletBalance(sellerWallet, totalCost, false, databaseAccessUser); err != nil {
+	// 	// Rollback buyer's wallet if seller update fails
+	// 	updateWalletBalance(buyerWallet, totalCost, false, databaseAccessUser)
+	// 	return fmt.Errorf("seller wallet update failed: %v", err)
+	// }
 	// log.Printf("%s", fmt.Sprintf("Seller wallet updated - New balance: %.2f (added %.2f)",
 	// 	sellerWallet.GetBalance(), totalCost))
 
 	// Step 3: Create wallet transactions for buyer
-	_, err := createWalletTransaction(buyerWallet, buyerStockTransaction, true, totalCost, databaseAccessTransact)
+	_, _, err := createWalletTransaction(buyerWallet, buyerStockTransaction, sellerWallet, sellerStockTransaction, totalCost, databaseAccessTransact)
 	if err != nil {
 		return fmt.Errorf("buyer wallet transaction failed: %v", err)
 	}
 	//log.Printf("%s", fmt.Sprintf("Created wallet transaction for buyer (ID: %s, UserID: %s) - Amount: %.2f (debit)",
 	//	buyerWalletTxID, buyerWallet.GetUserID(), totalCost))
 
-	// Step 4: Create wallet transactions for seller
-	_, err = createWalletTransaction(sellerWallet, sellerStockTransaction, false, totalCost, databaseAccessTransact)
-	if err != nil {
-		return fmt.Errorf("seller wallet transaction failed: %v", err)
-	}
+	// // Step 4: Create wallet transactions for seller
+	// _, err = createWalletTransaction(false, totalCost, databaseAccessTransact)
+	// if err != nil {
+	// 	return fmt.Errorf("seller wallet transaction failed: %v", err)
+	//}
 	//log.Printf("%s", fmt.Sprintf("Created wallet transaction for seller (ID: %s, UserID: %s) - Amount: %.2f (credit)",
 	//	sellerWalletTxID, sellerWallet.GetUserID(), totalCost))
 
@@ -266,10 +267,11 @@ func updateUserStocks(
 	isBuyPartial bool,
 	isSellPartial bool,
 	stockPrice float64,
+	stockName string,
 ) error {
 
 	// Step 1: Finds and validates user stock portfolios
-	buyerPortfolio, sellerPortfolio, err := findUserStockPortfolios(buyerID, sellerID, databaseAccessUser)
+	buyerPortfolio, err := findUserStockPortfolios(buyerID, sellerID, databaseAccessUser)
 	if err != nil {
 		return err
 	}
@@ -277,15 +279,15 @@ func updateUserStocks(
 	// 	buyerID, len(*buyerPortfolio), sellerID, len(*sellerPortfolio)))
 
 	// Step 2: Finds and validates seller's stock holding
-	sellerStock, err := handleSellerStock(sellerPortfolio, stockID, quantity)
-	if err != nil {
-		return err
-	}
+	// sellerStock, err := handleSellerStock(sellerPortfolio, stockID, quantity)
+	// if err != nil {
+	// 	return err
+	// }
 	// println(fmt.Sprintf("Step 2: Successfully validated seller's stock - Seller has %d shares of %s",
 	// 	sellerStock.GetQuantity(), stockID))
 
 	// Step 3: Creates or retrieves buyer's stock holding
-	buyerStock, err := handleBuyerStock(buyerPortfolio, buyerID, stockID, sellerStock, databaseAccessUser)
+	buyerStock, err := handleBuyerStock(buyerPortfolio, buyerID, stockID, stockName, databaseAccessUser)
 	if err != nil {
 		return err
 	}
@@ -293,7 +295,7 @@ func updateUserStocks(
 	// 	buyerStock.GetQuantity(), stockID))
 
 	// Step 4: Update user stock quantities
-	if err := updateUserStockQuantities(buyerStock, sellerStock, quantity, databaseAccessUser); err != nil {
+	if err := updateUserStockQuantities(buyerStock, quantity, databaseAccessUser); err != nil {
 		return err
 	}
 	// log.Printf("%s", fmt.Sprintf("Step 4: Successfully updated stock quantities - Transferred %d shares from seller to buyer",

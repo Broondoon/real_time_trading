@@ -14,15 +14,17 @@ var _databaseAccessUser databaseAccessUserManagement.DatabaseAccessInterface
 
 func InitalizeExecutorHandlers(
 	networkManager network.NetworkInterface,
+	queueManager network.NetworkInterface,
 	databaseAccessTransact databaseAccessTransaction.DatabaseAccessInterface,
 	databaseAccessUser databaseAccessUserManagement.DatabaseAccessInterface) {
 
 	_databaseAccessTransact = databaseAccessTransact
 	_databaseAccessUser = databaseAccessUser
 
-	networkManager.AddHandleFuncUnprotected(network.HandlerParams{Pattern: "executor", Handler: executorHandler})
+	queueManager.AddHandleFuncUnprotected(network.HandlerParams{Pattern: "executor", Handler: executorHandler})
 
 	http.HandleFunc("/health", healthHandler)
+	queueManager.Listen()
 }
 
 func healthHandler(w http.ResponseWriter, r *http.Request) {

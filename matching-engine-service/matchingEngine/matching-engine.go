@@ -30,7 +30,7 @@ type MatchingEngine struct {
 	SendToOrderExection func(buyOrder order.StockOrderInterface, sellOrder order.StockOrderInterface) (network.ExecutorToMatchingEngineJSON, error)
 	//dirty fix
 	DatabaseManager databaseAccessStockOrder.DatabaseAccessInterface
-	UpdatePrice     chan network.StockPrice
+	UpdatePrice     *chan network.StockPrice
 }
 
 type NewMatchingEngineParams struct {
@@ -38,7 +38,7 @@ type NewMatchingEngineParams struct {
 	InitalOrders             *[]order.StockOrderInterface
 	SendToOrderExecutionFunc func(buyOrder order.StockOrderInterface, sellOrder order.StockOrderInterface) (network.ExecutorToMatchingEngineJSON, error)
 	DatabaseManager          databaseAccessStockOrder.DatabaseAccessInterface
-	UpdatePrice              chan network.StockPrice
+	UpdatePrice              *chan network.StockPrice
 }
 
 func NewMatchingEngineForStock(params *NewMatchingEngineParams) MatchingEngineInterface {
@@ -61,7 +61,7 @@ func NewMatchingEngineForStock(params *NewMatchingEngineParams) MatchingEngineIn
 		DatabaseManager:     params.DatabaseManager,
 		UpdatePrice:         params.UpdatePrice,
 	}
-	me.UpdatePrice <- network.StockPrice{
+	(*me.UpdatePrice) <- network.StockPrice{
 		StockID: me.StockId,
 		Price:   me.GetPrice(),
 	}
@@ -102,7 +102,7 @@ func (me *MatchingEngine) RunMatchingEngineOrders() {
 				buyOrder = nil
 			}
 		} else {
-			me.UpdatePrice <- network.StockPrice{
+			(*me.UpdatePrice) <- network.StockPrice{
 				StockID: me.StockId,
 				Price:   sellOrder.GetPrice(),
 			}

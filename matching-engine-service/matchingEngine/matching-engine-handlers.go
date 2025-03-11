@@ -121,7 +121,7 @@ func AddNewStock(stockID string, stockName string) {
 			InitalOrders:             &ordersInterface,
 			SendToOrderExecutionFunc: SendToOrderExection,
 			DatabaseManager:          _databaseManager,
-			UpdatePrice:              updatePrice,
+			UpdatePrice:              &updatePrice,
 		})
 		_matchingEngineMap[stockID] = me
 		go me.RunMatchingEngineOrders()
@@ -272,9 +272,10 @@ func SendToOrderExection(buyOrder order.StockOrderInterface, sellOrder order.Sto
 		IsSellPartial: buyQty < sellQty,
 		StockPrice:    sellOrder.GetPrice(),
 		Quantity:      quantity,
+		Name:          stockPrices[stockPriceIndex[buyOrder.GetStockIDString()]].StockName,
 	}
 
-	data, err := _networkHttpManager.OrderExecutor().Post("executor", transferEntity)
+	data, err := _networkQueueManager.OrderExecutor().Post("executor", transferEntity)
 
 	if err != nil {
 		log.Println("Error: ", err.Error())
