@@ -31,6 +31,7 @@ func NewDatabaseService(params *NewDatabaseServiceParams) DatabaseServiceInterfa
 			Password:            os.Getenv("REDIS_PASSWORD"),
 			DefaultTTL:          5 * time.Minute,
 		}),
+		//EntityDataInterface: databaseService.NewEntityData[*user.User](params.NewEntityDataParams),
 	}
 	db.Connect()
 	db.GetDatabaseSession().AutoMigrate(&user.User{})

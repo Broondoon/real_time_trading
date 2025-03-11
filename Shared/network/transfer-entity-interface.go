@@ -12,8 +12,6 @@ type MatchingEngineToExecutionJSON struct {
 	Quantity      int     `json:"quantity"`
 }
 
-
-
 type StockPrice struct {
 	StockID   string  `json:"stock_id"`
 	StockName string  `json:"stock_name"`
@@ -22,6 +20,7 @@ type StockPrice struct {
 
 type StockID struct {
 	StockID string `json:"stock_id"`
+	Name    string `json:"stock_name"`
 }
 
 type StockTransactionID struct {
@@ -51,7 +50,7 @@ type ReturnJSON struct {
 	Data    any  `json:"data"`
 }
 
-/* 
+/*
 	// Create custom response structure
 	type StockPortfolioResponse struct {
 		StockID       string    `json:"stock_id"`

@@ -25,13 +25,14 @@ var _networkQueueManager network.NetworkInterface
 var _stockDatabaseAccess databaseAccessStock.DatabaseAccessInterface
 
 var _bulkStockOrderAdder subfunctions.BulkRoutineInterface[*StockOrderBulk]
+var stockNames map[string]string
 
 type StockOrderBulk struct {
 	StockOrder     order.StockOrderInterface
 	ResponseWriter network.ResponseWriter
 }
 
-func InitalizeHandlers(stockIDs *[]*uuid.UUID,
+func InitalizeHandlers(stockIDs *[]network.StockPrice,
 	networkHttpManager network.NetworkInterface, networkQueueManager network.NetworkInterface, databaseManager databaseAccessStockOrder.DatabaseAccessInterface, stockDatabaseAccess databaseAccessStock.DatabaseAccessInterface) {
 	_databaseManager = databaseManager
 	_networkHttpManager = networkHttpManager
@@ -40,7 +41,7 @@ func InitalizeHandlers(stockIDs *[]*uuid.UUID,
 	_matchingEngineMap = make(map[string]MatchingEngineInterface)
 	//Create all matching engines for stocks.
 	for _, stockID := range *stockIDs {
-		AddNewStock(stockID.String())
+		AddNewStock(stockID.StockID, stockID.StockName)
 	}
 
 	_bulkStockOrderAdder = subfunctions.NewBulkRoutine[*StockOrderBulk](&subfunctions.BulkRoutineParams[*StockOrderBulk]{
@@ -78,11 +79,11 @@ func AddNewStockHandler(responseWriter network.ResponseWriter, data []byte, quer
 	// 	responseWriter.WriteHeader(http.StatusBadRequest)
 	// 	return
 	// }
-	AddNewStock(stockID.StockID)
+	AddNewStock(stockID.StockID, stockID.Name)
 	responseWriter.WriteHeader(http.StatusOK)
 }
 
-func AddNewStock(stockID string) {
+func AddNewStock(stockID string, stockName string) {
 	_, ok := _matchingEngineMap[stockID]
 	//if we don't have a matching engine for this stock, create one
 	if !ok {
@@ -96,6 +97,7 @@ func AddNewStock(stockID string) {
 			DatabaseManager:          _databaseManager,
 		})
 		_matchingEngineMap[stockID] = me
+		stockNames[stockID] = stockName
 		go me.RunMatchingEngineOrders()
 		go me.RunMatchingEngineUpdates()
 	}
@@ -233,16 +235,6 @@ func GetStockPricesHandler(responseWriter network.ResponseWriter, data []byte, q
 }
 
 func GetStockPrices() (*[]network.StockPrice, error) {
-	stocks, err := _stockDatabaseAccess.GetAll()
-	if err != nil {
-		log.Println("Error: ", err.Error())
-		return nil, err
-	}
-	//create a map from the stock ids to names
-	stockIDToName := make(map[string]string)
-	for _, stock := range *stocks {
-		stockIDToName[stock.GetIdString()] = stock.GetName()
-	}
 	//get the prices for each stock
 	prices := make(map[string]float64)
 	for stockID, me := range _matchingEngineMap {
@@ -254,7 +246,7 @@ func GetStockPrices() (*[]network.StockPrice, error) {
 	for stockID, price := range prices {
 		stockPrices[i] = network.StockPrice{
 			StockID:   stockID,
-			StockName: stockIDToName[stockID],
+			StockName: stockNames[stockID],
 			Price:     price,
 		}
 		i++

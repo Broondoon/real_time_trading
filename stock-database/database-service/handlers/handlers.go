@@ -69,7 +69,7 @@ func AddNewStockHandler(responseWriter network.ResponseWriter, data []byte, quer
 		responseWriter.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	stockIdObject := network.StockID{StockID: newStock.GetIdString()}
+	stockIdObject := network.StockID{StockID: newStock.GetIdString(), Name: newStock.GetName()}
 	_, err = _networkManager.MatchingEngine().Post("createStock", stockIdObject)
 	if err != nil {
 		log.Println("Error: ", err.Error())
