@@ -70,19 +70,23 @@ func testFuncInsertUserStock(userID string) {
 */
 
 func getStockPortfolioHandler(responseWriter network.ResponseWriter, data []byte, queryParams url.Values, requestType string) {
+	log.Println("[DEBUG] getStockPortfolioHandler invoked")
+
 	userID := queryParams.Get("userID")
 	if userID == "" {
-		log.Println("Error: missing userID in getStockPortfolioHandler")
+		log.Println("[DEBUG] Error: missing userID in getStockPortfolioHandler")
 		responseWriter.WriteHeader(http.StatusBadRequest)
 		return
 	}
+	log.Printf("[DEBUG] Extracted userID: %s", userID)
 
 	stocks, err := _userStockAccess.GetUserStocks(userID)
 	if err != nil {
-		log.Printf("Error retrieving stocks for userID %s: %v", userID, err)
+		log.Printf("[DEBUG] Error retrieving stocks for userID %s: %v", userID, err)
 		responseWriter.WriteHeader(http.StatusNotFound)
 		return
 	}
+	log.Printf("[DEBUG] Retrieved %d stock records for userID %s", len(*stocks), userID)
 
 	// Create custom response structure
 	type StockPortfolioResponse struct {
@@ -95,6 +99,7 @@ func getStockPortfolioHandler(responseWriter network.ResponseWriter, data []byte
 	// Transform stocks into desired format
 	portfolioResponse := make([]StockPortfolioResponse, 0)
 	for _, stock := range *stocks {
+		log.Printf("[DEBUG] Processing stock: ID=%s, Name=%s, Quantity=%d", stock.GetStockID(), stock.GetStockName(), stock.GetQuantity())
 		if stock.GetQuantity() > 0 { // Only include stocks with quantity > 0
 			portfolioResponse = append(portfolioResponse, StockPortfolioResponse{
 				StockID:       stock.GetStockID(),
@@ -104,11 +109,13 @@ func getStockPortfolioHandler(responseWriter network.ResponseWriter, data []byte
 			})
 		}
 	}
+	log.Printf("[DEBUG] Transformed portfolio has %d entries", len(portfolioResponse))
 
 	// Sort by stock name (if still needed)
 	sort.SliceStable(portfolioResponse, func(i, j int) bool {
 		return portfolioResponse[i].StockName > portfolioResponse[j].StockName
 	})
+	log.Println("[DEBUG] Sorted portfolio response by stock name")
 
 	returnVal := network.ReturnJSON{
 		Success: true,
@@ -117,13 +124,15 @@ func getStockPortfolioHandler(responseWriter network.ResponseWriter, data []byte
 
 	stocksJSON, err := json.Marshal(returnVal)
 	if err != nil {
-		log.Printf("Error marshalling JSON: %v", err)
+		log.Printf("[DEBUG] Error marshalling JSON: %v", err)
 		responseWriter.WriteHeader(http.StatusInternalServerError)
 		return
 	}
+	log.Printf("[DEBUG] Marshalled JSON response: %s", string(stocksJSON))
 
 	responseWriter.Header().Set("Content-Type", "application/json")
 	responseWriter.Write(stocksJSON)
+	log.Println("[DEBUG] Response written successfully")
 }
 
 func addStockToUser(responseWriter network.ResponseWriter, data []byte, queryParams url.Values, requestType string) {
@@ -197,20 +206,23 @@ func addStockToUser(responseWriter network.ResponseWriter, data []byte, queryPar
 }
 
 func getStockName(stockID string) (string, error) {
+	log.Printf("[getStockName Debug] Looking up stock with ID: %s", stockID)
 	stocks, err := _stockDatabaseAccess.GetAll()
 	if err != nil {
-		log.Printf("Error getting stocks: %v", err)
+		log.Printf("[getStockName Debug] Error getting stocks: %v", err)
 		return "", err
 	}
-
 	stockIDToName := make(map[string]string)
 	for _, stock := range *stocks {
-		stockIDToName[stock.GetId()] = stock.GetName()
+		id := stock.GetId()
+		name := stock.GetName()
+		stockIDToName[id] = name
+		log.Printf("[getStockName Debug] Stock found: ID=%s, Name=%s", id, name)
 	}
-
 	if name, exists := stockIDToName[stockID]; exists {
+		log.Printf("[getStockName Debug] Found stock name for ID %s: %s", stockID, name)
 		return name, nil
 	}
-
+	log.Printf("[getStockName Debug] Stock not found with ID: %s", stockID)
 	return "", fmt.Errorf("stock not found with ID: %s", stockID)
 }

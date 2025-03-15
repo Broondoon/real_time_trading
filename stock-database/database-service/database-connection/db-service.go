@@ -22,9 +22,23 @@ func NewDatabaseService(params *NewDatabaseServiceParams) DatabaseServiceInterfa
 	if params.NewEntityDataParams == nil {
 		params.NewEntityDataParams = &databaseService.NewEntityDataParams{}
 	}
+
+	//CACHE IMPLEMENTATION
+	/* cachedStock := databaseService.NewCachedEntityData[*stock.Stock](&databaseService.NewCachedEntityDataParams{
+		NewEntityDataParams: params.NewEntityDataParams,
+		RedisAddr:           os.Getenv("REDIS_ADDR"),
+		Password:            os.Getenv("REDIS_PASSWORD"),
+		DefaultTTL:          5 * time.Minute,
+	})
+
+	db := &DatabaseService{
+		EntityDataInterface: cachedStock,
+	} */
+
 	db := &DatabaseService{
 		EntityDataInterface: databaseService.NewEntityData[*stock.Stock](params.NewEntityDataParams),
 	}
+
 	db.Connect()
 	db.GetDatabaseSession().AutoMigrate(&stock.Stock{})
 	return db

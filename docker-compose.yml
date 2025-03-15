@@ -1,28 +1,29 @@
 # ---------------------- User Management Tests ----------------------
 services:
-  #  user-management-tests:
-  #   build:
+#  user-management-tests:
+ #    build:
   #     context: .
-  #      dockerfile: ./user-management-tests/Dockerfile
-  #   env_file:
-  #      - .env
-  #   networks:
-  #    - go-network
-  #   depends_on:
-  #     user-management-service:
-  #      condition: service_healthy
-  # ---------------------- User Management Service ----------------------
+   #    dockerfile: ./user-management-tests/Dockerfile
+    # env_file:
+     #   - .env
+     #networks:
+     #- go-network
+     #depends_on:
+     #  user-management-service:
+     #   condition: service_healthy
+# ---------------------- User Management Service ----------------------
   user-management-service:
     build:
       context: .
       dockerfile: ./user-management-service/Dockerfile
     ports:
-      - "${USER_MANAGEMENT_PORT}:${USER_MANAGEMENT_PORT}"
+      - "${USER_MANAGEMENT_PORT}"
     env_file:
       - .env
     environment:
       DATABASE_URL: ${USER_MANAGEMENT_DATABASE_URL}
       PORT: ${USER_MANAGEMENT_PORT}
+      REDIS_URL: redis://redis:6379
     networks:
       - go-network
     depends_on:
@@ -30,17 +31,36 @@ services:
         condition: service_healthy
       stock-database-service:
         condition: service_healthy
+      redis:
+        condition: service_healthy
     healthcheck:
       test:
         [
           "CMD",
           "curl",
           "-f",
-          "http://user-management-service:${USER_MANAGEMENT_PORT}/health",
+          "http://localhost:${USER_MANAGEMENT_PORT}/health",
         ]
       interval: ${HEALTHCHECK_INTERVAL}
       timeout: ${HEALTHCHECK_TIMEOUT}
       retries: ${HEALTHCHECK_RETRIES}
+    deploy:
+      replicas: ${REPLICATIONS}
+      restart_policy:
+        condition: on-failure
+
+  # ---------------------- Redis Service ----------------------
+  redis:
+    image: redis:latest
+    ports:
+      - "6379:6379"
+    networks:
+      - go-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
   # ---------------------- Existing Services ----------------------
   # microservice-template:
@@ -69,7 +89,7 @@ services:
       context: .
       dockerfile: ./${MATCHING_ENGINE_HOST}/Dockerfile
     ports:
-      - "${MATCHING_ENGINE_PORT}:${MATCHING_ENGINE_PORT}"
+      - "${MATCHING_ENGINE_PORT}"
     env_file:
       - .env
     environment:
@@ -93,7 +113,7 @@ services:
           "CMD",
           "curl",
           "-f",
-          "http://${MATCHING_ENGINE_HOST}:${MATCHING_ENGINE_PORT}/health",
+          "http://localhost:${MATCHING_ENGINE_PORT}/health",
         ]
       interval: ${HEALTHCHECK_INTERVAL}
       timeout: ${HEALTHCHECK_TIMEOUT}
@@ -104,7 +124,7 @@ services:
       context: .
       dockerfile: ./${ORDER_INITIATOR_HOST}/Dockerfile
     ports:
-      - "${ORDER_INITIATOR_PORT}:${ORDER_INITIATOR_PORT}"
+      - "${ORDER_INITIATOR_PORT}"
     env_file:
       - .env
     environment:
@@ -122,18 +142,22 @@ services:
           "CMD",
           "curl",
           "-f",
-          "http://${ORDER_INITIATOR_HOST}:${ORDER_INITIATOR_PORT}/health",
+          "http://localhost:${ORDER_INITIATOR_PORT}/health",
         ]
       interval: ${HEALTHCHECK_INTERVAL}
       timeout: ${HEALTHCHECK_TIMEOUT}
       retries: ${HEALTHCHECK_RETRIES}
+    deploy:
+      replicas: ${REPLICATIONS}
+      restart_policy:
+        condition: on-failure
 
   order-executor-service:
     build:
       context: .
       dockerfile: ./${ORDER_EXECUTOR_HOST}/Dockerfile
     ports:
-      - "${ORDER_EXECUTOR_PORT}:${ORDER_EXECUTOR_PORT}"
+      - "${ORDER_EXECUTOR_PORT}"
     env_file:
       - .env
     environment:
@@ -151,18 +175,22 @@ services:
           "CMD",
           "curl",
           "-f",
-          "http://${ORDER_EXECUTOR_HOST}:${ORDER_EXECUTOR_PORT}/health",
+          "http://localhost:${ORDER_EXECUTOR_PORT}/health",
         ]
       interval: ${HEALTHCHECK_INTERVAL}
       timeout: ${HEALTHCHECK_TIMEOUT}
       retries: ${HEALTHCHECK_RETRIES}
+    deploy:
+      replicas: ${REPLICATIONS}
+      restart_policy:
+        condition: on-failure
 
   auth-service:
     build:
       context: .
       dockerfile: auth-service/Dockerfile
     ports:
-      - "${AUTH_PORT}:${AUTH_PORT}"
+      - "${AUTH_PORT}"
     env_file:
       - .env
     environment:
@@ -170,16 +198,20 @@ services:
     depends_on:
       auth-db:
         condition: service_healthy
+    deploy:
+      replicas: ${REPLICATIONS}
+      restart_policy:
+        condition: on-failure
     networks:
       - go-network
 
-  #frontend:
-  #  image: flutter-trading-app
-  #  build:
-  #    dockerfile: ./Dockerfile
-  #    context: ./flutter_frontend/
-  #  networks:
-  #    - go-network
+  # frontend:
+  #   image: flutter-trading-app
+  #   build:
+  #     dockerfile: ./Dockerfile
+  #     context: ./flutter_frontend/
+  #   networks:
+  #     - go-network
 
   nginx:
     image: nginx:latest
@@ -192,7 +224,7 @@ services:
       - ./reverse_proxy/nginx.conf:/etc/nginx/nginx.conf:ro
     depends_on:
       - auth-service
-      #    - frontend
+      # - frontend
       - user-management-service
       - order-initiator-service
     networks:
@@ -443,6 +475,16 @@ services:
       start_period: 10s # Allow 30 seconds for initialization before starting health checks
     networks:
       - go-network
+  
+  pgadmin:
+    image: dpage/pgadmin4
+    environment:
+      PGADMIN_DEFAULT_EMAIL: "admin@example.com"
+      PGADMIN_DEFAULT_PASSWORD: "secret"
+    ports:
+      - "5050:80"
+    networks:
+      - go-network
 
 volumes:
   user-management-db-data:
@@ -456,3 +498,5 @@ volumes:
 networks:
   go-network:
     driver: bridge
+
+

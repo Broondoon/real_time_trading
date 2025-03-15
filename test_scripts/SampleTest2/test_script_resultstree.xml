@@ -1,0 +1,1118 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testResults version="1.2">
+<httpSample t="55" it="0" lt="55" ct="1" ts="1740880224685" s="true" lb="1 Register Request" rc="200" rm="OK" tn="User 1 Thread 1-1" dt="text" de="utf-8" by="197" sby="267" sc="1" ec="0" ng="1" na="1" hn="tower-ubuntu">
+  <assertionResult>
+    <name>success JSON Assertion</name>
+    <failure>false</failure>
+    <error>false</error>
+    <failureMessage></failureMessage>
+  </assertionResult>
+  <responseHeader class="java.lang.String">HTTP/1.1 200 OK
+Server: nginx/1.27.4
+Date: Sun, 02 Mar 2025 01:50:24 GMT
+Content-Type: application/json; charset=utf-8
+Content-Length: 28
+Connection: keep-alive
+</responseHeader>
+  <requestHeader class="java.lang.String">Connection: keep-alive
+Content-Type: application/json
+Content-Length: 75
+Host: localhost:3001
+User-Agent: Apache-HttpClient/4.5.14 (Java/21.0.6)
+</requestHeader>
+  <responseData class="java.lang.String">{&quot;data&quot;:null,&quot;success&quot;:true}</responseData>
+  <responseFile class="java.lang.String"></responseFile>
+  <cookies class="java.lang.String"></cookies>
+  <method class="java.lang.String">POST</method>
+  <queryString class="java.lang.String">{&quot;user_name&quot;:&quot;VanguardETF&quot;, &quot;password&quot;:&quot;Vang@123&quot;, &quot;name&quot;:&quot;Vanguard Corp.&quot;}</queryString>
+  <java.net.URL>http://localhost:3001/authentication/register</java.net.URL>
+</httpSample>
+<httpSample t="2" it="0" lt="2" ct="0" ts="1740880225241" s="true" lb="2 Failed Register Request" rc="400" rm="Bad Request" tn="User 1 Thread 1-1" dt="text" de="utf-8" by="230" sby="266" sc="1" ec="0" ng="1" na="1" hn="tower-ubuntu">
+  <assertionResult>
+    <name>success JSON Assertion</name>
+    <failure>false</failure>
+    <error>false</error>
+    <failureMessage></failureMessage>
+  </assertionResult>
+  <assertionResult>
+    <name>400 Response Assertion</name>
+    <failure>false</failure>
+    <error>false</error>
+  </assertionResult>
+  <responseHeader class="java.lang.String">HTTP/1.1 400 Bad Request
+Server: nginx/1.27.4
+Date: Sun, 02 Mar 2025 01:50:25 GMT
+Content-Type: application/json; charset=utf-8
+Content-Length: 52
+Connection: keep-alive
+</responseHeader>
+  <requestHeader class="java.lang.String">Connection: keep-alive
+Content-Type: application/json
+Content-Length: 74
+Host: localhost:3001
+User-Agent: Apache-HttpClient/4.5.14 (Java/21.0.6)
+</requestHeader>
+  <responseData class="java.lang.String">{&quot;error&quot;:&quot;Username already exists.&quot;,&quot;success&quot;:false}</responseData>
+  <responseFile class="java.lang.String"></responseFile>
+  <cookies class="java.lang.String"></cookies>
+  <method class="java.lang.String">POST</method>
+  <queryString class="java.lang.String">{&quot;user_name&quot;:&quot;VanguardETF&quot;, &quot;password&quot;:&quot;Comp@124&quot;, &quot;name&quot;:&quot;Vanguard Ltd.&quot;}</queryString>
+  <java.net.URL>http://localhost:3001/authentication/register</java.net.URL>
+</httpSample>
+<httpSample t="44" it="0" lt="44" ct="0" ts="1740880225743" s="true" lb="3 Failed Login Request" rc="400" rm="Bad Request" tn="User 1 Thread 1-1" dt="text" de="utf-8" by="226" sby="240" sc="1" ec="0" ng="1" na="1" hn="tower-ubuntu">
+  <assertionResult>
+    <name>success JSON Assertion</name>
+    <failure>false</failure>
+    <error>false</error>
+    <failureMessage></failureMessage>
+  </assertionResult>
+  <assertionResult>
+    <name>400 Response Assertion</name>
+    <failure>false</failure>
+    <error>false</error>
+  </assertionResult>
+  <responseHeader class="java.lang.String">HTTP/1.1 400 Bad Request
+Server: nginx/1.27.4
+Date: Sun, 02 Mar 2025 01:50:25 GMT
+Content-Type: application/json; charset=utf-8
+Content-Length: 48
+Connection: keep-alive
+</responseHeader>
+  <requestHeader class="java.lang.String">Connection: keep-alive
+Content-Type: application/json
+Content-Length: 51
+Host: localhost:3001
+User-Agent: Apache-HttpClient/4.5.14 (Java/21.0.6)
+</requestHeader>
+  <responseData class="java.lang.String">{&quot;error&quot;:&quot;Invalid Credentials.&quot;,&quot;success&quot;:false}</responseData>
+  <responseFile class="java.lang.String"></responseFile>
+  <cookies class="java.lang.String"></cookies>
+  <method class="java.lang.String">POST</method>
+  <queryString class="java.lang.String">{&quot;user_name&quot;:&quot;VanguardETF&quot;, &quot;password&quot;:&quot;Vang@1234&quot;}</queryString>
+  <java.net.URL>http://localhost:3001/authentication/login</java.net.URL>
+</httpSample>
+<httpSample t="44" it="0" lt="44" ct="0" ts="1740880226288" s="true" lb="4 Login Request" rc="200" rm="OK" tn="User 1 Thread 1-1" dt="text" de="utf-8" by="371" sby="239" sc="1" ec="0" ng="1" na="1" hn="tower-ubuntu">
+  <assertionResult>
+    <name>success JSON Assertion</name>
+    <failure>false</failure>
+    <error>false</error>
+    <failureMessage></failureMessage>
+  </assertionResult>
+  <responseHeader class="java.lang.String">HTTP/1.1 200 OK
+Server: nginx/1.27.4
+Date: Sun, 02 Mar 2025 01:50:26 GMT
+Content-Type: application/json; charset=utf-8
+Content-Length: 201
+Connection: keep-alive
+</responseHeader>
+  <requestHeader class="java.lang.String">Connection: keep-alive
+Content-Type: application/json
+Content-Length: 50
+Host: localhost:3001
+User-Agent: Apache-HttpClient/4.5.14 (Java/21.0.6)
+</requestHeader>
+  <responseData class="java.lang.String">{&quot;data&quot;:{&quot;token&quot;:&quot;eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3NDA4ODM4MjYsInN1YiI6ImU0ZWI1OGQ0LWQyZjEtNDUwMy1hNDQ1LWZiNjdkNjExMTlhZCJ9.Hft5D8Y4ff65sxQM6S4PudRnsu_XMPJ6rF32jxYdImc&quot;},&quot;success&quot;:true}</responseData>
+  <responseFile class="java.lang.String"></responseFile>
+  <cookies class="java.lang.String"></cookies>
+  <method class="java.lang.String">POST</method>
+  <queryString class="java.lang.String">{&quot;user_name&quot;:&quot;VanguardETF&quot;, &quot;password&quot;:&quot;Vang@123&quot;}</queryString>
+  <java.net.URL>http://localhost:3001/authentication/login</java.net.URL>
+</httpSample>
+<httpSample t="9" it="0" lt="9" ct="0" ts="1740880226833" s="true" lb="5 Create Google Stock Request" rc="200" rm="OK" tn="User 1 Thread 1-1" dt="text" de="utf-8" by="238" sby="383" sc="1" ec="0" ng="1" na="1" hn="tower-ubuntu">
+  <assertionResult>
+    <name>success JSON Assertion</name>
+    <failure>false</failure>
+    <error>false</error>
+    <failureMessage></failureMessage>
+  </assertionResult>
+  <responseHeader class="java.lang.String">HTTP/1.1 200 OK
+Server: nginx/1.27.4
+Date: Sun, 02 Mar 2025 01:50:26 GMT
+Content-Type: text/plain; charset=utf-8
+Content-Length: 75
+Connection: keep-alive
+</responseHeader>
+  <requestHeader class="java.lang.String">Connection: keep-alive
+Content-Type: application/json
+token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3NDA4ODM4MjYsInN1YiI6ImU0ZWI1OGQ0LWQyZjEtNDUwMy1hNDQ1LWZiNjdkNjExMTlhZCJ9.Hft5D8Y4ff65sxQM6S4PudRnsu_XMPJ6rF32jxYdImc
+Content-Length: 23
+Host: localhost:3001
+User-Agent: Apache-HttpClient/4.5.14 (Java/21.0.6)
+</requestHeader>
+  <responseData class="java.lang.String">{&quot;success&quot;:true,&quot;data&quot;:{&quot;stock_id&quot;:&quot;413a032c-9adc-44b9-b040-cb971cb8fcd7&quot;}}</responseData>
+  <responseFile class="java.lang.String"></responseFile>
+  <cookies class="java.lang.String"></cookies>
+  <method class="java.lang.String">POST</method>
+  <queryString class="java.lang.String">{&quot;stock_name&quot;:&quot;Google&quot;}</queryString>
+  <java.net.URL>http://localhost:3001/setup/createStock</java.net.URL>
+</httpSample>
+<httpSample t="6" it="0" lt="6" ct="0" ts="1740880227343" s="true" lb="6 Add Google Stock Request" rc="201" rm="Created" tn="User 1 Thread 1-1" dt="text" de="" by="187" sby="431" sc="1" ec="0" ng="1" na="1" hn="tower-ubuntu">
+  <assertionResult>
+    <name>success JSON Assertion</name>
+    <failure>false</failure>
+    <error>false</error>
+    <failureMessage></failureMessage>
+  </assertionResult>
+  <responseHeader class="java.lang.String">HTTP/1.1 201 Created
+Server: nginx/1.27.4
+Date: Sun, 02 Mar 2025 01:50:27 GMT
+Content-Type: application/json
+Content-Length: 28
+Connection: keep-alive
+</responseHeader>
+  <requestHeader class="java.lang.String">Connection: keep-alive
+Content-Type: application/json
+token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3NDA4ODM4MjYsInN1YiI6ImU0ZWI1OGQ0LWQyZjEtNDUwMy1hNDQ1LWZiNjdkNjExMTlhZCJ9.Hft5D8Y4ff65sxQM6S4PudRnsu_XMPJ6rF32jxYdImc
+Content-Length: 68
+Host: localhost:3001
+User-Agent: Apache-HttpClient/4.5.14 (Java/21.0.6)
+</requestHeader>
+  <responseData class="java.lang.String">{&quot;success&quot;:true,&quot;data&quot;:null}</responseData>
+  <responseFile class="java.lang.String"></responseFile>
+  <cookies class="java.lang.String"></cookies>
+  <method class="java.lang.String">POST</method>
+  <queryString class="java.lang.String">{&quot;stock_id&quot;: &quot;413a032c-9adc-44b9-b040-cb971cb8fcd7&quot;,&quot;quantity&quot;: 550}</queryString>
+  <java.net.URL>http://localhost:3001/setup/addStockToUser</java.net.URL>
+</httpSample>
+<httpSample t="7" it="0" lt="7" ct="0" ts="1740880227850" s="true" lb="7 Create Apple Stock Request" rc="200" rm="OK" tn="User 1 Thread 1-1" dt="text" de="utf-8" by="238" sby="382" sc="1" ec="0" ng="1" na="1" hn="tower-ubuntu">
+  <assertionResult>
+    <name>success JSON Assertion</name>
+    <failure>false</failure>
+    <error>false</error>
+    <failureMessage></failureMessage>
+  </assertionResult>
+  <responseHeader class="java.lang.String">HTTP/1.1 200 OK
+Server: nginx/1.27.4
+Date: Sun, 02 Mar 2025 01:50:27 GMT
+Content-Type: text/plain; charset=utf-8
+Content-Length: 75
+Connection: keep-alive
+</responseHeader>
+  <requestHeader class="java.lang.String">Connection: keep-alive
+Content-Type: application/json
+token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3NDA4ODM4MjYsInN1YiI6ImU0ZWI1OGQ0LWQyZjEtNDUwMy1hNDQ1LWZiNjdkNjExMTlhZCJ9.Hft5D8Y4ff65sxQM6S4PudRnsu_XMPJ6rF32jxYdImc
+Content-Length: 22
+Host: localhost:3001
+User-Agent: Apache-HttpClient/4.5.14 (Java/21.0.6)
+</requestHeader>
+  <responseData class="java.lang.String">{&quot;success&quot;:true,&quot;data&quot;:{&quot;stock_id&quot;:&quot;0e2490e5-007e-4d4c-a2a0-343cc95e3f32&quot;}}</responseData>
+  <responseFile class="java.lang.String"></responseFile>
+  <cookies class="java.lang.String"></cookies>
+  <method class="java.lang.String">POST</method>
+  <queryString class="java.lang.String">{&quot;stock_name&quot;:&quot;Apple&quot;}</queryString>
+  <java.net.URL>http://localhost:3001/setup/createStock</java.net.URL>
+</httpSample>
+<httpSample t="6" it="0" lt="6" ct="0" ts="1740880228358" s="true" lb="8 Add Apple Stock Request" rc="201" rm="Created" tn="User 1 Thread 1-1" dt="text" de="" by="187" sby="431" sc="1" ec="0" ng="1" na="1" hn="tower-ubuntu">
+  <assertionResult>
+    <name>success JSON Assertion</name>
+    <failure>false</failure>
+    <error>false</error>
+    <failureMessage></failureMessage>
+  </assertionResult>
+  <responseHeader class="java.lang.String">HTTP/1.1 201 Created
+Server: nginx/1.27.4
+Date: Sun, 02 Mar 2025 01:50:28 GMT
+Content-Type: application/json
+Content-Length: 28
+Connection: keep-alive
+</responseHeader>
+  <requestHeader class="java.lang.String">Connection: keep-alive
+Content-Type: application/json
+token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3NDA4ODM4MjYsInN1YiI6ImU0ZWI1OGQ0LWQyZjEtNDUwMy1hNDQ1LWZiNjdkNjExMTlhZCJ9.Hft5D8Y4ff65sxQM6S4PudRnsu_XMPJ6rF32jxYdImc
+Content-Length: 68
+Host: localhost:3001
+User-Agent: Apache-HttpClient/4.5.14 (Java/21.0.6)
+</requestHeader>
+  <responseData class="java.lang.String">{&quot;success&quot;:true,&quot;data&quot;:null}</responseData>
+  <responseFile class="java.lang.String"></responseFile>
+  <cookies class="java.lang.String"></cookies>
+  <method class="java.lang.String">POST</method>
+  <queryString class="java.lang.String">{&quot;stock_id&quot;: &quot;0e2490e5-007e-4d4c-a2a0-343cc95e3f32&quot;,&quot;quantity&quot;: 350}</queryString>
+  <java.net.URL>http://localhost:3001/setup/addStockToUser</java.net.URL>
+</httpSample>
+<httpSample t="3" it="0" lt="3" ct="0" ts="1740880228865" s="false" lb="9 Get Stock Portfolio Request" rc="200" rm="OK" tn="User 1 Thread 1-1" dt="text" de="utf-8" by="767" sby="351" sc="1" ec="1" ng="1" na="1" hn="tower-ubuntu">
+  <assertionResult>
+    <name>success JSON Assertion</name>
+    <failure>false</failure>
+    <error>false</error>
+    <failureMessage></failureMessage>
+  </assertionResult>
+  <assertionResult>
+    <name>data[0].stock_id JSON Assertion</name>
+    <failure>false</failure>
+    <error>false</error>
+    <failureMessage></failureMessage>
+  </assertionResult>
+  <assertionResult>
+    <name>data[0].stock_name JSON Assertion</name>
+    <failure>true</failure>
+    <error>false</error>
+    <failureMessage>Value in json path &apos;$.data[0].stock_name&apos; expected to match regexp &apos;Google&apos;, but it did not match: &apos;Unknown&apos;</failureMessage>
+  </assertionResult>
+  <assertionResult>
+    <name>data[0].quantity_owned JSON Assertion</name>
+    <failure>false</failure>
+    <error>false</error>
+    <failureMessage></failureMessage>
+  </assertionResult>
+  <assertionResult>
+    <name>data[1].stock_id JSON Assertion</name>
+    <failure>false</failure>
+    <error>false</error>
+    <failureMessage></failureMessage>
+  </assertionResult>
+  <assertionResult>
+    <name>data[1].stock_name JSON Assertion</name>
+    <failure>true</failure>
+    <error>false</error>
+    <failureMessage>Value in json path &apos;$.data[1].stock_name&apos; expected to match regexp &apos;Apple&apos;, but it did not match: &apos;Unknown&apos;</failureMessage>
+  </assertionResult>
+  <assertionResult>
+    <name>data[1].quantity_owned JSON Assertion</name>
+    <failure>false</failure>
+    <error>false</error>
+    <failureMessage></failureMessage>
+  </assertionResult>
+  <responseHeader class="java.lang.String">HTTP/1.1 200 OK
+Server: nginx/1.27.4
+Date: Sun, 02 Mar 2025 01:50:28 GMT
+Content-Type: text/plain; charset=utf-8
+Content-Length: 603
+Connection: keep-alive
+</responseHeader>
+  <requestHeader class="java.lang.String">Connection: keep-alive
+Content-Type: application/json
+token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3NDA4ODM4MjYsInN1YiI6ImU0ZWI1OGQ0LWQyZjEtNDUwMy1hNDQ1LWZiNjdkNjExMTlhZCJ9.Hft5D8Y4ff65sxQM6S4PudRnsu_XMPJ6rF32jxYdImc
+Host: localhost:3001
+User-Agent: Apache-HttpClient/4.5.14 (Java/21.0.6)
+</requestHeader>
+  <responseData class="java.lang.String">{&quot;success&quot;:true,&quot;data&quot;:[{&quot;user_id&quot;:&quot;e4eb58d4-d2f1-4503-a445-fb67d61119ad&quot;,&quot;stock_id&quot;:&quot;413a032c-9adc-44b9-b040-cb971cb8fcd7&quot;,&quot;stock_name&quot;:&quot;Unknown&quot;,&quot;quantity_owned&quot;:550,&quot;Entity&quot;:{&quot;ID&quot;:&quot;4efac0ac-4c38-4bae-a5fa-73f9c876083d&quot;,&quot;DateCreated&quot;:&quot;2025-03-02T01:50:27.346154Z&quot;,&quot;DateModified&quot;:&quot;2025-03-02T01:50:27.346154Z&quot;}},{&quot;user_id&quot;:&quot;e4eb58d4-d2f1-4503-a445-fb67d61119ad&quot;,&quot;stock_id&quot;:&quot;0e2490e5-007e-4d4c-a2a0-343cc95e3f32&quot;,&quot;stock_name&quot;:&quot;Unknown&quot;,&quot;quantity_owned&quot;:350,&quot;Entity&quot;:{&quot;ID&quot;:&quot;91c31ac4-fa0c-4013-8416-d6cc1647cbf0&quot;,&quot;DateCreated&quot;:&quot;2025-03-02T01:50:28.360759Z&quot;,&quot;DateModified&quot;:&quot;2025-03-02T01:50:28.360759Z&quot;}}]}</responseData>
+  <responseFile class="java.lang.String"></responseFile>
+  <cookies class="java.lang.String"></cookies>
+  <method class="java.lang.String">GET</method>
+  <queryString class="java.lang.String"></queryString>
+  <java.net.URL>http://localhost:3001/transaction/getStockPortfolio</java.net.URL>
+</httpSample>
+<httpSample t="12" it="0" lt="12" ct="0" ts="1740880229369" s="true" lb="10 Place Stock Order Request" rc="200" rm="OK" tn="User 1 Thread 1-1" dt="text" de="utf-8" by="191" sby="485" sc="1" ec="0" ng="1" na="1" hn="tower-ubuntu">
+  <assertionResult>
+    <name>success JSON Assertion</name>
+    <failure>false</failure>
+    <error>false</error>
+    <failureMessage></failureMessage>
+  </assertionResult>
+  <responseHeader class="java.lang.String">HTTP/1.1 200 OK
+Server: nginx/1.27.4
+Date: Sun, 02 Mar 2025 01:50:29 GMT
+Content-Type: text/plain; charset=utf-8
+Content-Length: 28
+Connection: keep-alive
+</responseHeader>
+  <requestHeader class="java.lang.String">Connection: keep-alive
+Content-Type: application/json
+token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3NDA4ODM4MjYsInN1YiI6ImU0ZWI1OGQ0LWQyZjEtNDUwMy1hNDQ1LWZiNjdkNjExMTlhZCJ9.Hft5D8Y4ff65sxQM6S4PudRnsu_XMPJ6rF32jxYdImc
+Content-Length: 119
+Host: localhost:3001
+User-Agent: Apache-HttpClient/4.5.14 (Java/21.0.6)
+</requestHeader>
+  <responseData class="java.lang.String">{&quot;success&quot;:true,&quot;data&quot;:null}</responseData>
+  <responseFile class="java.lang.String"></responseFile>
+  <cookies class="java.lang.String"></cookies>
+  <method class="java.lang.String">POST</method>
+  <queryString class="java.lang.String">{&quot;stock_id&quot;:&quot;413a032c-9adc-44b9-b040-cb971cb8fcd7&quot;, &quot;is_buy&quot;:false, &quot;order_type&quot;:&quot;LIMIT&quot;, &quot;quantity&quot;:550,&#xd;
+&quot;price&quot;:135}</queryString>
+  <java.net.URL>http://localhost:3001/engine/placeStockOrder</java.net.URL>
+</httpSample>
+<httpSample t="7" it="0" lt="7" ct="0" ts="1740880229882" s="true" lb="11 Place Stock Order Request" rc="200" rm="OK" tn="User 1 Thread 1-1" dt="text" de="utf-8" by="191" sby="485" sc="1" ec="0" ng="1" na="1" hn="tower-ubuntu">
+  <assertionResult>
+    <name>success JSON Assertion</name>
+    <failure>false</failure>
+    <error>false</error>
+    <failureMessage></failureMessage>
+  </assertionResult>
+  <responseHeader class="java.lang.String">HTTP/1.1 200 OK
+Server: nginx/1.27.4
+Date: Sun, 02 Mar 2025 01:50:29 GMT
+Content-Type: text/plain; charset=utf-8
+Content-Length: 28
+Connection: keep-alive
+</responseHeader>
+  <requestHeader class="java.lang.String">Connection: keep-alive
+Content-Type: application/json
+token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3NDA4ODM4MjYsInN1YiI6ImU0ZWI1OGQ0LWQyZjEtNDUwMy1hNDQ1LWZiNjdkNjExMTlhZCJ9.Hft5D8Y4ff65sxQM6S4PudRnsu_XMPJ6rF32jxYdImc
+Content-Length: 119
+Host: localhost:3001
+User-Agent: Apache-HttpClient/4.5.14 (Java/21.0.6)
+</requestHeader>
+  <responseData class="java.lang.String">{&quot;success&quot;:true,&quot;data&quot;:null}</responseData>
+  <responseFile class="java.lang.String"></responseFile>
+  <cookies class="java.lang.String"></cookies>
+  <method class="java.lang.String">POST</method>
+  <queryString class="java.lang.String">{&quot;stock_id&quot;:&quot;0e2490e5-007e-4d4c-a2a0-343cc95e3f32&quot;, &quot;is_buy&quot;:false, &quot;order_type&quot;:&quot;LIMIT&quot;, &quot;quantity&quot;:350,&#xd;
+&quot;price&quot;:140}</queryString>
+  <java.net.URL>http://localhost:3001/engine/placeStockOrder</java.net.URL>
+</httpSample>
+<httpSample t="3" it="0" lt="2" ct="0" ts="1740880230390" s="false" lb="12 Get Stock Portfolio Request" rc="200" rm="OK" tn="User 1 Thread 1-1" dt="text" de="utf-8" by="767" sby="351" sc="1" ec="1" ng="1" na="1" hn="tower-ubuntu">
+  <assertionResult>
+    <name>success JSON Assertion</name>
+    <failure>false</failure>
+    <error>false</error>
+    <failureMessage></failureMessage>
+  </assertionResult>
+  <assertionResult>
+    <name>data JSON Assertion</name>
+    <failure>true</failure>
+    <error>false</error>
+    <failureMessage>Invalid expression: []
+Unmatched [] in expression.</failureMessage>
+  </assertionResult>
+  <responseHeader class="java.lang.String">HTTP/1.1 200 OK
+Server: nginx/1.27.4
+Date: Sun, 02 Mar 2025 01:50:30 GMT
+Content-Type: text/plain; charset=utf-8
+Content-Length: 603
+Connection: keep-alive
+</responseHeader>
+  <requestHeader class="java.lang.String">Connection: keep-alive
+Content-Type: application/json
+token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3NDA4ODM4MjYsInN1YiI6ImU0ZWI1OGQ0LWQyZjEtNDUwMy1hNDQ1LWZiNjdkNjExMTlhZCJ9.Hft5D8Y4ff65sxQM6S4PudRnsu_XMPJ6rF32jxYdImc
+Host: localhost:3001
+User-Agent: Apache-HttpClient/4.5.14 (Java/21.0.6)
+</requestHeader>
+  <responseData class="java.lang.String">{&quot;success&quot;:true,&quot;data&quot;:[{&quot;user_id&quot;:&quot;e4eb58d4-d2f1-4503-a445-fb67d61119ad&quot;,&quot;stock_id&quot;:&quot;413a032c-9adc-44b9-b040-cb971cb8fcd7&quot;,&quot;stock_name&quot;:&quot;Unknown&quot;,&quot;quantity_owned&quot;:550,&quot;Entity&quot;:{&quot;ID&quot;:&quot;4efac0ac-4c38-4bae-a5fa-73f9c876083d&quot;,&quot;DateCreated&quot;:&quot;2025-03-02T01:50:27.346154Z&quot;,&quot;DateModified&quot;:&quot;2025-03-02T01:50:27.346154Z&quot;}},{&quot;user_id&quot;:&quot;e4eb58d4-d2f1-4503-a445-fb67d61119ad&quot;,&quot;stock_id&quot;:&quot;0e2490e5-007e-4d4c-a2a0-343cc95e3f32&quot;,&quot;stock_name&quot;:&quot;Unknown&quot;,&quot;quantity_owned&quot;:350,&quot;Entity&quot;:{&quot;ID&quot;:&quot;91c31ac4-fa0c-4013-8416-d6cc1647cbf0&quot;,&quot;DateCreated&quot;:&quot;2025-03-02T01:50:28.360759Z&quot;,&quot;DateModified&quot;:&quot;2025-03-02T01:50:28.360759Z&quot;}}]}</responseData>
+  <responseFile class="java.lang.String"></responseFile>
+  <cookies class="java.lang.String"></cookies>
+  <method class="java.lang.String">GET</method>
+  <queryString class="java.lang.String"></queryString>
+  <java.net.URL>http://localhost:3001/transaction/getStockPortfolio</java.net.URL>
+</httpSample>
+<httpSample t="2" it="0" lt="2" ct="0" ts="1740880230893" s="false" lb="13 Get Stock Transactions Request" rc="200" rm="OK" tn="User 1 Thread 1-1" dt="text" de="utf-8" by="1017" sby="354" sc="1" ec="1" ng="1" na="1" hn="tower-ubuntu">
+  <assertionResult>
+    <name>success JSON Assertion</name>
+    <failure>false</failure>
+    <error>false</error>
+    <failureMessage></failureMessage>
+  </assertionResult>
+  <assertionResult>
+    <name>data[0].parent_stock_tx_id JSON Assertion</name>
+    <failure>true</failure>
+    <error>false</error>
+    <failureMessage>Value in json path &apos;$.data[0].parent_stock_tx_id&apos; expected to match regexp &apos;null&apos;, but it did not match: &apos;&apos;</failureMessage>
+  </assertionResult>
+  <assertionResult>
+    <name>data[0].wallet_tx_id JSON Assertion</name>
+    <failure>true</failure>
+    <error>false</error>
+    <failureMessage>Value in json path &apos;$.data[0].wallet_tx_id&apos; expected to match regexp &apos;null&apos;, but it did not match: &apos;&apos;</failureMessage>
+  </assertionResult>
+  <assertionResult>
+    <name>data[0].stock_id JSON Assertion</name>
+    <failure>false</failure>
+    <error>false</error>
+    <failureMessage></failureMessage>
+  </assertionResult>
+  <assertionResult>
+    <name>data[0].order_status JSON Assertion</name>
+    <failure>true</failure>
+    <error>false</error>
+    <failureMessage>Value in json path &apos;$.data[0].order_status&apos; expected to match regexp &apos;IN_PROGRESS&apos;, but it did not match: &apos;&apos;</failureMessage>
+  </assertionResult>
+  <assertionResult>
+    <name>data[0].is_buy JSON Assertion</name>
+    <failure>false</failure>
+    <error>false</error>
+    <failureMessage></failureMessage>
+  </assertionResult>
+  <assertionResult>
+    <name>data[0].order_type JSON Assertion</name>
+    <failure>false</failure>
+    <error>false</error>
+    <failureMessage></failureMessage>
+  </assertionResult>
+  <assertionResult>
+    <name>data[0].stock_price JSON Assertion</name>
+    <failure>false</failure>
+    <error>false</error>
+    <failureMessage></failureMessage>
+  </assertionResult>
+  <assertionResult>
+    <name>data[0].quantity JSON Assertion</name>
+    <failure>false</failure>
+    <error>false</error>
+    <failureMessage></failureMessage>
+  </assertionResult>
+  <assertionResult>
+    <name>data[1].parent_stock_tx_id JSON Assertion</name>
+    <failure>true</failure>
+    <error>false</error>
+    <failureMessage>Value in json path &apos;$.data[1].parent_stock_tx_id&apos; expected to match regexp &apos;null&apos;, but it did not match: &apos;&apos;</failureMessage>
+  </assertionResult>
+  <assertionResult>
+    <name>data[1].wallet_tx_id JSON Assertion</name>
+    <failure>true</failure>
+    <error>false</error>
+    <failureMessage>Value in json path &apos;$.data[1].wallet_tx_id&apos; expected to match regexp &apos;null&apos;, but it did not match: &apos;&apos;</failureMessage>
+  </assertionResult>
+  <assertionResult>
+    <name>data[1].stock_id JSON Assertion</name>
+    <failure>false</failure>
+    <error>false</error>
+    <failureMessage></failureMessage>
+  </assertionResult>
+  <assertionResult>
+    <name>data[1].order_status JSON Assertion</name>
+    <failure>true</failure>
+    <error>false</error>
+    <failureMessage>Value in json path &apos;$.data[1].order_status&apos; expected to match regexp &apos;IN_PROGRESS&apos;, but it did not match: &apos;&apos;</failureMessage>
+  </assertionResult>
+  <assertionResult>
+    <name>data[1].is_buy JSON Assertion</name>
+    <failure>false</failure>
+    <error>false</error>
+    <failureMessage></failureMessage>
+  </assertionResult>
+  <assertionResult>
+    <name>data[1].order_type JSON Assertion</name>
+    <failure>false</failure>
+    <error>false</error>
+    <failureMessage></failureMessage>
+  </assertionResult>
+  <assertionResult>
+    <name>data[1].stock_price JSON Assertion</name>
+    <failure>false</failure>
+    <error>false</error>
+    <failureMessage></failureMessage>
+  </assertionResult>
+  <assertionResult>
+    <name>data[1].quantity JSON Assertion</name>
+    <failure>false</failure>
+    <error>false</error>
+    <failureMessage></failureMessage>
+  </assertionResult>
+  <responseHeader class="java.lang.String">HTTP/1.1 200 OK
+Server: nginx/1.27.4
+Date: Sun, 02 Mar 2025 01:50:30 GMT
+Content-Type: text/plain; charset=utf-8
+Content-Length: 853
+Connection: keep-alive
+</responseHeader>
+  <requestHeader class="java.lang.String">Connection: keep-alive
+Content-Type: application/json
+token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3NDA4ODM4MjYsInN1YiI6ImU0ZWI1OGQ0LWQyZjEtNDUwMy1hNDQ1LWZiNjdkNjExMTlhZCJ9.Hft5D8Y4ff65sxQM6S4PudRnsu_XMPJ6rF32jxYdImc
+Host: localhost:3001
+User-Agent: Apache-HttpClient/4.5.14 (Java/21.0.6)
+</requestHeader>
+  <responseData class="java.lang.String">{&quot;success&quot;:true,&quot;data&quot;:[{&quot;stock_tx_id&quot;:&quot;bc8b68fe-8664-4736-9aa1-edb8b99d5e08&quot;,&quot;stock_id&quot;:&quot;413a032c-9adc-44b9-b040-cb971cb8fcd7&quot;,&quot;parent_stock_tx_id&quot;:&quot;&quot;,&quot;wallet_tx_id&quot;:&quot;&quot;,&quot;order_status&quot;:&quot;&quot;,&quot;is_buy&quot;:false,&quot;order_type&quot;:&quot;LIMIT&quot;,&quot;stock_price&quot;:135,&quot;quantity&quot;:550,&quot;time_stamp&quot;:&quot;0001-01-01T00:00:00Z&quot;,&quot;entity&quot;:{&quot;ID&quot;:&quot;bc8b68fe-8664-4736-9aa1-edb8b99d5e08&quot;,&quot;DateCreated&quot;:&quot;2025-03-02T01:50:29.373036Z&quot;,&quot;DateModified&quot;:&quot;2025-03-02T01:50:29.373036Z&quot;}},{&quot;stock_tx_id&quot;:&quot;286fee21-8ec0-4965-a6a3-17988c69c14d&quot;,&quot;stock_id&quot;:&quot;0e2490e5-007e-4d4c-a2a0-343cc95e3f32&quot;,&quot;parent_stock_tx_id&quot;:&quot;&quot;,&quot;wallet_tx_id&quot;:&quot;&quot;,&quot;order_status&quot;:&quot;&quot;,&quot;is_buy&quot;:false,&quot;order_type&quot;:&quot;LIMIT&quot;,&quot;stock_price&quot;:140,&quot;quantity&quot;:350,&quot;time_stamp&quot;:&quot;0001-01-01T00:00:00Z&quot;,&quot;entity&quot;:{&quot;ID&quot;:&quot;286fee21-8ec0-4965-a6a3-17988c69c14d&quot;,&quot;DateCreated&quot;:&quot;2025-03-02T01:50:29.884225Z&quot;,&quot;DateModified&quot;:&quot;2025-03-02T01:50:29.884225Z&quot;}}]}</responseData>
+  <responseFile class="java.lang.String"></responseFile>
+  <cookies class="java.lang.String"></cookies>
+  <method class="java.lang.String">GET</method>
+  <queryString class="java.lang.String"></queryString>
+  <java.net.URL>http://localhost:3001/transaction/getStockTransactions</java.net.URL>
+</httpSample>
+<sample t="0" it="0" lt="0" ct="0" ts="1740880230897" s="true" lb="Debug Sampler" rc="200" rm="OK" tn="User 1 Thread 1-1" dt="text" de="UTF-8" by="1273" sby="0" sc="1" ec="0" ng="1" na="1" hn="tower-ubuntu">
+  <responseHeader class="java.lang.String"></responseHeader>
+  <requestHeader class="java.lang.String"></requestHeader>
+  <responseData class="java.lang.String">JMeterVariables:
+BASE_PORT=3001
+BASE_URL=localhost
+JMeterThread.last_sample_ok=false
+JMeterThread.pack=org.apache.jmeter.threads.SamplePackage@3810f94f
+START.HMS=143832
+START.MS=1740868712639
+START.YMD=20250301
+TESTSTART.MS=1740880224656
+__jm__User 1 Thread__idx=0
+__jmeter.U_T__=User 1 Thread 1-1
+__jmv_SAME_USER=true
+addMoneyToWallet=/transaction/addMoneyToWallet
+addStockToUser=/setup/addStockToUser
+appleStockId=0e2490e5-007e-4d4c-a2a0-343cc95e3f32
+cancelStockTransaction=/engine/cancelStockTransaction
+compToken=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3NDA4ODM4MjYsInN1YiI6ImU0ZWI1OGQ0LWQyZjEtNDUwMy1hNDQ1LWZiNjdkNjExMTlhZCJ9.Hft5D8Y4ff65sxQM6S4PudRnsu_XMPJ6rF32jxYdImc
+createStock=/setup/createStock
+getStockPortfolio=/transaction/getStockPortfolio
+getStockPrices=/transaction/getStockPrices
+getStockPricesPort=/transaction/getStockPrices
+getStockTransactions=/transaction/getStockTransactions
+getWalletBalance=/transaction/getWalletBalance
+getWalletTransactions=/transaction/getWalletTransactions
+googleCompStockTxId=bc8b68fe-8664-4736-9aa1-edb8b99d5e08
+googleStockId=413a032c-9adc-44b9-b040-cb971cb8fcd7
+invalidToken=eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9
+login=/authentication/login
+placeStockOrder=/engine/placeStockOrder
+register=/authentication/register
+
+</responseData>
+  <responseFile class="java.lang.String"></responseFile>
+  <samplerData class="java.lang.String">JMeterVariables
+</samplerData>
+</sample>
+<httpSample t="50" it="0" lt="50" ct="0" ts="1740880231398" s="true" lb="14 Register Request" rc="200" rm="OK" tn="User 1 Thread 1-1" dt="text" de="utf-8" by="197" sby="271" sc="1" ec="0" ng="1" na="1" hn="tower-ubuntu">
+  <assertionResult>
+    <name>success JSON Assertion</name>
+    <failure>false</failure>
+    <error>false</error>
+    <failureMessage></failureMessage>
+  </assertionResult>
+  <responseHeader class="java.lang.String">HTTP/1.1 200 OK
+Server: nginx/1.27.4
+Date: Sun, 02 Mar 2025 01:50:31 GMT
+Content-Type: application/json; charset=utf-8
+Content-Length: 28
+Connection: keep-alive
+</responseHeader>
+  <requestHeader class="java.lang.String">Connection: keep-alive
+Content-Type: application/json
+Content-Length: 79
+Host: localhost:3001
+User-Agent: Apache-HttpClient/4.5.14 (Java/21.0.6)
+</requestHeader>
+  <responseData class="java.lang.String">{&quot;data&quot;:null,&quot;success&quot;:true}</responseData>
+  <responseFile class="java.lang.String"></responseFile>
+  <cookies class="java.lang.String"></cookies>
+  <method class="java.lang.String">POST</method>
+  <queryString class="java.lang.String">{&quot;user_name&quot;:&quot;FinanceGuru&quot;, &quot;password&quot;:&quot;Fguru@2024&quot;, &quot;name&quot;:&quot;The Finance Guru&quot;}</queryString>
+  <java.net.URL>http://localhost:3001/authentication/register</java.net.URL>
+</httpSample>
+<httpSample t="44" it="0" lt="44" ct="0" ts="1740880231949" s="true" lb="15 Login Request" rc="200" rm="OK" tn="User 1 Thread 1-1" dt="text" de="utf-8" by="371" sby="241" sc="1" ec="0" ng="1" na="1" hn="tower-ubuntu">
+  <assertionResult>
+    <name>success JSON Assertion</name>
+    <failure>false</failure>
+    <error>false</error>
+    <failureMessage></failureMessage>
+  </assertionResult>
+  <responseHeader class="java.lang.String">HTTP/1.1 200 OK
+Server: nginx/1.27.4
+Date: Sun, 02 Mar 2025 01:50:31 GMT
+Content-Type: application/json; charset=utf-8
+Content-Length: 201
+Connection: keep-alive
+</responseHeader>
+  <requestHeader class="java.lang.String">Connection: keep-alive
+Content-Type: application/json
+Content-Length: 52
+Host: localhost:3001
+User-Agent: Apache-HttpClient/4.5.14 (Java/21.0.6)
+</requestHeader>
+  <responseData class="java.lang.String">{&quot;data&quot;:{&quot;token&quot;:&quot;eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3NDA4ODM4MzEsInN1YiI6IjQyMGQxNzMxLWQ4MjUtNGMwOC05MjAzLTdiZWM0OTc2NTVmYyJ9.iYzVi1mgBwu0eMVdhJl-GhifyB7hWPwSMxorZLclOjw&quot;},&quot;success&quot;:true}</responseData>
+  <responseFile class="java.lang.String"></responseFile>
+  <cookies class="java.lang.String"></cookies>
+  <method class="java.lang.String">POST</method>
+  <queryString class="java.lang.String">{&quot;user_name&quot;:&quot;FinanceGuru&quot;, &quot;password&quot;:&quot;Fguru@2024&quot;}</queryString>
+  <java.net.URL>http://localhost:3001/authentication/login</java.net.URL>
+</httpSample>
+<httpSample t="2" it="0" lt="2" ct="0" ts="1740880232494" s="true" lb="16 Get Stock Prices Request" rc="200" rm="OK" tn="User 1 Thread 1-1" dt="text" de="utf-8" by="376" sby="348" sc="1" ec="0" ng="1" na="1" hn="tower-ubuntu">
+  <assertionResult>
+    <name>success JSON Assertion</name>
+    <failure>false</failure>
+    <error>false</error>
+    <failureMessage></failureMessage>
+  </assertionResult>
+  <assertionResult>
+    <name>data[0].stock_id JSON Assertion</name>
+    <failure>false</failure>
+    <error>false</error>
+    <failureMessage></failureMessage>
+  </assertionResult>
+  <assertionResult>
+    <name>data[0].stock_name JSON Assertion</name>
+    <failure>false</failure>
+    <error>false</error>
+    <failureMessage></failureMessage>
+  </assertionResult>
+  <assertionResult>
+    <name>data[0].current_price JSON Assertion</name>
+    <failure>false</failure>
+    <error>false</error>
+    <failureMessage></failureMessage>
+  </assertionResult>
+  <assertionResult>
+    <name>data[1].stock_id JSON Assertion</name>
+    <failure>false</failure>
+    <error>false</error>
+    <failureMessage></failureMessage>
+  </assertionResult>
+  <assertionResult>
+    <name>data[1].stock_name JSON Assertion</name>
+    <failure>false</failure>
+    <error>false</error>
+    <failureMessage></failureMessage>
+  </assertionResult>
+  <assertionResult>
+    <name>data[1].current_price JSON Assertion</name>
+    <failure>false</failure>
+    <error>false</error>
+    <failureMessage></failureMessage>
+  </assertionResult>
+  <responseHeader class="java.lang.String">HTTP/1.1 200 OK
+Server: nginx/1.27.4
+Date: Sun, 02 Mar 2025 01:50:32 GMT
+Content-Type: text/plain; charset=utf-8
+Content-Length: 212
+Connection: keep-alive
+</responseHeader>
+  <requestHeader class="java.lang.String">Connection: keep-alive
+Content-Type: application/json
+token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3NDA4ODM4MzEsInN1YiI6IjQyMGQxNzMxLWQ4MjUtNGMwOC05MjAzLTdiZWM0OTc2NTVmYyJ9.iYzVi1mgBwu0eMVdhJl-GhifyB7hWPwSMxorZLclOjw
+Host: localhost:3001
+User-Agent: Apache-HttpClient/4.5.14 (Java/21.0.6)
+</requestHeader>
+  <responseData class="java.lang.String">{&quot;success&quot;:true,&quot;data&quot;:[{&quot;stock_id&quot;:&quot;413a032c-9adc-44b9-b040-cb971cb8fcd7&quot;,&quot;stock_name&quot;:&quot;Google&quot;,&quot;current_price&quot;:135},{&quot;stock_id&quot;:&quot;0e2490e5-007e-4d4c-a2a0-343cc95e3f32&quot;,&quot;stock_name&quot;:&quot;Apple&quot;,&quot;current_price&quot;:140}]}</responseData>
+  <responseFile class="java.lang.String"></responseFile>
+  <cookies class="java.lang.String"></cookies>
+  <method class="java.lang.String">GET</method>
+  <queryString class="java.lang.String"></queryString>
+  <java.net.URL>http://localhost:3001/transaction/getStockPrices</java.net.URL>
+</httpSample>
+<httpSample t="6" it="0" lt="6" ct="0" ts="1740880232997" s="true" lb="17 Add Money Request" rc="200" rm="OK" tn="User 1 Thread 1-1" dt="text" de="utf-8" by="191" sby="387" sc="1" ec="0" ng="1" na="1" hn="tower-ubuntu">
+  <assertionResult>
+    <name>success JSON Assertion</name>
+    <failure>false</failure>
+    <error>false</error>
+    <failureMessage></failureMessage>
+  </assertionResult>
+  <responseHeader class="java.lang.String">HTTP/1.1 200 OK
+Server: nginx/1.27.4
+Date: Sun, 02 Mar 2025 01:50:33 GMT
+Content-Type: text/plain; charset=utf-8
+Content-Length: 28
+Connection: keep-alive
+</responseHeader>
+  <requestHeader class="java.lang.String">Connection: keep-alive
+Content-Type: application/json
+token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3NDA4ODM4MzEsInN1YiI6IjQyMGQxNzMxLWQ4MjUtNGMwOC05MjAzLTdiZWM0OTc2NTVmYyJ9.iYzVi1mgBwu0eMVdhJl-GhifyB7hWPwSMxorZLclOjw
+Content-Length: 16
+Host: localhost:3001
+User-Agent: Apache-HttpClient/4.5.14 (Java/21.0.6)
+</requestHeader>
+  <responseData class="java.lang.String">{&quot;success&quot;:true,&quot;data&quot;:null}</responseData>
+  <responseFile class="java.lang.String"></responseFile>
+  <cookies class="java.lang.String"></cookies>
+  <method class="java.lang.String">POST</method>
+  <queryString class="java.lang.String">{&quot;amount&quot;:10000}</queryString>
+  <java.net.URL>http://localhost:3001/transaction/addMoneyToWallet</java.net.URL>
+</httpSample>
+<httpSample t="2" it="0" lt="2" ct="0" ts="1740880233504" s="true" lb="18 Get Wallet Balance Request" rc="200" rm="OK" tn="User 1 Thread 1-1" dt="text" de="utf-8" by="204" sby="350" sc="1" ec="0" ng="1" na="1" hn="tower-ubuntu">
+  <assertionResult>
+    <name>success JSON Assertion</name>
+    <failure>false</failure>
+    <error>false</error>
+    <failureMessage></failureMessage>
+  </assertionResult>
+  <assertionResult>
+    <name>data.balance JSON Assertion</name>
+    <failure>false</failure>
+    <error>false</error>
+    <failureMessage></failureMessage>
+  </assertionResult>
+  <responseHeader class="java.lang.String">HTTP/1.1 200 OK
+Server: nginx/1.27.4
+Date: Sun, 02 Mar 2025 01:50:33 GMT
+Content-Type: text/plain; charset=utf-8
+Content-Length: 41
+Connection: keep-alive
+</responseHeader>
+  <requestHeader class="java.lang.String">Connection: keep-alive
+Content-Type: application/json
+token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3NDA4ODM4MzEsInN1YiI6IjQyMGQxNzMxLWQ4MjUtNGMwOC05MjAzLTdiZWM0OTc2NTVmYyJ9.iYzVi1mgBwu0eMVdhJl-GhifyB7hWPwSMxorZLclOjw
+Host: localhost:3001
+User-Agent: Apache-HttpClient/4.5.14 (Java/21.0.6)
+</requestHeader>
+  <responseData class="java.lang.String">{&quot;success&quot;:true,&quot;data&quot;:{&quot;balance&quot;:10000}}</responseData>
+  <responseFile class="java.lang.String"></responseFile>
+  <cookies class="java.lang.String"></cookies>
+  <method class="java.lang.String">GET</method>
+  <queryString class="java.lang.String"></queryString>
+  <java.net.URL>http://localhost:3001/transaction/getWalletBalance</java.net.URL>
+</httpSample>
+<httpSample t="9" it="0" lt="9" ct="0" ts="1740880234006" s="true" lb="19 Place Stock Order Request" rc="200" rm="OK" tn="User 1 Thread 1-1" dt="text" de="utf-8" by="191" sby="470" sc="1" ec="0" ng="1" na="1" hn="tower-ubuntu">
+  <assertionResult>
+    <name>success JSON Assertion</name>
+    <failure>false</failure>
+    <error>false</error>
+    <failureMessage></failureMessage>
+  </assertionResult>
+  <responseHeader class="java.lang.String">HTTP/1.1 200 OK
+Server: nginx/1.27.4
+Date: Sun, 02 Mar 2025 01:50:34 GMT
+Content-Type: text/plain; charset=utf-8
+Content-Length: 28
+Connection: keep-alive
+</responseHeader>
+  <requestHeader class="java.lang.String">Connection: keep-alive
+Content-Type: application/json
+token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3NDA4ODM4MzEsInN1YiI6IjQyMGQxNzMxLWQ4MjUtNGMwOC05MjAzLTdiZWM0OTc2NTVmYyJ9.iYzVi1mgBwu0eMVdhJl-GhifyB7hWPwSMxorZLclOjw
+Content-Length: 104
+Host: localhost:3001
+User-Agent: Apache-HttpClient/4.5.14 (Java/21.0.6)
+</requestHeader>
+  <responseData class="java.lang.String">{&quot;success&quot;:true,&quot;data&quot;:null}</responseData>
+  <responseFile class="java.lang.String"></responseFile>
+  <cookies class="java.lang.String"></cookies>
+  <method class="java.lang.String">POST</method>
+  <queryString class="java.lang.String">{&quot;stock_id&quot;:&quot;413a032c-9adc-44b9-b040-cb971cb8fcd7&quot;, &quot;is_buy&quot;:true, &quot;order_type&quot;:&quot;MARKET&quot;, &quot;quantity&quot;:10}</queryString>
+  <java.net.URL>http://localhost:3001/engine/placeStockOrder</java.net.URL>
+</httpSample>
+<httpSample t="2" it="0" lt="2" ct="0" ts="1740880234515" s="false" lb="20 Get Stock Transactions Request" rc="200" rm="OK" tn="User 1 Thread 1-1" dt="text" de="utf-8" by="1429" sby="354" sc="1" ec="1" ng="1" na="1" hn="tower-ubuntu">
+  <assertionResult>
+    <name>success JSON Assertion</name>
+    <failure>false</failure>
+    <error>false</error>
+    <failureMessage></failureMessage>
+  </assertionResult>
+  <assertionResult>
+    <name>data[0].parent_stock_tx_id JSON Assertion</name>
+    <failure>true</failure>
+    <error>false</error>
+    <failureMessage>Value in json path &apos;$.data[0].parent_stock_tx_id&apos; expected to match regexp &apos;null&apos;, but it did not match: &apos;&apos;</failureMessage>
+  </assertionResult>
+  <assertionResult>
+    <name>data[0].stock_id JSON Assertion</name>
+    <failure>false</failure>
+    <error>false</error>
+    <failureMessage></failureMessage>
+  </assertionResult>
+  <assertionResult>
+    <name>data[0].order_status JSON Assertion</name>
+    <failure>true</failure>
+    <error>false</error>
+    <failureMessage>Value in json path &apos;$.data[0].order_status&apos; expected to match regexp &apos;COMPLETED&apos;, but it did not match: &apos;&apos;</failureMessage>
+  </assertionResult>
+  <assertionResult>
+    <name>data[0].is_buy JSON Assertion</name>
+    <failure>true</failure>
+    <error>false</error>
+    <failureMessage>Value in json path &apos;$.data[0].is_buy&apos; expected to match regexp &apos;true&apos;, but it did not match: &apos;false&apos;</failureMessage>
+  </assertionResult>
+  <assertionResult>
+    <name>data[0].order_type JSON Assertion</name>
+    <failure>true</failure>
+    <error>false</error>
+    <failureMessage>Value in json path &apos;$.data[0].order_type&apos; expected to match regexp &apos;MARKET&apos;, but it did not match: &apos;LIMIT&apos;</failureMessage>
+  </assertionResult>
+  <assertionResult>
+    <name>data[0].stock_price JSON Assertion</name>
+    <failure>false</failure>
+    <error>false</error>
+    <failureMessage></failureMessage>
+  </assertionResult>
+  <assertionResult>
+    <name>data[0].quantity JSON Assertion</name>
+    <failure>true</failure>
+    <error>false</error>
+    <failureMessage>Value in json path &apos;$.data[0].quantity&apos; expected to match regexp &apos;10&apos;, but it did not match: &apos;550&apos;</failureMessage>
+  </assertionResult>
+  <responseHeader class="java.lang.String">HTTP/1.1 200 OK
+Server: nginx/1.27.4
+Date: Sun, 02 Mar 2025 01:50:34 GMT
+Content-Type: text/plain; charset=utf-8
+Content-Length: 1264
+Connection: keep-alive
+</responseHeader>
+  <requestHeader class="java.lang.String">Connection: keep-alive
+Content-Type: application/json
+token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3NDA4ODM4MzEsInN1YiI6IjQyMGQxNzMxLWQ4MjUtNGMwOC05MjAzLTdiZWM0OTc2NTVmYyJ9.iYzVi1mgBwu0eMVdhJl-GhifyB7hWPwSMxorZLclOjw
+Host: localhost:3001
+User-Agent: Apache-HttpClient/4.5.14 (Java/21.0.6)
+</requestHeader>
+  <responseData class="java.lang.String">{&quot;success&quot;:true,&quot;data&quot;:[{&quot;stock_tx_id&quot;:&quot;bc8b68fe-8664-4736-9aa1-edb8b99d5e08&quot;,&quot;stock_id&quot;:&quot;413a032c-9adc-44b9-b040-cb971cb8fcd7&quot;,&quot;parent_stock_tx_id&quot;:&quot;&quot;,&quot;wallet_tx_id&quot;:&quot;&quot;,&quot;order_status&quot;:&quot;&quot;,&quot;is_buy&quot;:false,&quot;order_type&quot;:&quot;LIMIT&quot;,&quot;stock_price&quot;:135,&quot;quantity&quot;:550,&quot;time_stamp&quot;:&quot;0001-01-01T00:00:00Z&quot;,&quot;entity&quot;:{&quot;ID&quot;:&quot;bc8b68fe-8664-4736-9aa1-edb8b99d5e08&quot;,&quot;DateCreated&quot;:&quot;2025-03-02T01:50:29.373036Z&quot;,&quot;DateModified&quot;:&quot;2025-03-02T01:50:29.373036Z&quot;}},{&quot;stock_tx_id&quot;:&quot;286fee21-8ec0-4965-a6a3-17988c69c14d&quot;,&quot;stock_id&quot;:&quot;0e2490e5-007e-4d4c-a2a0-343cc95e3f32&quot;,&quot;parent_stock_tx_id&quot;:&quot;&quot;,&quot;wallet_tx_id&quot;:&quot;&quot;,&quot;order_status&quot;:&quot;&quot;,&quot;is_buy&quot;:false,&quot;order_type&quot;:&quot;LIMIT&quot;,&quot;stock_price&quot;:140,&quot;quantity&quot;:350,&quot;time_stamp&quot;:&quot;0001-01-01T00:00:00Z&quot;,&quot;entity&quot;:{&quot;ID&quot;:&quot;286fee21-8ec0-4965-a6a3-17988c69c14d&quot;,&quot;DateCreated&quot;:&quot;2025-03-02T01:50:29.884225Z&quot;,&quot;DateModified&quot;:&quot;2025-03-02T01:50:29.884225Z&quot;}},{&quot;stock_tx_id&quot;:&quot;84699833-f115-4a88-a8e1-25b8416f1503&quot;,&quot;stock_id&quot;:&quot;413a032c-9adc-44b9-b040-cb971cb8fcd7&quot;,&quot;parent_stock_tx_id&quot;:&quot;&quot;,&quot;wallet_tx_id&quot;:&quot;&quot;,&quot;order_status&quot;:&quot;&quot;,&quot;is_buy&quot;:true,&quot;order_type&quot;:&quot;MARKET&quot;,&quot;stock_price&quot;:0,&quot;quantity&quot;:10,&quot;time_stamp&quot;:&quot;0001-01-01T00:00:00Z&quot;,&quot;entity&quot;:{&quot;ID&quot;:&quot;84699833-f115-4a88-a8e1-25b8416f1503&quot;,&quot;DateCreated&quot;:&quot;2025-03-02T01:50:34.009298Z&quot;,&quot;DateModified&quot;:&quot;2025-03-02T01:50:34.009298Z&quot;}}]}</responseData>
+  <responseFile class="java.lang.String"></responseFile>
+  <cookies class="java.lang.String"></cookies>
+  <method class="java.lang.String">GET</method>
+  <queryString class="java.lang.String"></queryString>
+  <java.net.URL>http://localhost:3001/transaction/getStockTransactions</java.net.URL>
+</httpSample>
+<httpSample t="2" it="0" lt="2" ct="0" ts="1740880235018" s="false" lb="21 Get Wallet Transactions Request" rc="200" rm="OK" tn="User 1 Thread 1-1" dt="text" de="utf-8" by="189" sby="355" sc="1" ec="1" ng="1" na="1" hn="tower-ubuntu">
+  <assertionResult>
+    <name>success JSON Assertion</name>
+    <failure>false</failure>
+    <error>false</error>
+    <failureMessage></failureMessage>
+  </assertionResult>
+  <assertionResult>
+    <name>data[0].wallet_tx_id JSON Assertion</name>
+    <failure>true</failure>
+    <error>false</error>
+    <failureMessage>No results for path: $[&apos;data&apos;][0][&apos;wallet_tx_id&apos;]</failureMessage>
+  </assertionResult>
+  <assertionResult>
+    <name>data[0].stock_tx_id JSON Assertion</name>
+    <failure>true</failure>
+    <error>false</error>
+    <failureMessage>No results for path: $[&apos;data&apos;][0][&apos;stock_tx_id&apos;]</failureMessage>
+  </assertionResult>
+  <assertionResult>
+    <name>data[0].is_debit JSON Assertion</name>
+    <failure>true</failure>
+    <error>false</error>
+    <failureMessage>No results for path: $[&apos;data&apos;][0][&apos;is_debit&apos;]</failureMessage>
+  </assertionResult>
+  <assertionResult>
+    <name>data[0].amount JSON Assertion</name>
+    <failure>true</failure>
+    <error>false</error>
+    <failureMessage>No results for path: $[&apos;data&apos;][0][&apos;amount&apos;]</failureMessage>
+  </assertionResult>
+  <responseHeader class="java.lang.String">HTTP/1.1 200 OK
+Server: nginx/1.27.4
+Date: Sun, 02 Mar 2025 01:50:35 GMT
+Content-Type: text/plain; charset=utf-8
+Content-Length: 26
+Connection: keep-alive
+</responseHeader>
+  <requestHeader class="java.lang.String">Connection: keep-alive
+Content-Type: application/json
+token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3NDA4ODM4MzEsInN1YiI6IjQyMGQxNzMxLWQ4MjUtNGMwOC05MjAzLTdiZWM0OTc2NTVmYyJ9.iYzVi1mgBwu0eMVdhJl-GhifyB7hWPwSMxorZLclOjw
+Host: localhost:3001
+User-Agent: Apache-HttpClient/4.5.14 (Java/21.0.6)
+</requestHeader>
+  <responseData class="java.lang.String">{&quot;success&quot;:true,&quot;data&quot;:[]}</responseData>
+  <responseFile class="java.lang.String"></responseFile>
+  <cookies class="java.lang.String"></cookies>
+  <method class="java.lang.String">GET</method>
+  <queryString class="java.lang.String"></queryString>
+  <java.net.URL>http://localhost:3001/transaction/getWalletTransactions</java.net.URL>
+</httpSample>
+<httpSample t="2" it="0" lt="2" ct="0" ts="1740880235521" s="false" lb="22 Get Wallet Balance Request" rc="200" rm="OK" tn="User 1 Thread 1-1" dt="text" de="utf-8" by="204" sby="350" sc="1" ec="1" ng="1" na="1" hn="tower-ubuntu">
+  <assertionResult>
+    <name>success JSON Assertion</name>
+    <failure>false</failure>
+    <error>false</error>
+    <failureMessage></failureMessage>
+  </assertionResult>
+  <assertionResult>
+    <name>data.balance JSON Assertion</name>
+    <failure>true</failure>
+    <error>false</error>
+    <failureMessage>Value in json path &apos;$.data.balance&apos; expected to match regexp &apos;8650&apos;, but it did not match: &apos;10000&apos;</failureMessage>
+  </assertionResult>
+  <responseHeader class="java.lang.String">HTTP/1.1 200 OK
+Server: nginx/1.27.4
+Date: Sun, 02 Mar 2025 01:50:35 GMT
+Content-Type: text/plain; charset=utf-8
+Content-Length: 41
+Connection: keep-alive
+</responseHeader>
+  <requestHeader class="java.lang.String">Connection: keep-alive
+Content-Type: application/json
+token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3NDA4ODM4MzEsInN1YiI6IjQyMGQxNzMxLWQ4MjUtNGMwOC05MjAzLTdiZWM0OTc2NTVmYyJ9.iYzVi1mgBwu0eMVdhJl-GhifyB7hWPwSMxorZLclOjw
+Host: localhost:3001
+User-Agent: Apache-HttpClient/4.5.14 (Java/21.0.6)
+</requestHeader>
+  <responseData class="java.lang.String">{&quot;success&quot;:true,&quot;data&quot;:{&quot;balance&quot;:10000}}</responseData>
+  <responseFile class="java.lang.String"></responseFile>
+  <cookies class="java.lang.String"></cookies>
+  <method class="java.lang.String">GET</method>
+  <queryString class="java.lang.String"></queryString>
+  <java.net.URL>http://localhost:3001/transaction/getWalletBalance</java.net.URL>
+</httpSample>
+<httpSample t="1" it="0" lt="1" ct="0" ts="1740880236024" s="false" lb="23 Get Stock Portfolio Request" rc="200" rm="OK" tn="User 1 Thread 1-1" dt="text" de="utf-8" by="189" sby="351" sc="1" ec="1" ng="1" na="1" hn="tower-ubuntu">
+  <assertionResult>
+    <name>success JSON Assertion</name>
+    <failure>false</failure>
+    <error>false</error>
+    <failureMessage></failureMessage>
+  </assertionResult>
+  <assertionResult>
+    <name>data[0].stock_id JSON Assertion</name>
+    <failure>true</failure>
+    <error>false</error>
+    <failureMessage>No results for path: $[&apos;data&apos;][0][&apos;stock_id&apos;]</failureMessage>
+  </assertionResult>
+  <assertionResult>
+    <name>data[0].stock_name JSON Assertion</name>
+    <failure>true</failure>
+    <error>false</error>
+    <failureMessage>No results for path: $[&apos;data&apos;][0][&apos;stock_name&apos;]</failureMessage>
+  </assertionResult>
+  <assertionResult>
+    <name>data[0].quantity_owned JSON Assertion</name>
+    <failure>true</failure>
+    <error>false</error>
+    <failureMessage>No results for path: $[&apos;data&apos;][0][&apos;quantity_owned&apos;]</failureMessage>
+  </assertionResult>
+  <responseHeader class="java.lang.String">HTTP/1.1 200 OK
+Server: nginx/1.27.4
+Date: Sun, 02 Mar 2025 01:50:36 GMT
+Content-Type: text/plain; charset=utf-8
+Content-Length: 26
+Connection: keep-alive
+</responseHeader>
+  <requestHeader class="java.lang.String">Connection: keep-alive
+Content-Type: application/json
+token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3NDA4ODM4MzEsInN1YiI6IjQyMGQxNzMxLWQ4MjUtNGMwOC05MjAzLTdiZWM0OTc2NTVmYyJ9.iYzVi1mgBwu0eMVdhJl-GhifyB7hWPwSMxorZLclOjw
+Host: localhost:3001
+User-Agent: Apache-HttpClient/4.5.14 (Java/21.0.6)
+</requestHeader>
+  <responseData class="java.lang.String">{&quot;success&quot;:true,&quot;data&quot;:[]}</responseData>
+  <responseFile class="java.lang.String"></responseFile>
+  <cookies class="java.lang.String"></cookies>
+  <method class="java.lang.String">GET</method>
+  <queryString class="java.lang.String"></queryString>
+  <java.net.URL>http://localhost:3001/transaction/getStockPortfolio</java.net.URL>
+</httpSample>
+<sample t="0" it="0" lt="0" ct="0" ts="1740880236026" s="true" lb="Debug Sampler" rc="200" rm="OK" tn="User 1 Thread 1-1" dt="text" de="UTF-8" by="1528" sby="0" sc="1" ec="0" ng="1" na="1" hn="tower-ubuntu">
+  <responseHeader class="java.lang.String"></responseHeader>
+  <requestHeader class="java.lang.String"></requestHeader>
+  <responseData class="java.lang.String">JMeterVariables:
+BASE_PORT=3001
+BASE_URL=localhost
+JMeterThread.last_sample_ok=false
+JMeterThread.pack=org.apache.jmeter.threads.SamplePackage@cfb503d
+START.HMS=143832
+START.MS=1740868712639
+START.YMD=20250301
+TESTSTART.MS=1740880224656
+__jm__User 1 Thread__idx=0
+__jmeter.U_T__=User 1 Thread 1-1
+__jmv_SAME_USER=true
+addMoneyToWallet=/transaction/addMoneyToWallet
+addStockToUser=/setup/addStockToUser
+appleStockId=0e2490e5-007e-4d4c-a2a0-343cc95e3f32
+cancelStockTransaction=/engine/cancelStockTransaction
+compToken=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3NDA4ODM4MjYsInN1YiI6ImU0ZWI1OGQ0LWQyZjEtNDUwMy1hNDQ1LWZiNjdkNjExMTlhZCJ9.Hft5D8Y4ff65sxQM6S4PudRnsu_XMPJ6rF32jxYdImc
+createStock=/setup/createStock
+getStockPortfolio=/transaction/getStockPortfolio
+getStockPrices=/transaction/getStockPrices
+getStockPricesPort=/transaction/getStockPrices
+getStockTransactions=/transaction/getStockTransactions
+getWalletBalance=/transaction/getWalletBalance
+getWalletTransactions=/transaction/getWalletTransactions
+googleCompStockTxId=bc8b68fe-8664-4736-9aa1-edb8b99d5e08
+googleStockId=413a032c-9adc-44b9-b040-cb971cb8fcd7
+googleUserStockTxId=bc8b68fe-8664-4736-9aa1-edb8b99d5e08
+googleUserWalletTxId=
+invalidToken=eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9
+login=/authentication/login
+placeStockOrder=/engine/placeStockOrder
+register=/authentication/register
+user1Token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3NDA4ODM4MzEsInN1YiI6IjQyMGQxNzMxLWQ4MjUtNGMwOC05MjAzLTdiZWM0OTc2NTVmYyJ9.iYzVi1mgBwu0eMVdhJl-GhifyB7hWPwSMxorZLclOjw
+
+</responseData>
+  <responseFile class="java.lang.String"></responseFile>
+  <samplerData class="java.lang.String">JMeterVariables
+</samplerData>
+</sample>
+<httpSample t="10011" it="0" lt="10011" ct="0" ts="1740880236526" s="false" lb="24 Cancel Stock Order Request" rc="500" rm="Internal Server Error" tn="User 1 Thread 1-1" dt="" de="" by="140" sby="426" sc="1" ec="1" ng="1" na="1" hn="tower-ubuntu">
+  <assertionResult>
+    <name>success JSON Assertion</name>
+    <failure>true</failure>
+    <error>false</error>
+    <failureMessage>Response was null</failureMessage>
+  </assertionResult>
+  <responseHeader class="java.lang.String">HTTP/1.1 500 Internal Server Error
+Server: nginx/1.27.4
+Date: Sun, 02 Mar 2025 01:50:46 GMT
+Content-Length: 0
+Connection: keep-alive
+</responseHeader>
+  <requestHeader class="java.lang.String">Connection: keep-alive
+Content-Type: application/json
+token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3NDA4ODM4MjYsInN1YiI6ImU0ZWI1OGQ0LWQyZjEtNDUwMy1hNDQ1LWZiNjdkNjExMTlhZCJ9.Hft5D8Y4ff65sxQM6S4PudRnsu_XMPJ6rF32jxYdImc
+Content-Length: 54
+Host: localhost:3001
+User-Agent: Apache-HttpClient/4.5.14 (Java/21.0.6)
+</requestHeader>
+  <responseData class="java.lang.String">Non-TEXT response data, cannot record: ()</responseData>
+  <responseFile class="java.lang.String"></responseFile>
+  <cookies class="java.lang.String"></cookies>
+  <method class="java.lang.String">POST</method>
+  <queryString class="java.lang.String">{&quot;stock_tx_id&quot;:&quot;bc8b68fe-8664-4736-9aa1-edb8b99d5e08&quot;}</queryString>
+  <java.net.URL>http://localhost:3001/engine/cancelStockTransaction</java.net.URL>
+</httpSample>
+<httpSample t="2" it="0" lt="2" ct="0" ts="1740880247038" s="false" lb="25 Get Stock Transactions Request" rc="200" rm="OK" tn="User 1 Thread 1-1" dt="text" de="utf-8" by="1437" sby="354" sc="1" ec="1" ng="1" na="1" hn="tower-ubuntu">
+  <assertionResult>
+    <name>success JSON Assertion</name>
+    <failure>false</failure>
+    <error>false</error>
+    <failureMessage></failureMessage>
+  </assertionResult>
+  <assertionResult>
+    <name>data[0].order_status JSON Assertion</name>
+    <failure>true</failure>
+    <error>false</error>
+    <failureMessage>Value in json path &apos;$.data[0].order_status&apos; expected to be &apos;CANCELLED&apos;, but found &apos;&apos;</failureMessage>
+  </assertionResult>
+  <responseHeader class="java.lang.String">HTTP/1.1 200 OK
+Server: nginx/1.27.4
+Date: Sun, 02 Mar 2025 01:50:47 GMT
+Content-Type: text/plain; charset=utf-8
+Content-Length: 1272
+Connection: keep-alive
+</responseHeader>
+  <requestHeader class="java.lang.String">Connection: keep-alive
+Content-Type: application/json
+token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3NDA4ODM4MjYsInN1YiI6ImU0ZWI1OGQ0LWQyZjEtNDUwMy1hNDQ1LWZiNjdkNjExMTlhZCJ9.Hft5D8Y4ff65sxQM6S4PudRnsu_XMPJ6rF32jxYdImc
+Host: localhost:3001
+User-Agent: Apache-HttpClient/4.5.14 (Java/21.0.6)
+</requestHeader>
+  <responseData class="java.lang.String">{&quot;success&quot;:true,&quot;data&quot;:[{&quot;stock_tx_id&quot;:&quot;286fee21-8ec0-4965-a6a3-17988c69c14d&quot;,&quot;stock_id&quot;:&quot;0e2490e5-007e-4d4c-a2a0-343cc95e3f32&quot;,&quot;parent_stock_tx_id&quot;:&quot;&quot;,&quot;wallet_tx_id&quot;:&quot;&quot;,&quot;order_status&quot;:&quot;&quot;,&quot;is_buy&quot;:false,&quot;order_type&quot;:&quot;LIMIT&quot;,&quot;stock_price&quot;:140,&quot;quantity&quot;:350,&quot;time_stamp&quot;:&quot;0001-01-01T00:00:00Z&quot;,&quot;entity&quot;:{&quot;ID&quot;:&quot;286fee21-8ec0-4965-a6a3-17988c69c14d&quot;,&quot;DateCreated&quot;:&quot;2025-03-02T01:50:29.884225Z&quot;,&quot;DateModified&quot;:&quot;2025-03-02T01:50:29.884225Z&quot;}},{&quot;stock_tx_id&quot;:&quot;84699833-f115-4a88-a8e1-25b8416f1503&quot;,&quot;stock_id&quot;:&quot;413a032c-9adc-44b9-b040-cb971cb8fcd7&quot;,&quot;parent_stock_tx_id&quot;:&quot;&quot;,&quot;wallet_tx_id&quot;:&quot;&quot;,&quot;order_status&quot;:&quot;&quot;,&quot;is_buy&quot;:true,&quot;order_type&quot;:&quot;MARKET&quot;,&quot;stock_price&quot;:0,&quot;quantity&quot;:10,&quot;time_stamp&quot;:&quot;0001-01-01T00:00:00Z&quot;,&quot;entity&quot;:{&quot;ID&quot;:&quot;84699833-f115-4a88-a8e1-25b8416f1503&quot;,&quot;DateCreated&quot;:&quot;2025-03-02T01:50:34.009298Z&quot;,&quot;DateModified&quot;:&quot;2025-03-02T01:50:34.009298Z&quot;}},{&quot;stock_tx_id&quot;:&quot;bc8b68fe-8664-4736-9aa1-edb8b99d5e08&quot;,&quot;stock_id&quot;:&quot;413a032c-9adc-44b9-b040-cb971cb8fcd7&quot;,&quot;parent_stock_tx_id&quot;:&quot;&quot;,&quot;wallet_tx_id&quot;:&quot;&quot;,&quot;order_status&quot;:&quot;CANCELLED&quot;,&quot;is_buy&quot;:false,&quot;order_type&quot;:&quot;LIMIT&quot;,&quot;stock_price&quot;:135,&quot;quantity&quot;:550,&quot;time_stamp&quot;:&quot;0001-01-01T00:00:00Z&quot;,&quot;entity&quot;:{&quot;ID&quot;:&quot;bc8b68fe-8664-4736-9aa1-edb8b99d5e08&quot;,&quot;DateCreated&quot;:&quot;2025-03-02T01:50:29.373036Z&quot;,&quot;DateModified&quot;:&quot;2025-03-02T01:50:36.52897Z&quot;}}]}</responseData>
+  <responseFile class="java.lang.String"></responseFile>
+  <cookies class="java.lang.String"></cookies>
+  <method class="java.lang.String">GET</method>
+  <queryString class="java.lang.String"></queryString>
+  <java.net.URL>http://localhost:3001/transaction/getStockTransactions</java.net.URL>
+</httpSample>
+<httpSample t="1" it="0" lt="1" ct="0" ts="1740880247541" s="true" lb="26 Invalid Token" rc="401" rm="Unauthorized" tn="User 1 Thread 1-1" dt="text" de="utf-8" by="234" sby="222" sc="1" ec="0" ng="1" na="1" hn="tower-ubuntu">
+  <assertionResult>
+    <name>401 Response Assertion</name>
+    <failure>false</failure>
+    <error>false</error>
+  </assertionResult>
+  <responseHeader class="java.lang.String">HTTP/1.1 401 Unauthorized
+Server: nginx/1.27.4
+Date: Sun, 02 Mar 2025 01:50:47 GMT
+Content-Type: text/plain; charset=utf-8
+Content-Length: 28
+Connection: keep-alive
+X-Content-Type-Options: nosniff
+</responseHeader>
+  <requestHeader class="java.lang.String">Connection: keep-alive
+Content-Type: application/json
+token: eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9
+Host: localhost:3001
+User-Agent: Apache-HttpClient/4.5.14 (Java/21.0.6)
+</requestHeader>
+  <responseData class="java.lang.String">Unauthorized: invalid token
+</responseData>
+  <responseFile class="java.lang.String"></responseFile>
+  <cookies class="java.lang.String"></cookies>
+  <method class="java.lang.String">GET</method>
+  <queryString class="java.lang.String"></queryString>
+  <java.net.URL>http://localhost:3001/transaction/getStockPortfolio</java.net.URL>
+</httpSample>
+<httpSample t="1" it="0" lt="1" ct="0" ts="1740880248043" s="true" lb="27 Invalid Payload Example" rc="400" rm="Bad Request" tn="User 1 Thread 1-1" dt="text" de="utf-8" by="204" sby="388" sc="1" ec="0" ng="1" na="1" hn="tower-ubuntu">
+  <assertionResult>
+    <name>success JSON Assertion</name>
+    <failure>true</failure>
+    <error>false</error>
+    <failureMessage>Expected to find an object with property [&apos;success&apos;] in path $ but found &apos;java.lang.String&apos;. This is not a json object according to the JsonProvider: &apos;com.jayway.jsonpath.spi.json.JsonSmartJsonProvider&apos;.</failureMessage>
+  </assertionResult>
+  <assertionResult>
+    <name>400 Response Assertion</name>
+    <failure>false</failure>
+    <error>false</error>
+  </assertionResult>
+  <responseHeader class="java.lang.String">HTTP/1.1 400 Bad Request
+Server: nginx/1.27.4
+Date: Sun, 02 Mar 2025 01:50:48 GMT
+Content-Type: text/plain; charset=utf-8
+Content-Length: 32
+Connection: keep-alive
+</responseHeader>
+  <requestHeader class="java.lang.String">Connection: keep-alive
+Content-Type: application/json
+token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3NDA4ODM4MzEsInN1YiI6IjQyMGQxNzMxLWQ4MjUtNGMwOC05MjAzLTdiZWM0OTc2NTVmYyJ9.iYzVi1mgBwu0eMVdhJl-GhifyB7hWPwSMxorZLclOjw
+Content-Length: 17
+Host: localhost:3001
+User-Agent: Apache-HttpClient/4.5.14 (Java/21.0.6)
+</requestHeader>
+  <responseData class="java.lang.String">Amount must be greater than zero</responseData>
+  <responseFile class="java.lang.String"></responseFile>
+  <cookies class="java.lang.String"></cookies>
+  <method class="java.lang.String">POST</method>
+  <queryString class="java.lang.String">{&quot;amount&quot;:-10000}</queryString>
+  <java.net.URL>http://localhost:3001/transaction/addMoneyToWallet</java.net.URL>
+</httpSample>
+
+</testResults>
