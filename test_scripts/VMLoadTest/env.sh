@@ -1,1 +1,1 @@
-export HEAP="-Xms1g -Xmx4g"
+export HEAP="-Xms4g -Xmx8g"
