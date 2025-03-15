@@ -34,9 +34,15 @@ func (hc *HttpClient) GetBaseURL() string {
 }
 
 func newHttpClient(baseURL string) network.ClientInterface {
+	timeout, err := time.ParseDuration(os.Getenv("HTTP_TIMEOUT"))
+	if err != nil {
+		log.Println("TIMEOUT env variable not set, defaulting to 20s")
+		timeout = 20000 * time.Millisecond
+	}
 	return &HttpClient{
 		BaseURL: baseURL,
-		Client:  &http.Client{Timeout: 10 * time.Second},
+
+		Client: &http.Client{Timeout: timeout},
 	}
 }
 
@@ -80,7 +86,6 @@ func (hc *HttpClient) handleBulkResponse(resp *http.Response) (network.BulkRetur
 		log.Println("DEBUG: Error reading response body:", err.Error())
 		return network.BulkReturn{}, err
 	}
-	log.Println("Body: ", string(body))
 
 	var bulkReturn network.BulkReturn
 	err = json.Unmarshal(body, &bulkReturn)

@@ -11,6 +11,8 @@ import (
 	"os"
 	"strings"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 type NetworkHttp struct {
@@ -76,7 +78,16 @@ func handleFunc(params network.HandlerParams, w http.ResponseWriter, r *http.Req
 		if userID, ok := r.Context().Value(userIDKey).(uint); ok {
 			queryParams.Add("userID", fmt.Sprintf("%d", userID)) // Convert to string
 		} else if userID, ok := r.Context().Value(userIDKey).(string); ok {
+			if _, err := uuid.Parse(strings.TrimSpace(userID)); err != nil {
+				log.Println("Network: UserID is not a valid UUID")
+				responseWriterWrapper.WriteHeader(http.StatusInternalServerError)
+				return
+			}
 			queryParams.Add("userID", userID)
+		} else {
+			log.Println("Network: UserID is Unknown type")
+			responseWriterWrapper.WriteHeader(http.StatusInternalServerError)
+			return
 		}
 	}
 

@@ -13,6 +13,7 @@ import (
 	"net/url"
 	"os"
 	"sort"
+	"strings"
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
@@ -42,6 +43,7 @@ func InitalizeHandlers(stockIDs *[]network.StockPrice,
 	_stockDatabaseAccess = stockDatabaseAccess
 	_matchingEngineMap = make(map[string]MatchingEngineInterface)
 	stockPriceIndex = make([]string, 0)
+	stockIdToName = make(map[string]string)
 
 	//Create all matching engines for stocks.
 	for _, stockID := range *stockIDs {
@@ -54,7 +56,7 @@ func InitalizeHandlers(stockIDs *[]network.StockPrice,
 
 	//Add handlers
 	_networkHttpManager.AddHandleFuncUnprotected(network.HandlerParams{Pattern: "createStock", Handler: AddNewStockHandler})
-	_networkHttpManager.AddHandleFuncUnprotected(network.HandlerParams{Pattern: "placeStockOrder", Handler: PlaceStockOrderHandler})
+	_networkQueueManager.AddHandleFuncUnprotected(network.HandlerParams{Pattern: "placeStockOrder", Handler: PlaceStockOrderHandler})
 	_networkHttpManager.AddHandleFuncUnprotected(network.HandlerParams{Pattern: "deleteOrder/", Handler: DeleteStockOrderHandler})
 	_networkHttpManager.AddHandleFuncProtected(network.HandlerParams{Pattern: os.Getenv("transaction_route") + "/getStockPrices", Handler: GetStockPricesHandler})
 	http.HandleFunc("/health", healthHandler)
@@ -184,7 +186,7 @@ func PlaceStockOrder(data *[]*StockOrderBulk, TransferParams any) error {
 }
 
 func DeleteStockOrderHandler(responseWriter network.ResponseWriter, data []byte, queryParams url.Values, requestType string) {
-	orderID, err := uuid.Parse(queryParams.Get("id"))
+	orderID, err := uuid.Parse(strings.TrimSpace(queryParams.Get("id")))
 	if err != nil {
 		log.Println("Error: ", err.Error())
 		responseWriter.WriteHeader(http.StatusBadRequest)

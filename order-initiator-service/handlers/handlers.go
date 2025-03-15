@@ -15,6 +15,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -74,13 +75,27 @@ func placeStockOrderHandler(responseWriter network.ResponseWriter, data []byte, 
 	//log.Println("Placing stock order")
 	stockOrder, err := order.Parse(data)
 	if err != nil {
-		log.Println("Error: ", err.Error())
+		log.Println("Handler Error: ", err.Error())
+		log.Println("Handler Data: ", string(data))
 		responseWriter.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	userUuid, err := uuid.Parse(queryParams.Get("userID"))
+	userIDString := queryParams.Get("userID")
+	if userIDString == "" {
+		log.Println("Handler Error: userID not provided")
+		responseWriter.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	log.Println("Handler userID: ", userIDString)
+	userUuid, err := uuid.Parse(strings.TrimSpace(userIDString))
 	if err != nil {
-		log.Println("Error: ", err.Error(), "userID: ", queryParams.Get("userID"))
+		log.Println("Handler Error: ", err.Error(), " ID attempted to parse: ", strings.TrimSpace(userIDString))
+		for key, value := range queryParams {
+			for _, v := range value {
+				log.Println("Handler Query Param: ", key, v)
+			}
+		}
+
 		responseWriter.WriteHeader(http.StatusBadRequest)
 		return
 	}
@@ -238,7 +253,7 @@ func placeStockOrderResponse(data *[]*StockOrderBulk, TransferParams any) error 
 		}
 		stockOrder.StockOrder.SetId(createdTransactionIdsByPairing[stockOrder.StockOrder.GetUniquePairing().String()])
 		//log.Println("sending to matching engine")
-		_, err = _networkHttpManager.MatchingEngine().Post("placeStockOrder", stockOrder.StockOrder)
+		_, err = _networkQueueManager.MatchingEngine().Post("placeStockOrder", stockOrder.StockOrder)
 		//log.Println("sent to matching engine")
 		if err != nil {
 			log.Printf("failed to send to matching engine: %v", err)
@@ -317,7 +332,7 @@ func placeStockOrderHandlerOld(responseWriter network.ResponseWriter, data []byt
 		responseWriter.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	uuidNew, err := uuid.Parse(queryParams.Get("userID"))
+	uuidNew, err := uuid.Parse(strings.TrimSpace(queryParams.Get("userID")))
 	if err != nil {
 		println("Error: ", err.Error())
 		responseWriter.WriteHeader(http.StatusBadRequest)

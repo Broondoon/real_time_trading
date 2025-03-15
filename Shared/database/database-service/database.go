@@ -232,7 +232,7 @@ func NewEntityData[T entity.EntityInterface](params *NewEntityDataParams) Entity
 }
 
 func convertID(id string) (uuid.UUID, error) {
-	uid, err := uuid.Parse(id)
+	uid, err := uuid.Parse(strings.TrimSpace(id))
 	if err != nil {
 		return uuid.UUID{}, fmt.Errorf("failed to parse id %s: %v", id, err)
 	}
@@ -580,7 +580,7 @@ func (d *EntityData[T]) Update(updates []*entity.EntityUpdateData) map[string]er
 	convertNewValue := func(newVal string, fieldType reflect.Type) (interface{}, string, error) {
 		// Check if the field type is uuid.UUID
 		if fieldType == reflect.TypeOf(uuid.UUID{}) || fieldType == reflect.TypeOf(&uuid.UUID{}) {
-			uid, err := uuid.Parse(newVal)
+			uid, err := uuid.Parse(strings.TrimSpace(newVal))
 			if err != nil {
 				return nil, "", fmt.Errorf("failed to parse '%s' as UUID: %v", newVal, err)
 			}
@@ -641,7 +641,7 @@ func (d *EntityData[T]) Update(updates []*entity.EntityUpdateData) map[string]er
 					return fmt.Errorf("field %s for id %s: %v", field, id, err)
 				}
 				valueTuples = append(valueTuples, fmt.Sprintf("(?::uuid, ?::%s)", castType))
-				uid, err := uuid.Parse(id)
+				uid, err := uuid.Parse(strings.TrimSpace(id))
 				if err != nil {
 					return fmt.Errorf("failed to parse id %s: %v", id, err)
 				}
@@ -672,7 +672,7 @@ func (d *EntityData[T]) Update(updates []*entity.EntityUpdateData) map[string]er
 					return fmt.Errorf("field %s for id %s: %v", field, id, err)
 				}
 				valueTuples = append(valueTuples, fmt.Sprintf("(?::uuid, ?::%s)", castType))
-				uid, err := uuid.Parse(id)
+				uid, err := uuid.Parse(strings.TrimSpace(id))
 				if err != nil {
 					return fmt.Errorf("failed to parse id %s: %v", id, err)
 				}
@@ -736,7 +736,7 @@ func (d *EntityData[T]) Update(updates []*entity.EntityUpdateData) map[string]er
 				SET %s = CAST(? AS %s)
     			WHERE t.id = ?
 			`, d.tableName, cacheEntry.ColumnName, castType)
-			uid, err := uuid.Parse(id)
+			uid, err := uuid.Parse(strings.TrimSpace(id))
 			if err != nil {
 				errorMap[id] = fmt.Errorf("failed to parse id %s: %v", id, err)
 				tx.RollbackTo(spName)
@@ -784,7 +784,7 @@ func (d *EntityData[T]) Update(updates []*entity.EntityUpdateData) map[string]er
 				SET %s = t.%s + CAST(? AS %s)
     			WHERE t.id = ?
 			`, d.tableName, cacheEntry.ColumnName, cacheEntry.ColumnName, castType)
-			uid, err := uuid.Parse(id)
+			uid, err := uuid.Parse(strings.TrimSpace(id))
 			if err != nil {
 				errorMap[id] = fmt.Errorf("failed to parse id %s: %v", id, err)
 				tx.RollbackTo(spName)

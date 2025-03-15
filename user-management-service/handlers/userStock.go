@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"net/url"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -132,7 +133,7 @@ func addStockToUser(responseWriter network.ResponseWriter, data []byte, queryPar
 		stockName = "Unknown" // Fallback to "Unknown" if not found
 	}
 
-	userUuid, err := uuid.Parse(userID)
+	userUuid, err := uuid.Parse(strings.TrimSpace(userID))
 	if err != nil {
 		log.Printf("ERROR: Failed to parse userID %s: %v", userID, err)
 		responseWriter.WriteHeader(http.StatusBadRequest)

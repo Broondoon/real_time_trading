@@ -4,6 +4,7 @@ import (
 	//"Shared/entities/entity"
 	"Shared/entities/transaction"
 	"log"
+	"strings"
 
 	//"Shared/entities/user-stock"
 	"Shared/entities/wallet"
@@ -16,23 +17,23 @@ import (
 )
 
 func ProcessTrade(orderData network.MatchingEngineToExecutionJSON, databaseAccessTransact databaseAccessTransaction.DatabaseAccessInterface, databaseAccessUser databaseAccessUserManagement.DatabaseAccessInterface) (bool, bool, error) {
-	buyerID, err := uuid.Parse(orderData.BuyerID)
+	buyerID, err := uuid.Parse(strings.TrimSpace(orderData.BuyerID))
 	if err != nil {
 		return false, true, fmt.Errorf("failed to parse buyerID: %v", err)
 	}
-	sellerID, err := uuid.Parse(orderData.SellerID)
+	sellerID, err := uuid.Parse(strings.TrimSpace(orderData.SellerID))
 	if err != nil {
 		return true, false, fmt.Errorf("failed to parse stockID: %v", err)
 	}
-	buyOrderID, err := uuid.Parse(orderData.BuyOrderID)
+	buyOrderID, err := uuid.Parse(strings.TrimSpace(orderData.BuyOrderID))
 	if err != nil {
 		return false, true, fmt.Errorf("failed to parse buyerID: %v", err)
 	}
-	sellOrderID, err := uuid.Parse(orderData.SellOrderID)
+	sellOrderID, err := uuid.Parse(strings.TrimSpace(orderData.SellOrderID))
 	if err != nil {
 		return true, false, fmt.Errorf("failed to parse stockID: %v", err)
 	}
-	stockID, err := uuid.Parse(orderData.StockID)
+	stockID, err := uuid.Parse(strings.TrimSpace(orderData.StockID))
 	if err != nil {
 		return false, false, fmt.Errorf("failed to parse buyerID: %v", err)
 	}

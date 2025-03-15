@@ -139,6 +139,8 @@ func registerUsers(data *[]*UserBulk, TransferParams any) error {
 		userMap[username] = d
 		usernames[i] = username
 	}
+	//This approach is slow. Is there any chance we could try to make an alternative Insert if avaialbel, return error if present DB Call?
+	//Perhaps we alrady have a version of this. Username = unqiue is set int he DB. So it should return an error if it's present already.
 	_, errorList, err := _authDB.GetByForeignIDBulk("Username", usernames)
 	if err != nil {
 		log.Println("error getting users: ", err)
@@ -150,7 +152,6 @@ func registerUsers(data *[]*UserBulk, TransferParams any) error {
 
 	for _, d := range userMap {
 		if errCode, exists := errorList[d.UserEntity.GetUsername()]; exists {
-			log.Println("User has Error: ", errCode, " for user: ", d.UserEntity.GetUsername(), ". If this is 404, this is desirable.")
 			if errorList[d.UserEntity.GetUsername()] == http.StatusNotFound {
 				hashedPassword, err := HashPassword(d.UserEntity.GetPassword())
 				if err != nil {
