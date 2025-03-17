@@ -5,6 +5,8 @@ import (
 	"Shared/entities/stock"
 	"Shared/network"
 	"os"
+
+	"github.com/google/uuid"
 )
 
 type EntityDataAccessInterface = databaseAccess.EntityDataAccessInterface[*stock.Stock, stock.StockInterface]
@@ -12,7 +14,7 @@ type EntityDataAccessInterface = databaseAccess.EntityDataAccessInterface[*stock
 type DatabaseAccessInterface interface {
 	databaseAccess.DatabaseAccessInterface
 	EntityDataAccessInterface
-	GetStockIDs() (*[]string, error)
+	GetStockIDs() (*[]*uuid.UUID, error)
 }
 
 type DatabaseAccess struct {
@@ -54,9 +56,9 @@ func NewDatabaseAccess(params *NewDatabaseAccessParams) DatabaseAccessInterface 
 	return dba
 }
 
-func (d *DatabaseAccess) GetStockIDs() (*[]string, error) {
+func (d *DatabaseAccess) GetStockIDs() (*[]*uuid.UUID, error) {
 	stocks, err := d.GetAll()
-	stockIDs := make([]string, len(*stocks))
+	stockIDs := make([]*uuid.UUID, len(*stocks))
 	for i, stock := range *stocks {
 		stockIDs[i] = stock.GetId()
 	}

@@ -5,8 +5,11 @@ import (
 	"Shared/entities/order"
 	"Shared/network"
 	"databaseAccessStockOrder"
-	"fmt"
+	"log"
 )
+
+const ISBUY = 0
+const ISSELL = 1
 
 // https://gobyexample.com/channels
 // https://chatgpt.com/share/67aa804e-4678-8006-970a-23d76d933f3c
@@ -15,18 +18,19 @@ type MatchingEngineInterface interface {
 	RemoveOrder(orderID string, priceKey float64)
 	RunMatchingEngineOrders()
 	RunMatchingEngineUpdates()
-	GetPrice() float64
+	GetPrice() network.StockPrice
 }
 
 type MatchingEngine struct {
 	StockId             string
 	BuyOrderBook        matchingEngineStructures.BuyOrderBookInterface
 	SellOrderBook       matchingEngineStructures.SellOrderBookInterface
-	orderChannel        chan order.StockOrderInterface
+	orderChannel        chan int
 	updateChannel       chan *UpdateParams
 	SendToOrderExection func(buyOrder order.StockOrderInterface, sellOrder order.StockOrderInterface) (network.ExecutorToMatchingEngineJSON, error)
 	//dirty fix
 	DatabaseManager databaseAccessStockOrder.DatabaseAccessInterface
+	StockName       string
 }
 
 type NewMatchingEngineParams struct {
@@ -34,6 +38,7 @@ type NewMatchingEngineParams struct {
 	InitalOrders             *[]order.StockOrderInterface
 	SendToOrderExecutionFunc func(buyOrder order.StockOrderInterface, sellOrder order.StockOrderInterface) (network.ExecutorToMatchingEngineJSON, error)
 	DatabaseManager          databaseAccessStockOrder.DatabaseAccessInterface
+	StockName                string
 }
 
 func NewMatchingEngineForStock(params *NewMatchingEngineParams) MatchingEngineInterface {
@@ -50,89 +55,70 @@ func NewMatchingEngineForStock(params *NewMatchingEngineParams) MatchingEngineIn
 		StockId:             params.StockID,
 		BuyOrderBook:        matchingEngineStructures.DefaultBuyOrderBook(&marketOrders),
 		SellOrderBook:       matchingEngineStructures.DefaultSellOrderBook(&limitOrders),
-		orderChannel:        make(chan order.StockOrderInterface),
-		updateChannel:       make(chan *UpdateParams),
+		orderChannel:        make(chan int, 1000),
+		updateChannel:       make(chan *UpdateParams, 1000),
 		SendToOrderExection: params.SendToOrderExecutionFunc,
 		DatabaseManager:     params.DatabaseManager,
+		StockName:           params.StockName,
 	}
 	return me
 }
 
 func (me *MatchingEngine) RunMatchingEngineOrders() {
-	println("Running Matching Engine Orders")
 	var buyOrder order.StockOrderInterface
 	var sellOrder order.StockOrderInterface
+	var haveBuyOrder bool
+	var haveSellOrder bool
 	for {
 		//dequeue the top of the buy order book and sell order book
 		if buyOrder == nil {
-			println("Getting best buy order")
 			buyOrder = me.BuyOrderBook.GetBestOrder()
-			if buyOrder != nil {
-				temp, err := buyOrder.ToJSON()
-				if err != nil {
-					println("Error: ", err.Error())
-				}
-				print("Buy Order: ", string(temp))
-			}
+		} else {
+			haveBuyOrder = true
 		}
 		if sellOrder == nil {
-			println("Getting best sell order")
 			sellOrder = me.SellOrderBook.GetBestOrder()
-			if sellOrder != nil {
-				temp, err := sellOrder.ToJSON()
-				if err != nil {
-					println("Error: ", err.Error())
-				}
-				print("Sell Order: ", string(temp))
-			}
+		} else {
+			haveSellOrder = true
 		}
 		if buyOrder == nil || sellOrder == nil {
 			if buyOrder == nil {
-				println("Buy Order is nil")
+				haveBuyOrder = false
 				if sellOrder != nil {
-					println("Returning sell order")
+					haveSellOrder = true
+					log.Println("Buy Order is nil. Returning sell order")
 					me.SellOrderBook.AddOrder(sellOrder)
 					sellOrder = nil
 				}
 			} else if sellOrder == nil {
-				println("Sell Order is nil")
-				println("Returning buy order")
+				haveBuyOrder = true
+				haveSellOrder = false
+				log.Println("Sell Order is nil, Returning buy order")
 				me.BuyOrderBook.ReturnOrder(buyOrder)
 				buyOrder = nil
 			}
 		}
-		println("Starting Match")
 		if buyOrder != nil && sellOrder != nil {
-			println("Matching Orders. Buy Order: ", buyOrder.GetId(), " Sell Order: ", sellOrder.GetId())
 			buyIsChild := false
 			sellIsChild := false
 			var parentOrder order.StockOrderInterface
 			if buyOrder.GetQuantity() < sellOrder.GetQuantity() {
-				println("Creating sell child order for: ", sellOrder.GetId())
 				parentOrder = sellOrder
 				sellIsChild = true
 				sellOrder = sellOrder.CreateChildOrder(sellOrder, buyOrder)
-				println("Parent Order Quantity: ", parentOrder.GetQuantity())
-				println("Child Order Quantity: ", sellOrder.GetQuantity())
 				if sellOrder.GetQuantity() == parentOrder.GetQuantity() {
 					close(me.orderChannel)
 					close(me.updateChannel)
-					panic("Child order quantity is equal to parent order quantity. This should not happen")
 				}
 			}
 			if buyOrder.GetQuantity() > sellOrder.GetQuantity() {
-				println("Creating buy child order for: ", buyOrder.GetId())
 				parentOrder = buyOrder
 				buyIsChild = true
 				buyOrder = buyOrder.CreateChildOrder(buyOrder, sellOrder)
-				println("Parent Order Quantity: ", parentOrder.GetQuantity())
-				println("Child Order Quantity: ", buyOrder.GetQuantity())
 				if sellOrder.GetQuantity() == parentOrder.GetQuantity() {
-					panic("Child order quantity is equal to parent order quantity. This should not happen")
 				}
 			}
 			result, err := me.SendToOrderExection(buyOrder, sellOrder)
-			println("Order Executed: ")
 			sellOrderQuantity := sellOrder.GetQuantity()
 			buyOrderQuantity := buyOrder.GetQuantity()
 			if sellIsChild {
@@ -148,17 +134,13 @@ func (me *MatchingEngine) RunMatchingEngineOrders() {
 				close(me.updateChannel)
 				panic("Error in order execution")
 			} else if result.IsBuyFailure {
-				println("Buy Order Failed: ", buyOrder.GetId())
 				buyOrder = nil
 			} else if result.IsSellFailure {
-				println("Sell Order Failed: ", sellOrder.GetId())
 				sellOrder = nil
 			} else {
-				println("Cleaning up orders")
-				sellOrder.SetQuantity(sellOrder.GetQuantity() - buyOrderQuantity)
-				buyOrder.SetQuantity(buyOrder.GetQuantity() - sellOrderQuantity)
+				sellOrder.UpdateQuantity(-buyOrderQuantity)
+				buyOrder.UpdateQuantity(-sellOrderQuantity)
 				if sellOrder.GetQuantity() == 0 {
-					println("finishing sell Order: ", buyOrder.GetId())
 					_databaseManager.Delete(sellOrder.GetId())
 					sellOrder = nil
 				} else {
@@ -166,7 +148,6 @@ func (me *MatchingEngine) RunMatchingEngineOrders() {
 				}
 
 				if buyOrder.GetQuantity() == 0 {
-					println("finishing buy Order: ", buyOrder.GetId())
 					_databaseManager.Delete(buyOrder.GetId())
 					buyOrder = nil
 				} else {
@@ -174,16 +155,23 @@ func (me *MatchingEngine) RunMatchingEngineOrders() {
 				}
 			}
 		} else {
-			fmt.Println("No orders to match")
-			fmt.Println("Waiting for order")
-			stockOrder := <-me.orderChannel
-			fmt.Println("Order received")
-			temp, err := stockOrder.ToJSON()
-			if err != nil {
-				fmt.Println("Error: ", err.Error())
-				continue
+			for {
+				log.Println("No orders to match")
+				log.Println("Waiting for order")
+				orderReceived := <-me.orderChannel
+				log.Println("Order received")
+				if orderReceived == ISBUY {
+					haveBuyOrder = true
+					if haveSellOrder {
+						break
+					}
+				} else if orderReceived == ISSELL {
+					haveSellOrder = true
+					if haveBuyOrder {
+						break
+					}
+				}
 			}
-			println("Order: ", string(temp))
 		}
 	}
 }
@@ -196,7 +184,6 @@ type UpdateParams struct {
 func (me *MatchingEngine) RunMatchingEngineUpdates() {
 	for {
 		updateParams := <-me.updateChannel
-		fmt.Println("Removing Order")
 		me.SellOrderBook.RemoveOrder(&matchingEngineStructures.RemoveParams{
 			OrderID:  updateParams.OrderID,
 			PriceKey: updateParams.PriceKey,
@@ -205,13 +192,13 @@ func (me *MatchingEngine) RunMatchingEngineUpdates() {
 }
 
 func (me *MatchingEngine) AddOrder(stockOrder order.StockOrderInterface) {
-	println("Adding Order")
 	if stockOrder.GetOrderType() == order.OrderTypeMarket {
 		me.BuyOrderBook.AddOrder(stockOrder)
+		me.orderChannel <- ISBUY
 	} else {
 		me.SellOrderBook.AddOrder(stockOrder)
+		me.orderChannel <- ISSELL
 	}
-	me.orderChannel <- stockOrder
 }
 
 func (me *MatchingEngine) RemoveOrder(orderID string, priceKey float64) {
@@ -221,8 +208,13 @@ func (me *MatchingEngine) RemoveOrder(orderID string, priceKey float64) {
 	}
 }
 
-func (me *MatchingEngine) GetPrice() float64 {
-	return me.SellOrderBook.GetBestPrice()
+func (me *MatchingEngine) GetPrice() network.StockPrice {
+	return network.StockPrice{
+		StockID:   me.StockId,
+		Price:     me.SellOrderBook.GetBestPrice(),
+		StockName: me.StockName,
+	}
+
 }
 
 //fake matching engine mock for testing

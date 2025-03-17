@@ -5,20 +5,25 @@ import (
 	"Shared/entities/stock"
 	"Shared/entities/user"
 	"encoding/json"
+	"strconv"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 // For tracking stocks owned per user.
 
 type UserStockInterface interface {
-	GetUserID() string
-	SetUserID(userID string)
-	GetStockID() string
-	SetStockID(stockID string)
+	GetUserID() *uuid.UUID
+	GetUserIDString() string
+	SetUserID(userID *uuid.UUID)
+	GetStockID() *uuid.UUID
+	GetStockIDString() string
+	SetStockID(stockID *uuid.UUID)
 	GetStockName() string
 	SetStockName(stockName string)
 	GetQuantity() int
-	SetQuantity(quantity int)
+	UpdateQuantity(quantityToAdd int)
 	SetUpdatedAt(time.Time)
 	GetUpdatedAt() time.Time
 	ToParams() NewUserStockParams
@@ -26,22 +31,10 @@ type UserStockInterface interface {
 }
 
 type UserStock struct {
-	UserID    string `json:"user_id" gorm:"not null"`
-	StockID   string `json:"stock_id" gorm:"not null"`
-	StockName string `json:"stock_name" gorm:"not null"`
-	Quantity  int    `json:"quantity_owned" gorm:"not null"`
-	// The following internal functions have been commented out.
-	// Instead, we use the fields directly in the getters and setters.
-	/*
-		GetUserIDInternal    func() string          `gorm:"-"`
-		SetUserIDInternal    func(userID string)    `gorm:"-"`
-		GetStockIDInternal   func() string          `gorm:"-"`
-		SetStockIDInternal   func(stockID string)   `gorm:"-"`
-		GetStockNameInternal func() string          `gorm:"-"`
-		SetStockNameInternal func(stockName string) `gorm:"-"`
-		GetQuantityInternal  func() int             `gorm:"-"`
-		SetQuantityInternal  func(quantity int)     `gorm:"-"`
-	*/
+	UserID        *uuid.UUID `json:"user_id" gorm:"type:uuid;column:user_id;not null"`
+	StockID       *uuid.UUID `json:"stock_id" gorm:"type:uuid;column:stock_id;not null"`
+	StockName     string     `json:"stock_name" gorm:"not null"`
+	Quantity      int        `json:"quantity_owned" gorm:"not null"`
 	entity.Entity `json:"Entity" gorm:"embedded"`
 }
 
@@ -49,23 +42,42 @@ func (us *UserStock) GetQuantity() int {
 	return us.Quantity
 }
 
-func (us *UserStock) SetQuantity(quantity int) {
-	us.Quantity = quantity
+func (us *UserStock) UpdateQuantity(quantityToAdd int) {
+	us.Quantity += quantityToAdd
+	*us.GetUpdates() = append(*us.Updates, &entity.EntityUpdateData{
+		ID:         us.GetId(),
+		Field:      "Quantity",
+		AlterValue: func() *string { s := strconv.Itoa(quantityToAdd); return &s }(),
+	})
 }
 
-func (us *UserStock) GetUserID() string {
+func (us *UserStock) GetUserID() *uuid.UUID {
 	return us.UserID
 }
 
-func (us *UserStock) SetUserID(userID string) {
+func (us *UserStock) GetUserIDString() string {
+	if us.UserID == nil {
+		return ""
+	}
+	return us.UserID.String()
+}
+
+func (us *UserStock) SetUserID(userID *uuid.UUID) {
 	us.UserID = userID
 }
 
-func (us *UserStock) GetStockID() string {
+func (us *UserStock) GetStockID() *uuid.UUID {
 	return us.StockID
 }
 
-func (us *UserStock) SetStockID(stockID string) {
+func (us *UserStock) GetStockIDString() string {
+	if us.StockID == nil {
+		return ""
+	}
+	return us.StockID.String()
+}
+
+func (us *UserStock) SetStockID(stockID *uuid.UUID) {
 	us.StockID = stockID
 }
 
@@ -75,20 +87,25 @@ func (us *UserStock) GetStockName() string {
 
 func (us *UserStock) SetStockName(stockName string) {
 	us.StockName = stockName
-}
-
-func (us *UserStock) SetUpdatedAt(updatedAt time.Time) {
-	us.DateModified = updatedAt
+	*us.GetUpdates() = append(*us.Updates, &entity.EntityUpdateData{
+		ID:       us.GetId(),
+		Field:    "StockName",
+		NewValue: &stockName,
+	})
 }
 
 func (us *UserStock) GetUpdatedAt() time.Time {
 	return us.DateModified
 }
 
+func (us *UserStock) SetUpdatedAt(updatedAt time.Time) {
+	us.SetDateModified(updatedAt)
+}
+
 type NewUserStockParams struct {
 	entity.NewEntityParams `json:"Entity"`
-	UserID                 string               `json:"user_id"`
-	StockID                string               `json:"stock_id"`
+	UserID                 *uuid.UUID           `json:"user_id"`
+	StockID                *uuid.UUID           `json:"stock_id"`
 	StockName              string               `json:"stock_name"`
 	Quantity               int                  `json:"quantity_owned"`
 	User                   user.UserInterface   // use this or UserID
@@ -97,14 +114,14 @@ type NewUserStockParams struct {
 
 func New(params NewUserStockParams) *UserStock {
 	e := entity.NewEntity(params.NewEntityParams)
-	var userId string
+	var userId *uuid.UUID
 	if params.User != nil {
 		userId = params.User.GetId()
 	} else {
 		userId = params.UserID
 	}
 
-	var stockId string
+	var stockId *uuid.UUID
 	var stockName string
 	if params.Stock != nil {
 		stockId = params.Stock.GetId()
@@ -157,36 +174,4 @@ func (us *UserStock) ToParams() NewUserStockParams {
 
 func (us *UserStock) ToJSON() ([]byte, error) {
 	return json.Marshal(us.ToParams())
-}
-
-
-
-
-
-type FakeUserStock struct {
-	entity.FakeEntity
-	UserID    string `json:"userID"`
-	StockID   string `json:"stockID"`
-	StockName string `json:"stockName"`
-	Quantity  int    `json:"quantity"`
-}
-
-func (fus *FakeUserStock) GetUserID() string             { return fus.UserID }
-func (fus *FakeUserStock) SetUserID(userID string)       { fus.UserID = userID }
-func (fus *FakeUserStock) GetStockID() string            { return fus.StockID }
-func (fus *FakeUserStock) SetStockID(stockID string)     { fus.StockID = stockID }
-func (fus *FakeUserStock) GetStockName() string          { return fus.StockName }
-func (fus *FakeUserStock) SetStockName(stockName string) { fus.StockName = stockName }
-func (fus *FakeUserStock) GetQuantity() int              { return fus.Quantity }
-func (fus *FakeUserStock) SetQuantity(quantity int)      { fus.Quantity = quantity }
-func (fus *FakeUserStock) ToParams() NewUserStockParams  { return NewUserStockParams{} }
-func (fus *FakeUserStock) ToJSON() ([]byte, error)       { return []byte{}, nil }
-
-func (us *UserStock) SetDefaults() {
-	if us.Quantity == 0 {
-		us.Quantity = 0
-	}
-	if us.StockName == "" {
-		us.StockName = "Unknown"
-	}
 }

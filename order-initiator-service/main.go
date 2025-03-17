@@ -6,7 +6,7 @@ import (
 	networkQueue "Shared/network/queue"
 	"databaseAccessTransaction"
 	"databaseAccessUserManagement"
-	"fmt"
+	"log"
 	"os"
 )
 
@@ -27,7 +27,7 @@ func main() {
 	})
 
 	go OrderInitiatorService.InitalizeHandlers(networkHttpManager, networkQueueManager, databaseAccess, databaseAccessUserManagement)
-	fmt.Println("Matching Engine Service Started")
+	log.Println("Matching Engine Service Started")
 
 	networkHttpManager.Listen()
 	<-make(chan struct{})
