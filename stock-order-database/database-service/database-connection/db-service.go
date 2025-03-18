@@ -3,27 +3,24 @@ package databaseServiceStockOrder
 import (
 	databaseService "Shared/database/database-service"
 	"Shared/entities/order"
+
+	"gorm.io/gorm"
 )
 
 type DatabaseServiceInterface interface {
-	databaseService.EntityDataInterface[*order.StockOrder]
+	databaseService.EntityDataInterface[*order.StockOrder, *gorm.DB]
 	GetInitialStockOrdersForStock(stockID string) (*[]*order.StockOrder, error)
 }
 
 type DatabaseService struct {
-	databaseService.EntityDataInterface[*order.StockOrder]
+	databaseService.EntityDataInterface[*order.StockOrder, *gorm.DB]
 	StockOrders *[]order.StockOrderInterface
 }
 
 type NewDatabaseServiceParams struct {
-	*databaseService.NewEntityDataParams
 }
 
 func NewDatabaseService(params NewDatabaseServiceParams) DatabaseServiceInterface {
-	if params.NewEntityDataParams == nil {
-		params.NewEntityDataParams = &databaseService.NewEntityDataParams{}
-	}
-
 	//CACHE IMPLEMENTATION
 	/* cachedStockOrder := databaseService.NewCachedEntityData[*order.StockOrder](&databaseService.NewCachedEntityDataParams{
 		NewEntityDataParams: params.NewEntityDataParams,
@@ -37,7 +34,7 @@ func NewDatabaseService(params NewDatabaseServiceParams) DatabaseServiceInterfac
 	} */
 
 	db := &DatabaseService{
-		EntityDataInterface: databaseService.NewEntityData[*order.StockOrder](params.NewEntityDataParams),
+		EntityDataInterface: databaseService.NewPostGresEntityData[*order.StockOrder](&databaseService.NewPostGresEntityDataParams{}),
 	}
 
 	db.Connect()

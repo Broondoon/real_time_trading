@@ -4,6 +4,8 @@ import (
 	databaseAccess "Shared/database/database-access"
 	"Shared/entities/order"
 	databaseServiceStockOrder "databaseServiceStockOrder/database-connection"
+
+	"gorm.io/gorm"
 )
 
 type EntityDataAccessInterface = databaseAccess.EntityDataAccessInterface[*order.StockOrder, order.StockOrderInterface]
@@ -21,12 +23,12 @@ type DatabaseAccess struct {
 }
 
 type NewDatabaseAccessParams struct {
-	*databaseAccess.NewEntityDataAccessParams[*order.StockOrder]
+	*databaseAccess.NewEntityDataAccessParams[*order.StockOrder, *gorm.DB]
 }
 
 func NewDatabaseAccess(params *NewDatabaseAccessParams) DatabaseAccessInterface {
 	if params.NewEntityDataAccessParams == nil {
-		params.NewEntityDataAccessParams = &databaseAccess.NewEntityDataAccessParams[*order.StockOrder]{
+		params.NewEntityDataAccessParams = &databaseAccess.NewEntityDataAccessParams[*order.StockOrder, *gorm.DB]{
 			NewDatabaseAccessParams: &databaseAccess.NewDatabaseAccessParams{},
 		}
 	}

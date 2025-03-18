@@ -25,38 +25,38 @@ type DatabaseAccess struct {
 
 // NewUserDataAccessParams holds parameters for creating a new auth data access.
 type NewDatabaseAccessParams struct {
-	*databaseAccess.NewEntityDataAccessHTTPParams[*user.User]
+	*databaseAccess.NewEntityDataAccessNetworkParams[*user.User]
 	Network network.NetworkInterface //Network to be used for the database access to access the service. Currently we use a HTTP client.
 }
 
 // NewUserDataAccess creates an UserDataAccessInterface instance.
 func NewDatabaseAccess(params *NewDatabaseAccessParams) DatabaseAccessInterface {
 	//Set defaults to prevent null reference errors
-	if params.NewEntityDataAccessHTTPParams == nil {
-		params.NewEntityDataAccessHTTPParams = &databaseAccess.NewEntityDataAccessHTTPParams[*user.User]{}
+	if params.NewEntityDataAccessNetworkParams == nil {
+		params.NewEntityDataAccessNetworkParams = &databaseAccess.NewEntityDataAccessNetworkParams[*user.User]{}
 	}
 	//We need a network. System won't work without it. Panic if we don't have one.
 	if params.Network == nil {
 		panic("No Network provided")
 	}
 	//Default the base pathway for listening to this service
-	if params.NewEntityDataAccessHTTPParams.Client == nil {
-		params.NewEntityDataAccessHTTPParams.Client = params.Network.AuthDatabase()
+	if params.NewEntityDataAccessNetworkParams.Client == nil {
+		params.NewEntityDataAccessNetworkParams.Client = params.Network.AuthDatabase()
 	}
 	// Use an environment variable for the default route.
-	if params.NewEntityDataAccessHTTPParams.DefaultRoute == "" {
-		params.NewEntityDataAccessHTTPParams.DefaultRoute = os.Getenv("AUTH_SERVICE_USER_ROUTE")
+	if params.NewEntityDataAccessNetworkParams.DefaultRoute == "" {
+		params.NewEntityDataAccessNetworkParams.DefaultRoute = os.Getenv("AUTH_SERVICE_USER_ROUTE")
 	}
 	//Set parsers for the user object. These are found in the shared/entities/user/user.go file.
-	if params.NewEntityDataAccessHTTPParams.Parser == nil {
-		params.NewEntityDataAccessHTTPParams.Parser = user.Parse
+	if params.NewEntityDataAccessNetworkParams.Parser == nil {
+		params.NewEntityDataAccessNetworkParams.Parser = user.Parse
 	}
-	if params.NewEntityDataAccessHTTPParams.ParserList == nil {
-		params.NewEntityDataAccessHTTPParams.ParserList = user.ParseList
+	if params.NewEntityDataAccessNetworkParams.ParserList == nil {
+		params.NewEntityDataAccessNetworkParams.ParserList = user.ParseList
 	}
 
 	dba := &DatabaseAccess{
-		EntityDataAccessInterface: databaseAccess.NewEntityDataAccessHTTP[*user.User, user.UserInterface](params.NewEntityDataAccessHTTPParams),
+		EntityDataAccessInterface: databaseAccess.NewEntityDataAccessNetwork[*user.User, user.UserInterface](params.NewEntityDataAccessNetworkParams),
 		_networkManager:           params.Network,
 	}
 	dba.Connect()
