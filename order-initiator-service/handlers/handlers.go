@@ -285,6 +285,7 @@ func cancelStockTransactionHandler(responseWriter network.ResponseWriter, data [
 		responseWriter.WriteHeader(http.StatusBadRequest)
 		return
 	}
+	// Should this be := here?
 	err = cancelStockTransaction(stockID.StockTransactionID)
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		responseWriter.WriteHeader(http.StatusNotFound)
@@ -307,6 +308,7 @@ func cancelStockTransactionHandler(responseWriter network.ResponseWriter, data [
 	responseWriter.Write(returnValJSON)
 }
 
+// initiator passes to matching
 func cancelStockTransaction(id string) error {
 	//pass to matching engine
 	err := _networkHttpManager.Transactions().Patch("cancelStockTransaction", id)

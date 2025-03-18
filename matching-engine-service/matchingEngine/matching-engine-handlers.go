@@ -185,6 +185,7 @@ func PlaceStockOrder(data *[]*StockOrderBulk, TransferParams any) error {
 	return nil
 }
 
+// this handles the delete order request from initiator, spawned by /cancelStockOrder from user
 func DeleteStockOrderHandler(responseWriter network.ResponseWriter, data []byte, queryParams url.Values, requestType string) {
 	orderID, err := uuid.Parse(strings.TrimSpace(queryParams.Get("id")))
 	if err != nil {
@@ -208,17 +209,17 @@ func DeleteStockOrderHandler(responseWriter network.ResponseWriter, data []byte,
 func DeleteStockOrder(orderID *uuid.UUID) error {
 	order, err := _databaseManager.GetByID(orderID)
 	if err != nil {
-		log.Println("Error: ", err.Error())
+		log.Println("Cancel Stock GetByID Error: ", err.Error())
 		return err
 	}
 	err = _databaseManager.Delete(orderID)
 	if err != nil {
-		log.Println("Error: ", err.Error())
+		log.Println("Cancel Stock Delete Error: ", err.Error())
 		return err
 	}
 	me, ok := _matchingEngineMap[order.GetStockIDString()]
 	if !ok {
-		log.Println("Error: Matching engine not found for ID: ", order.GetStockID())
+		log.Println("Cancel Stock Error: Matching engine not found for ID: ", order.GetStockID())
 		return nil
 	}
 	me.RemoveOrder(orderID.String(), order.GetPrice())
