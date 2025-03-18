@@ -18,7 +18,7 @@ type UserInterface interface {
 
 type User struct {
 	Name          string `json:"name" gorm:"not null"`
-	Username      string `json:"user_name" gorm:"unique not null"`
+	Username      string `json:"user_name" gorm:"unique not null"` // unique not noull
 	Password      string `json:"password" gorm:"not null"`
 	entity.Entity `json:"Entity" gorm:"embedded"`
 }
