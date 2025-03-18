@@ -147,6 +147,7 @@ func (d *PostGresDatabase) GetNewDatabaseSession() *gorm.DB {
 }
 
 // EntityDataInterface and EntityData implementation.
+
 type EntityDataInterface[T entity.EntityInterface] interface {
 	PostGresDatabaseInterface
 	GetByID(ID string) (T, error)
