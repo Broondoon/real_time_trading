@@ -1,4 +1,4 @@
-services:  
+services:
   nginx:
     image: nginx:latest
     container_name: nginx_lb
@@ -17,9 +17,9 @@ services:
     networks:
       - go-network
 
-# ---------------------- User Management Tests ----------------------
-#  user-management-tests:
- #    build:
+  # ---------------------- User Management Tests ----------------------
+  #  user-management-tests:
+  #    build:
   #     context: .
   #      dockerfile: ./user-management-tests/Dockerfile
   #   env_file:
@@ -30,15 +30,15 @@ services:
   #     user-management-service:
   #      condition: service_healthy
   # ---------------------- User Management Service ------------------
-   #    dockerfile: ./user-management-tests/Dockerfile
-    # env_file:
-     #   - .env
-     #networks:
-     #- go-network
-     #depends_on:
-     #  user-management-service:
-     #   condition: service_healthy
-# ---------------------- User Management Service ----------------------
+  #    dockerfile: ./user-management-tests/Dockerfile
+  # env_file:
+  #   - .env
+  #networks:
+  #- go-network
+  #depends_on:
+  #  user-management-service:
+  #   condition: service_healthy
+  # ---------------------- User Management Service ----------------------
   user-management-service:
     build:
       context: .
@@ -60,12 +60,7 @@ services:
         condition: service_healthy
     healthcheck:
       test:
-        [
-          "CMD",
-          "curl",
-          "-f",
-          "http://localhost:${USER_MANAGEMENT_PORT}/health",
-        ]
+        ["CMD", "curl", "-f", "http://localhost:${USER_MANAGEMENT_PORT}/health"]
       interval: ${HEALTHCHECK_INTERVAL}
       timeout: ${HEALTHCHECK_TIMEOUT}
       retries: ${HEALTHCHECK_RETRIES}
@@ -134,12 +129,7 @@ services:
       - go-network
     healthcheck:
       test:
-        [
-          "CMD",
-          "curl",
-          "-f",
-          "http://localhost:${MATCHING_ENGINE_PORT}/health",
-        ]
+        ["CMD", "curl", "-f", "http://localhost:${MATCHING_ENGINE_PORT}/health"]
       interval: ${HEALTHCHECK_INTERVAL}
       timeout: ${HEALTHCHECK_TIMEOUT}
       retries: ${HEALTHCHECK_RETRIES}
@@ -165,12 +155,7 @@ services:
         condition: service_healthy
     healthcheck:
       test:
-        [
-          "CMD",
-          "curl",
-          "-f",
-          "http://localhost:${ORDER_INITIATOR_PORT}/health",
-        ]
+        ["CMD", "curl", "-f", "http://localhost:${ORDER_INITIATOR_PORT}/health"]
       interval: ${HEALTHCHECK_INTERVAL}
       timeout: ${HEALTHCHECK_TIMEOUT}
       retries: ${HEALTHCHECK_RETRIES}
@@ -198,12 +183,7 @@ services:
         condition: service_healthy
     healthcheck:
       test:
-        [
-          "CMD",
-          "curl",
-          "-f",
-          "http://localhost:${ORDER_EXECUTOR_PORT}/health",
-        ]
+        ["CMD", "curl", "-f", "http://localhost:${ORDER_EXECUTOR_PORT}/health"]
       interval: ${HEALTHCHECK_INTERVAL}
       timeout: ${HEALTHCHECK_TIMEOUT}
       retries: ${HEALTHCHECK_RETRIES}
@@ -236,13 +216,7 @@ services:
     networks:
       - go-network
     healthcheck:
-      test:
-        [
-          "CMD",
-          "curl",
-          "-f",
-          "http://${AUTH_HOST}:${AUTH_PORT}/health",
-        ]
+      test: ["CMD", "curl", "-f", "http://${AUTH_HOST}:${AUTH_PORT}/health"]
       interval: ${HEALTHCHECK_INTERVAL}
       timeout: ${HEALTHCHECK_TIMEOUT}
       retries: ${HEALTHCHECK_RETRIES}
@@ -508,16 +482,32 @@ services:
       start_period: 10s # Allow 30 seconds for initialization before starting health checks
     networks:
       - go-network
-  
+
   pgadmin:
     image: dpage/pgadmin4
     environment:
       PGADMIN_DEFAULT_EMAIL: "admin@example.com"
       PGADMIN_DEFAULT_PASSWORD: "secret"
+    restart: always
     ports:
       - "5050:80"
     networks:
       - go-network
+
+#    auth-mongodb:
+#    image: mongo # Uses latest image
+#
+#    environment:
+#      - MONGO_INITDB_ROOT_USERNAME=user
+#      - MONGO_INITDB_ROOT_PASSWORD=pass
+#    healthcheck:
+#      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017 --quiet
+#      interval: 10s
+#      timeout: 10s
+#      retries: 5
+#      start_period: 40s
+#  networks:
+#    - go-network
 
 volumes:
   user-management-db-data:
@@ -531,5 +521,3 @@ volumes:
 networks:
   go-network:
     driver: bridge
-
-
