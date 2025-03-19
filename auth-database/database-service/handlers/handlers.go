@@ -18,8 +18,9 @@ func InitializeHandlers(
 	_databaseManager = databaseManager
 	_networkManager = networkManager
 
-	// Add handlers here
+	// Basic handler package for entities, with parers for the user entity.
 	network.CreateNetworkEntityHandlers(_networkManager, os.Getenv("AUTH_SERVICE_USER_ROUTE"), _databaseManager, user.Parse, user.ParseList)
+	//Health check function for the service
 	http.HandleFunc("/health", healthHandler)
 }
 

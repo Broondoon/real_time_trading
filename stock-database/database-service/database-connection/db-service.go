@@ -3,25 +3,23 @@ package databaseServiceStock
 import (
 	databaseService "Shared/database/database-service"
 	"Shared/entities/stock"
+
+	"gorm.io/gorm"
 )
 
 type DatabaseServiceInterface interface {
-	databaseService.EntityDataInterface[*stock.Stock]
+	databaseService.EntityDataInterface[*stock.Stock, *gorm.DB]
 }
 
 type DatabaseService struct {
-	databaseService.EntityDataInterface[*stock.Stock]
+	databaseService.EntityDataInterface[*stock.Stock, *gorm.DB]
 	Stocks *[]stock.StockInterface
 }
 
 type NewDatabaseServiceParams struct {
-	*databaseService.NewEntityDataParams //leave nil for default
 }
 
 func NewDatabaseService(params *NewDatabaseServiceParams) DatabaseServiceInterface {
-	if params.NewEntityDataParams == nil {
-		params.NewEntityDataParams = &databaseService.NewEntityDataParams{}
-	}
 
 	//CACHE IMPLEMENTATION
 	/* cachedStock := databaseService.NewCachedEntityData[*stock.Stock](&databaseService.NewCachedEntityDataParams{
@@ -36,7 +34,7 @@ func NewDatabaseService(params *NewDatabaseServiceParams) DatabaseServiceInterfa
 	} */
 
 	db := &DatabaseService{
-		EntityDataInterface: databaseService.NewEntityData[*stock.Stock](params.NewEntityDataParams),
+		EntityDataInterface: databaseService.NewPostGresEntityData[*stock.Stock](&databaseService.NewPostGresEntityDataParams{}),
 	}
 
 	db.Connect()

@@ -43,18 +43,18 @@ type DatabaseAccess struct {
 }
 
 type NewDatabaseAccessParams struct {
-	UserStockParams *databaseAccess.NewEntityDataAccessHTTPParams[*userStock.UserStock]
-	WalletParams    *databaseAccess.NewEntityDataAccessHTTPParams[*wallet.Wallet]
+	UserStockParams *databaseAccess.NewEntityDataAccessNetworkParams[*userStock.UserStock]
+	WalletParams    *databaseAccess.NewEntityDataAccessNetworkParams[*wallet.Wallet]
 	Network         network.NetworkInterface
 }
 
 func NewDatabaseAccess(params *NewDatabaseAccessParams) DatabaseAccessInterface {
 	if params.UserStockParams == nil {
-		params.UserStockParams = &databaseAccess.NewEntityDataAccessHTTPParams[*userStock.UserStock]{}
+		params.UserStockParams = &databaseAccess.NewEntityDataAccessNetworkParams[*userStock.UserStock]{}
 	}
 
 	if params.WalletParams == nil {
-		params.WalletParams = &databaseAccess.NewEntityDataAccessHTTPParams[*wallet.Wallet]{}
+		params.WalletParams = &databaseAccess.NewEntityDataAccessNetworkParams[*wallet.Wallet]{}
 	}
 
 	if params.Network == nil {
@@ -89,10 +89,10 @@ func NewDatabaseAccess(params *NewDatabaseAccessParams) DatabaseAccessInterface 
 
 	dba := &DatabaseAccess{
 		UserStocksDataAccessInterface: &UserStocksDataAccess{
-			EntityDataAccessInterface: databaseAccess.NewEntityDataAccessHTTP[*userStock.UserStock, userStock.UserStockInterface](params.UserStockParams),
+			EntityDataAccessInterface: databaseAccess.NewEntityDataAccessNetwork[*userStock.UserStock, userStock.UserStockInterface](params.UserStockParams),
 		},
 		WalletDataAccessInterface: &WalletDataAccess{
-			EntityDataAccessInterface: databaseAccess.NewEntityDataAccessHTTP[*wallet.Wallet, wallet.WalletInterface](params.WalletParams),
+			EntityDataAccessInterface: databaseAccess.NewEntityDataAccessNetwork[*wallet.Wallet, wallet.WalletInterface](params.WalletParams),
 		},
 		_networkManager: params.Network,
 	}

@@ -8,47 +8,53 @@ import (
 	"github.com/google/uuid"
 )
 
-type EntityDataAccess[TEntity entity.EntityInterface, TInterface entity.EntityInterface] struct {
+// This is a dirty implementation that combines the Database access and the database service.
+// Usually the access and service would be on seperate serivces and the access would be a client to the service.
+// Here we actually have the service in the access. It's used only for the matching engine.
+type EntityDataAccess[TEntity entity.EntityInterface, TInterface entity.EntityInterface, TDatabase any] struct {
 	BaseDatabaseAccessInterface
-	EntityDataServiceTemp database.EntityDataInterface[TEntity]
+	EntityDataServiceTemp database.EntityDataInterface[TEntity, TDatabase]
 }
 
-type NewEntityDataAccessParams[TEntity entity.EntityInterface] struct {
+type NewEntityDataAccessParams[TEntity entity.EntityInterface, TDatabase any] struct {
 	*NewDatabaseAccessParams //Leave blank for defaults. (Usually fine)
 	//This is our dirty temporary implementation of this. Ideallily, this access has no idea what sort of database setup there is. It just knows "SEND HERE TO GET DATA"
 	//Cheap ignore of sepearation between access and database. Later on, we'd actually likely have a cache between here and the database, but for now, we'll just connect directly.
 	//This would actually go in the proper main of the database. Since however we're currently just testing the database, we'll put it here.
-	EntityDataServiceTemp database.EntityDataInterface[TEntity]
+	EntityDataServiceTemp database.EntityDataInterface[TEntity, TDatabase] //This is the service that actually connects to the database. It's a dirty implementation, but it's fine for now.
 }
 
-func NewEntityDataAccess[TEntity entity.EntityInterface, TInterface entity.EntityInterface](params *NewEntityDataAccessParams[TEntity]) EntityDataAccessInterface[TEntity, TInterface] {
+func NewEntityDataAccess[TEntity entity.EntityInterface, TInterface entity.EntityInterface, TDatabase any](params *NewEntityDataAccessParams[TEntity, TDatabase]) EntityDataAccessInterface[TEntity, TInterface] {
 	if params.NewDatabaseAccessParams == nil {
 		params.NewDatabaseAccessParams = &NewDatabaseAccessParams{}
 	}
 
-	return &EntityDataAccess[TEntity, TInterface]{
+	return &EntityDataAccess[TEntity, TInterface, TDatabase]{
 		BaseDatabaseAccessInterface: NewBaseDatabaseAccess(params.NewDatabaseAccessParams),
 		EntityDataServiceTemp:       params.EntityDataServiceTemp,
 	}
 }
 
-func (d *EntityDataAccess[TEntity, TInterface]) Connect() {
+func (d *EntityDataAccess[TEntity, TInterface, TDatabase]) Connect() {
 	d.EntityDataServiceTemp.Connect()
 }
 
-func (d *EntityDataAccess[TEntity, TInterface]) Disconnect() {
+func (d *EntityDataAccess[TEntity, TInterface, TDatabase]) Disconnect() {
 	d.EntityDataServiceTemp.Disconnect()
 }
 
-func (d *EntityDataAccess[TEntity, TInterface]) GetByID(id *uuid.UUID) (TInterface, error) {
+// GetByID gets an entity by its ID
+func (d *EntityDataAccess[TEntity, TInterface, TDatabase]) GetByID(id *uuid.UUID) (TInterface, error) {
 	entity, err := d.EntityDataServiceTemp.GetByID(id.String())
 	if err != nil {
 		log.Fatal("Failed to get entity by ID: ", err)
 	}
+	//convert the entity to the interface
 	return interface{}(entity).(TInterface), nil
 }
 
-func (d *EntityDataAccess[TEntity, TInterface]) GetAll() (*[]TInterface, error) {
+// GetAll gets all entities of a type/table
+func (d *EntityDataAccess[TEntity, TInterface, TDatabase]) GetAll() (*[]TInterface, error) {
 	entities, err := d.EntityDataServiceTemp.GetAll()
 	if err != nil {
 		log.Fatal("Failed to get all entities: ", err)
@@ -59,11 +65,11 @@ func (d *EntityDataAccess[TEntity, TInterface]) GetAll() (*[]TInterface, error) 
 	}
 	return &converted, nil
 }
-func (d *EntityDataAccess[TEntity, TInterface]) GetByIDs(ids []*uuid.UUID) (*[]TInterface, map[string]int, error) {
+func (d *EntityDataAccess[TEntity, TInterface, TDatabase]) GetByIDs(ids []*uuid.UUID) (*[]TInterface, map[string]int, error) {
 	panic("implement me") // TODO: Implement
 }
 
-func (d *EntityDataAccess[TEntity, TInterface]) GetByForeignID(foreignIDColumn string, foreignID string) (*[]TInterface, error) {
+func (d *EntityDataAccess[TEntity, TInterface, TDatabase]) GetByForeignID(foreignIDColumn string, foreignID string) (*[]TInterface, error) {
 	entities, err := d.EntityDataServiceTemp.GetByForeignID(foreignIDColumn, foreignID)
 	if err != nil {
 		log.Fatal("Failed to get entities by ForeignKey: ", err)
@@ -75,11 +81,11 @@ func (d *EntityDataAccess[TEntity, TInterface]) GetByForeignID(foreignIDColumn s
 	return &converted, nil
 }
 
-func (d *EntityDataAccess[TEntity, TInterface]) GetByForeignIDBulk(foreignIDColumn string, foreignIDs []string) (*[]TInterface, map[string]int, error) {
+func (d *EntityDataAccess[TEntity, TInterface, TDatabase]) GetByForeignIDBulk(foreignIDColumn string, foreignIDs []string) (*[]TInterface, map[string]int, error) {
 	panic("implement me") // TODO: Implement
 }
 
-func (d *EntityDataAccess[TEntity, TInterface]) CreateBulk(entities *[]TInterface) (*[]TInterface, map[string]int, error) {
+func (d *EntityDataAccess[TEntity, TInterface, TDatabase]) CreateBulk(entities *[]TInterface) (*[]TInterface, map[string]int, error) {
 	panic("implement me") // TODO: Implement
 	// bulkEntities := make([]TEntity, len(*entities))
 	// if len(*entities) == 0 {
@@ -103,7 +109,7 @@ func (d *EntityDataAccess[TEntity, TInterface]) CreateBulk(entities *[]TInterfac
 	// return &converted, errors, nil
 }
 
-func (d *EntityDataAccess[TEntity, TInterface]) Create(entity TInterface) (TInterface, error) {
+func (d *EntityDataAccess[TEntity, TInterface, TDatabase]) Create(entity TInterface) (TInterface, error) {
 	err := d.EntityDataServiceTemp.Create(interface{}(entity).(TEntity))
 	if err != nil {
 		log.Fatal("Failed to create entity: ", err)
@@ -111,7 +117,7 @@ func (d *EntityDataAccess[TEntity, TInterface]) Create(entity TInterface) (TInte
 	return entity, nil
 }
 
-func (d *EntityDataAccess[TEntity, TInterface]) Update(entity TInterface) error {
+func (d *EntityDataAccess[TEntity, TInterface, TDatabase]) Update(entity TInterface) error {
 	err := d.EntityDataServiceTemp.Update(*entity.GetUpdates())
 	if len(err) > 0 {
 		for _, e := range err {
@@ -121,11 +127,11 @@ func (d *EntityDataAccess[TEntity, TInterface]) Update(entity TInterface) error 
 	return nil
 }
 
-func (d *EntityDataAccess[TEntity, TInterface]) UpdateBulk(entities *[]TInterface) (map[string]int, error) {
+func (d *EntityDataAccess[TEntity, TInterface, TDatabase]) UpdateBulk(entities *[]TInterface) (map[string]int, error) {
 	panic("implement me") // TODO: Implement
 }
 
-func (d *EntityDataAccess[TEntity, TInterface]) Delete(id *uuid.UUID) error {
+func (d *EntityDataAccess[TEntity, TInterface, TDatabase]) Delete(id *uuid.UUID) error {
 	err := d.EntityDataServiceTemp.Delete(id.String())
 	if err != nil {
 		log.Fatal("Failed to delete entity: ", err)
@@ -133,6 +139,6 @@ func (d *EntityDataAccess[TEntity, TInterface]) Delete(id *uuid.UUID) error {
 	return nil
 }
 
-func (d *EntityDataAccess[TEntity, TInterface]) DeleteBulk(ids []*uuid.UUID) (map[string]int, error) {
+func (d *EntityDataAccess[TEntity, TInterface, TDatabase]) DeleteBulk(ids []*uuid.UUID) (map[string]int, error) {
 	panic("implement me") // TODO: Implement
 }
