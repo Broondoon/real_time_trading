@@ -138,7 +138,7 @@ type HandlerParams struct {
 	RequestType string
 }
 
-func CreateNetworkEntityHandlers[T entity.EntityInterface](network NetworkInterface, entityName string, databaseManager databaseService.EntityDataInterface[T], Parse func(jsonBytes []byte) (T, error), ParseList func(jsonBytes []byte) (*[]T, error)) {
+func CreateNetworkEntityHandlers[T entity.EntityInterface, TDatabase any](network NetworkInterface, entityName string, databaseManager databaseService.EntityDataInterface[T, TDatabase], Parse func(jsonBytes []byte) (T, error), ParseList func(jsonBytes []byte) (*[]T, error)) {
 	defaults := func(responseWriter ResponseWriter, data []byte, queryParams url.Values, requestType string) {
 		// log.Println("-----------------\nRequest:")
 		// log.Println("entityName: ", entityName)

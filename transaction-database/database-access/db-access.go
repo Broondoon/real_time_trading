@@ -23,18 +23,18 @@ type DatabaseAccess struct {
 }
 
 type NewDatabaseAccessParams struct {
-	StockTransactionParams  *databaseAccess.NewEntityDataAccessHTTPParams[*transaction.StockTransaction]
-	WalletTransactionParams *databaseAccess.NewEntityDataAccessHTTPParams[*transaction.WalletTransaction]
+	StockTransactionParams  *databaseAccess.NewEntityDataAccessNetworkParams[*transaction.StockTransaction]
+	WalletTransactionParams *databaseAccess.NewEntityDataAccessNetworkParams[*transaction.WalletTransaction]
 	Network                 network.NetworkInterface
 }
 
 func NewDatabaseAccess(params *NewDatabaseAccessParams) DatabaseAccessInterface {
 	if params.StockTransactionParams == nil {
-		params.StockTransactionParams = &databaseAccess.NewEntityDataAccessHTTPParams[*transaction.StockTransaction]{}
+		params.StockTransactionParams = &databaseAccess.NewEntityDataAccessNetworkParams[*transaction.StockTransaction]{}
 	}
 
 	if params.WalletTransactionParams == nil {
-		params.WalletTransactionParams = &databaseAccess.NewEntityDataAccessHTTPParams[*transaction.WalletTransaction]{}
+		params.WalletTransactionParams = &databaseAccess.NewEntityDataAccessNetworkParams[*transaction.WalletTransaction]{}
 	}
 
 	if params.Network == nil {
@@ -68,8 +68,8 @@ func NewDatabaseAccess(params *NewDatabaseAccessParams) DatabaseAccessInterface 
 	}
 
 	dba := &DatabaseAccess{
-		StockTransactionDataAccessInterface:  databaseAccess.NewEntityDataAccessHTTP[*transaction.StockTransaction, transaction.StockTransactionInterface](params.StockTransactionParams),
-		WalletTransactionDataAccessInterface: databaseAccess.NewEntityDataAccessHTTP[*transaction.WalletTransaction, transaction.WalletTransactionInterface](params.WalletTransactionParams),
+		StockTransactionDataAccessInterface:  databaseAccess.NewEntityDataAccessNetwork[*transaction.StockTransaction, transaction.StockTransactionInterface](params.StockTransactionParams),
+		WalletTransactionDataAccessInterface: databaseAccess.NewEntityDataAccessNetwork[*transaction.WalletTransaction, transaction.WalletTransactionInterface](params.WalletTransactionParams),
 		_networkManager:                      params.Network,
 	}
 

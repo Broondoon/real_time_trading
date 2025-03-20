@@ -4,61 +4,64 @@ import (
 	databaseService "Shared/database/database-service"
 	userStock "Shared/entities/user-stock"
 	"Shared/entities/wallet"
+
+	"gorm.io/gorm"
 )
 
 type UserStockDataServiceInterface interface {
-	databaseService.EntityDataInterface[*userStock.UserStock]
+	databaseService.EntityDataInterface[*userStock.UserStock, *gorm.DB]
 }
 
 type WalletDataServiceInterface interface {
-	databaseService.EntityDataInterface[*wallet.Wallet]
+	databaseService.EntityDataInterface[*wallet.Wallet, *gorm.DB]
 }
 
 type DatabaseServiceInterface interface {
-	databaseService.DatabaseInterface
+	databaseService.DatabaseInterface[*gorm.DB]
 	UserStocks() UserStockDataServiceInterface
 	Wallets() WalletDataServiceInterface
 }
 
 type DatabaseService struct {
-	UserStock databaseService.EntityDataInterface[*userStock.UserStock]
-	Wallet    databaseService.EntityDataInterface[*wallet.Wallet]
-	databaseService.DatabaseInterface
+	UserStock databaseService.EntityDataInterface[*userStock.UserStock, *gorm.DB]
+	Wallet    databaseService.EntityDataInterface[*wallet.Wallet, *gorm.DB]
+	databaseService.DatabaseInterface[*gorm.DB]
 }
 
 type NewDatabaseServiceParams struct {
-	UserStockParams *databaseService.NewEntityDataParams // leave nil for default
-	WalletParams    *databaseService.NewEntityDataParams // leave nil for default
+	// UserStockParams *databaseService.NewEntityDataParams // leave nil for default
+	// WalletParams    *databaseService.NewEntityDataParams // leave nil for default
 	// Only the UserStockParams.NewPostGresDatabaseParams is used. The WalletParams.NewPostGresDatabaseParams is ignored.
 }
 
 func NewDatabaseService(params *NewDatabaseServiceParams) DatabaseServiceInterface {
 
-	if params.UserStockParams == nil {
-		params.UserStockParams = &databaseService.NewEntityDataParams{
-			NewPostGresDatabaseParams: &databaseService.NewPostGresDatabaseParams{},
-		}
-	}
-	if params.WalletParams == nil {
-		params.WalletParams = &databaseService.NewEntityDataParams{
-			NewPostGresDatabaseParams: &databaseService.NewPostGresDatabaseParams{},
-		}
-	}
+	// if params.UserStockParams == nil {
+	// 	params.UserStockParams = &databaseService.NewEntityDataParams{
+	// 		NewPostGresDatabaseParams: &databaseService.NewPostGresDatabaseParams{},
+	// 	}
+	// }
+	// if params.WalletParams == nil {
+	// 	params.WalletParams = &databaseService.NewEntityDataParams{
+	// 		NewPostGresDatabaseParams: &databaseService.NewPostGresDatabaseParams{},
+	// 	}
+	// }
+	newDBConnection := databaseService.NewPostGresDatabase(&databaseService.NewPostGresDatabaseParams{})
 
-	var newDBConnection databaseService.PostGresDatabaseInterface
-	if params.UserStockParams.Existing != nil {
-		newDBConnection = params.UserStockParams.Existing
-		if params.WalletParams.Existing == nil {
-			params.WalletParams.Existing = newDBConnection
-		}
-	} else if params.WalletParams.Existing != nil {
-		newDBConnection = params.WalletParams.Existing
-		params.UserStockParams.Existing = newDBConnection
-	} else {
-		newDBConnection = databaseService.NewPostGresDatabase(params.UserStockParams.NewPostGresDatabaseParams)
-		params.UserStockParams.Existing = newDBConnection
-		params.WalletParams.Existing = newDBConnection
-	}
+	// var newDBConnection databaseService.PostGresDatabaseInterface
+	// if params.UserStockParams.Existing != nil {
+	// 	newDBConnection = params.UserStockParams.Existing
+	// 	if params.WalletParams.Existing == nil {
+	// 		params.WalletParams.Existing = newDBConnection
+	// 	}
+	// } else if params.WalletParams.Existing != nil {
+	// 	newDBConnection = params.WalletParams.Existing
+	// 	params.UserStockParams.Existing = newDBConnection
+	// } else {
+	// 	newDBConnection = databaseService.NewPostGresDatabase(params.UserStockParams.NewPostGresDatabaseParams)
+	// 	params.UserStockParams.Existing = newDBConnection
+	// 	params.WalletParams.Existing = newDBConnection
+	// }
 
 	//Cache stuff
 	/* cachedUserStock := databaseService.NewCachedEntityData[*userStock.UserStock](&databaseService.NewCachedEntityDataParams{
@@ -81,8 +84,12 @@ func NewDatabaseService(params *NewDatabaseServiceParams) DatabaseServiceInterfa
 		DatabaseInterface: newDBConnection,
 	} */
 	db := &DatabaseService{
-		UserStock:         databaseService.NewEntityData[*userStock.UserStock](params.UserStockParams),
-		Wallet:            databaseService.NewEntityData[*wallet.Wallet](params.WalletParams),
+		UserStock: databaseService.NewPostGresEntityData[*userStock.UserStock](&databaseService.NewPostGresEntityDataParams{
+			Existing: newDBConnection,
+		}),
+		Wallet: databaseService.NewPostGresEntityData[*wallet.Wallet](&databaseService.NewPostGresEntityDataParams{
+			Existing: newDBConnection,
+		}),
 		DatabaseInterface: newDBConnection,
 	}
 
