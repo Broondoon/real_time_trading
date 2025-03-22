@@ -216,24 +216,3 @@ func (me *MatchingEngine) GetPrice() network.StockPrice {
 	}
 
 }
-
-//fake matching engine mock for testing
-
-type FakeMatchingEngine struct {
-	ordersCalled  bool
-	updatesCalled bool
-	ordersCh      chan struct{}
-	updatesCh     chan struct{}
-}
-
-func (fme *FakeMatchingEngine) AddOrder(o order.StockOrderInterface) {}
-
-func (fme *FakeMatchingEngine) RunMatchingEngineOrders() {
-	fme.ordersCalled = true
-	close(fme.ordersCh)
-}
-
-func (fme *FakeMatchingEngine) RunMatchingEngineUpdates() {
-	fme.updatesCalled = true
-	close(fme.updatesCh)
-}
