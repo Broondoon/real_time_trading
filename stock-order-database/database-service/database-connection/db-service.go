@@ -3,27 +3,24 @@ package databaseServiceStockOrder
 import (
 	databaseService "Shared/database/database-service"
 	"Shared/entities/order"
+
+	"gorm.io/gorm"
 )
 
 type DatabaseServiceInterface interface {
-	databaseService.EntityDataInterface[*order.StockOrder]
-	GetInitialStockOrdersForStock(stockID string) (*[]order.StockOrder, error)
+	databaseService.EntityDataInterface[*order.StockOrder, *gorm.DB]
+	GetInitialStockOrdersForStock(stockID string) (*[]*order.StockOrder, error)
 }
 
 type DatabaseService struct {
-	databaseService.EntityDataInterface[*order.StockOrder]
+	databaseService.EntityDataInterface[*order.StockOrder, *gorm.DB]
 	StockOrders *[]order.StockOrderInterface
 }
 
 type NewDatabaseServiceParams struct {
-	*databaseService.NewEntityDataParams
 }
 
 func NewDatabaseService(params NewDatabaseServiceParams) DatabaseServiceInterface {
-	if params.NewEntityDataParams == nil {
-		params.NewEntityDataParams = &databaseService.NewEntityDataParams{}
-	}
-
 	//CACHE IMPLEMENTATION
 	//THIS ONE IS DISABLED BECAUSE AS OF MARCH 9/25 THIS DOES NOT IMPROVE PERFORMANCE DUE TO STOCKORDER NOT BEING
 	//STOCKORDER BEING CREATED BUT NOT RETRIEVED FROM THE CACHE
@@ -39,7 +36,7 @@ func NewDatabaseService(params NewDatabaseServiceParams) DatabaseServiceInterfac
 	} */
 
 	db := &DatabaseService{
-		EntityDataInterface: databaseService.NewEntityData[*order.StockOrder](params.NewEntityDataParams),
+		EntityDataInterface: databaseService.NewPostGresEntityData[*order.StockOrder](&databaseService.NewPostGresEntityDataParams{}),
 	}
 
 	db.Connect()
@@ -56,8 +53,10 @@ func (d *DatabaseService) Disconnect() {
 }
 
 // Right now, we're just gonna get all stocksOrders for a given stock. Later, we need to limit this to a specific subset of orders.
-func (d *DatabaseService) GetInitialStockOrdersForStock(stockID string) (*[]order.StockOrder, error) {
-	var orders []order.StockOrder
-	d.GetDatabaseSession().Find(&orders, "stock_id = ? ", stockID)
-	return &orders, nil
+func (d *DatabaseService) GetInitialStockOrdersForStock(stockID string) (*[]*order.StockOrder, error) {
+	orders, err := d.GetByForeignID("StockID", stockID)
+	if err != nil {
+		return nil, err
+	}
+	return orders, nil
 }

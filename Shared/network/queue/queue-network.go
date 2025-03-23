@@ -2,6 +2,7 @@ package networkQueue
 
 import (
 	"Shared/network"
+	"log"
 
 	amqp "github.com/rabbitmq/amqp091-go"
 )
@@ -36,7 +37,7 @@ func (n *NetworkQueue) AddHandleFuncUnprotected(params network.HandlerParams) {
 	// 	Handler: params.Handler,
 	// }
 
-	println("Adding handle func unprotected: ", params.Pattern)
+	log.Println("Adding handle func unprotected: ", params.Pattern)
 	n.QueueClusters[params.Pattern] = NewQueueCluster(n.ExchangeKey, params, &NewQueueClusterParams{
 		NewNetworkQueueConnectionParams: &NewNetworkQueueConnectionParams{
 			Connection: n.GetConnection(),
@@ -52,8 +53,8 @@ func (n *NetworkQueue) AddHandleFuncUnprotected(params network.HandlerParams) {
 		ConsumeNoWait:    false,
 		ConsumeArgs:      nil,
 	})
-	println("Added handle func unprotected: ", params.Pattern)
-	println("Queue clusters: ", len(n.QueueClusters))
+	log.Println("Added handle func unprotected: ", params.Pattern)
+	log.Println("Queue clusters: ", len(n.QueueClusters))
 }
 
 func (n *NetworkQueue) AddHandleFuncProtected(params network.HandlerParams) {
@@ -61,23 +62,23 @@ func (n *NetworkQueue) AddHandleFuncProtected(params network.HandlerParams) {
 }
 
 func (n *NetworkQueue) Listen() {
-	println("Listening")
-	println("Queue clusters: ", len(n.QueueClusters))
+	log.Println("Listening")
+	log.Println("Queue clusters: ", len(n.QueueClusters))
 	for _, params := range n.QueueClusters {
-		println("Spawning queue")
+		log.Println("Spawning queue")
 		go params.SpawnQueue()
-		println("Spawned queue")
+		log.Println("Spawned queue")
 	}
 }
 
 // func handleFunc(params network.HandlerParams, w http.ResponseWriter, r *http.Request) {
-// 	// fmt.Println("Handling request for: ", r.URL.Path)
+// 	// log.Println("Handling request for: ", r.URL.Path)
 // 	var body []byte
 // 	var err error
 // 	queryParams := make(url.Values)
 // 	queryParams, err = url.ParseQuery(r.URL.RawQuery)
 // 	if err != nil {
-// 		fmt.Println("Error, there was an issue with reading the message:", err)
+// 		log.Println("Error, there was an issue with reading the message:", err)
 // 		w.WriteHeader(http.StatusBadRequest)
 // 		return
 // 	}
@@ -93,7 +94,7 @@ func (n *NetworkQueue) Listen() {
 // 	if r.Method == http.MethodPost || r.Method == http.MethodPut {
 // 		body, err = io.ReadAll(r.Body)
 // 		if err != nil {
-// 			fmt.Println("Error, there was an issue with reading the message:", err)
+// 			log.Println("Error, there was an issue with reading the message:", err)
 // 			w.WriteHeader(http.StatusInternalServerError)
 // 			return
 // 		}

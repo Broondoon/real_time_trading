@@ -2,11 +2,12 @@ package main
 
 import (
 	"MatchingEngineService/matchingEngine"
+	"Shared/network"
 	networkHttp "Shared/network/http"
 	networkQueue "Shared/network/queue"
 	"databaseAccessStock"
 	"databaseAccessStockOrder"
-	"fmt"
+	"log"
 	"os"
 )
 
@@ -21,13 +22,20 @@ func main() {
 	_databaseAccess := databaseAccessStock.NewDatabaseAccess(&databaseAccessStock.NewDatabaseAccessParams{
 		Network: networkHttpManager,
 	})
-	stockList, err := _databaseAccess.GetStockIDs()
+	stockList, err := _databaseAccess.GetAll()
 	if err != nil {
 		panic(err)
 	}
+	var stockList2 []network.StockPrice
+	for _, stock := range *stockList {
+		stockList2 = append(stockList2, network.StockPrice{
+			StockID:   stock.GetIdString(),
+			StockName: stock.GetName(),
+		})
+	}
 
-	go matchingEngine.InitalizeHandlers(stockList, networkHttpManager, networkQueueManager, _databaseManager, _databaseAccess)
-	fmt.Println("Matching Engine Service Started")
+	go matchingEngine.InitalizeHandlers(&stockList2, networkHttpManager, networkQueueManager, _databaseManager, _databaseAccess)
+	log.Println("Matching Engine Service Started")
 
 	networkHttpManager.Listen()
 }

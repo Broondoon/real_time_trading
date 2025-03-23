@@ -5,7 +5,6 @@ import (
 	"databaseAccessTransaction"
 	"databaseAccessUserManagement"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"net/url"
 )
@@ -15,20 +14,22 @@ var _databaseAccessUser databaseAccessUserManagement.DatabaseAccessInterface
 
 func InitalizeExecutorHandlers(
 	networkManager network.NetworkInterface,
+	queueManager network.NetworkInterface,
 	databaseAccessTransact databaseAccessTransaction.DatabaseAccessInterface,
 	databaseAccessUser databaseAccessUserManagement.DatabaseAccessInterface) {
 
 	_databaseAccessTransact = databaseAccessTransact
 	_databaseAccessUser = databaseAccessUser
 
-	networkManager.AddHandleFuncUnprotected(network.HandlerParams{Pattern: "executor", Handler: executorHandler})
+	queueManager.AddHandleFuncUnprotected(network.HandlerParams{Pattern: "executor", Handler: executorHandler})
 
 	http.HandleFunc("/health", healthHandler)
+	queueManager.Listen()
 }
 
 func healthHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
-	fmt.Fprintln(w, "OK")
+	//log.Println(w, "OK")
 }
 
 func executorHandler(responseWriter network.ResponseWriter, data []byte, queryParams url.Values, requestType string) {
@@ -45,7 +46,6 @@ func executorHandler(responseWriter network.ResponseWriter, data []byte, queryPa
 		responseWriter.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	println(fmt.Sprintf("Done ProcessTrade - buySuccess: %t, sellSuccess: %t", buySuccess, sellSuccess))
 	// Independent failure flags //
 	// If the match was successful, both IsBuyFailure and IsSellFailure will be false
 	// If the match was unsuccessful, only one of IsBuyFailure and IsSellFailure will be true
@@ -55,7 +55,6 @@ func executorHandler(responseWriter network.ResponseWriter, data []byte, queryPa
 		IsSellFailure: !sellSuccess,
 	}
 
-	println(fmt.Sprintf("IsBuyFailure: %t, IsSellFailure: %t", responseEntity.IsBuyFailure, responseEntity.IsSellFailure))
 	jsonResponseToMatchingEngine, err := json.Marshal(responseEntity)
 	if err != nil {
 		responseWriter.WriteHeader(http.StatusInternalServerError)
