@@ -7,6 +7,7 @@ import (
 	databaseServiceTransaction "databaseServiceTransaction/database-connection"
 	"encoding/json"
 	"errors"
+	"log"
 	"net/http"
 	"net/url"
 	"os"
@@ -104,10 +105,9 @@ func getStockTransactionsBulk(data *[]*TransactionBulk, TransferParams any) erro
 			}
 
 			// Format transactions
-			formattedTransactions := make([]FormattedStockTransaction, 0)
-			for _, tx := range transactions {
+			formattedTransactions := make([]FormattedStockTransaction, len(transactions))
+			for i, tx := range transactions {
 				tx.SetStockTXID() // Ensure ID is set
-
 				// Create formatted transaction
 				formatted := FormattedStockTransaction{
 					StockTxID:   tx.GetIdString(),
@@ -124,11 +124,11 @@ func getStockTransactionsBulk(data *[]*TransactionBulk, TransferParams any) erro
 				if parentID := tx.GetParentStockTransactionIDString(); parentID != "" {
 					formatted.ParentStockTxID = &parentID
 				}
-				if walletID := tx.GetWalletTransactionIDString(); walletID != "" {
-					formatted.WalletTxID = &walletID
+				if walletTXID := tx.GetWalletTransactionIDString(); walletTXID != "" {
+					formatted.WalletTxID = &walletTXID
 				}
 
-				formattedTransactions = append(formattedTransactions, formatted)
+				formattedTransactions[i] = formatted
 			}
 
 			// Sort by timestamp
@@ -212,8 +212,8 @@ func getWalletTransactionsBulk(data *[]*TransactionBulk, TransferParams any) err
 			}
 
 			// Format transactions
-			formattedTransactions := make([]FormattedWalletTransaction, 0)
-			for _, tx := range walletTransactions {
+			formattedTransactions := make([]FormattedWalletTransaction, len(walletTransactions))
+			for i, tx := range walletTransactions {
 				tx.SetWalletTXID() // ensure the wallet_tx_id is set
 
 				// Create formatted transaction
@@ -225,7 +225,7 @@ func getWalletTransactionsBulk(data *[]*TransactionBulk, TransferParams any) err
 					Timestamp:  tx.GetTimestamp(),
 				}
 
-				formattedTransactions = append(formattedTransactions, formatted)
+				formattedTransactions[i] = formatted
 			}
 
 			//sort transactions by timestamp. Oldest to newest
@@ -254,23 +254,28 @@ func getWalletTransactionsBulk(data *[]*TransactionBulk, TransferParams any) err
 func cancelStockTransactionHandler(responseWriter network.ResponseWriter, data []byte, queryParams url.Values, requestType string) {
 	stockTransaction, err := _databaseManager.StockTransactions().GetByID(queryParams.Get("id"))
 	if errors.Is(err, gorm.ErrRecordNotFound) {
+		log.Println("Stock transaction not found")
 		responseWriter.WriteHeader(http.StatusNotFound)
 		return
 	} else if err != nil {
+		log.Println("Failed to get stock transaction, error: ", err.Error())
 		responseWriter.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 	stockTransaction.SetOrderStatus("CANCELLED")
 	errList := _databaseManager.StockTransactions().Update(*stockTransaction.Updates)
 	if err := errList["transaction"]; err != nil {
+		log.Println("Failed to update stock transaction, error: ", err.Error())
 		responseWriter.WriteHeader(http.StatusInternalServerError)
 		return
 	} else {
 		for _, err := range errList {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
+				log.Println("Stock transaction not found")
 				responseWriter.WriteHeader(http.StatusNotFound)
 				return
 			} else {
+				log.Println("Failed to update stock transaction, error: ", err.Error())
 				responseWriter.WriteHeader(http.StatusInternalServerError)
 				return
 			}

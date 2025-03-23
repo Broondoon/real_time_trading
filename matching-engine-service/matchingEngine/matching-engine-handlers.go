@@ -181,12 +181,12 @@ func PlaceStockOrder(data *[]*StockOrderBulk, TransferParams any) error {
 				stockOrderPairings[stockOrder.GetUniquePairing().String()].ResponseWriter.WriteHeader(http.StatusBadRequest)
 				continue
 			}
-			stockOrderPairings[stockOrder.GetUniquePairing().String()].ResponseWriter.WriteHeader(http.StatusOK)
 		}
 	}()
 	for _, stockOrder := range stockOrderList {
 		me := _matchingEngineMap[stockOrder.GetStockIDString()]
 		me.AddOrder(stockOrder)
+		stockOrderPairings[stockOrder.GetUniquePairing().String()].ResponseWriter.WriteHeader(http.StatusOK)
 	}
 	return nil
 }
