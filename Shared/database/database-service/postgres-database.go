@@ -385,8 +385,6 @@ func (d *PostGresEntityData[T]) GetAll() (*[]T, error) {
 }
 
 func (d *PostGresEntityData[T]) CreateBulk(entities *[]T) map[string]error {
-	log.Printf("---WADEY DEBUG - is this even the right location?")
-
 	if len(*entities) == 0 {
 		return map[string]error{"transaction": errors.New("CREATE: no entities provided")}
 	}
@@ -432,6 +430,7 @@ func (d *PostGresEntityData[T]) CreateBulk(entities *[]T) map[string]error {
 				}
 				tx.RollbackTo(spName)
 
+				// This is the error handler which can catch postgres' thrown errors.
 				var pgErr *pgconn.PgError // Wow another reason why Go sucks; I can't do pgErr* instead of pgErr *
 				if errors.As(err, &pgErr) {
 					log.Printf("postgres db error: %v", err)
@@ -455,7 +454,6 @@ func (d *PostGresEntityData[T]) CreateBulk(entities *[]T) map[string]error {
 		}
 		// Optionally, you can log successful insertions if needed.
 
-		// TODO: if the error does not show up, this may be the culprit.
 		// Commit the transaction.
 		if err := tx.Commit().Error; err != nil {
 			// If the commit itself fails, record a transaction-level error.

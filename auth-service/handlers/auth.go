@@ -84,9 +84,6 @@ var _walletAccess databaseAccessUserManagement.WalletDataAccessInterface
 func InitializeUser(db databaseAccessAuth.DatabaseAccessInterface, networkManager network.NetworkInterface, walletAccess databaseAccessUserManagement.WalletDataAccessInterface) {
 	_authDB = db
 	_walletAccess = walletAccess
-	// _bulkRoutineRegisterGetByUsername = subfunctions.NewBulkRoutine(&subfunctions.BulkRoutineParams[*UserBulk]{
-	// 	Routine: registerUsers,
-	// })
 	_bulkRoutineRegisterCreateUser = subfunctions.NewBulkRoutine(&subfunctions.BulkRoutineParams[*UserBulk]{
 		Routine: createUser,
 	})
