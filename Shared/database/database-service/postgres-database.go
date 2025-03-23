@@ -431,19 +431,17 @@ func (d *PostGresEntityData[T]) CreateBulk(entities *[]T) map[string]error {
 					val = val.Elem()
 				}
 				tx.RollbackTo(spName)
-				// Change made; fmt removed to return the error instead of a custom error.
-				log.Printf("postgres db error: %v", err)
 
-				// Wow another reason why Go sucks; I can't do pgErr* instead of pgErr *
-				var pgErr *pgconn.PgError
+				var pgErr *pgconn.PgError // Wow another reason why Go sucks; I can't do pgErr* instead of pgErr *
 				if errors.As(err, &pgErr) {
+					log.Printf("postgres db error: %v", err)
+
 					// Error code for "duplicate key value violates unique constraint"
 					if pgErr.Code == "23505" {
 						// I am manually translating the Postgre error into a Gorm one so that netowrk.go can remain db agnostic
-						log.Printf("Postgres - Duplicate key value violates unique constraint.")
+						log.Printf("Postgres duplicate key error converted to gorm.")
 						errorMap[ent.GetUniquePairing().String()] = gorm.ErrDuplicatedKey
 					} else {
-						log.Printf("Postgres - Database error %v", err)
 						errorMap[ent.GetUniquePairing().String()] = err
 					}
 				} else {
@@ -461,7 +459,6 @@ func (d *PostGresEntityData[T]) CreateBulk(entities *[]T) map[string]error {
 		// Commit the transaction.
 		if err := tx.Commit().Error; err != nil {
 			// If the commit itself fails, record a transaction-level error.
-			// log.Printf("IS THIS THE ISSUE? Transaction commit error: %v", err)
 			errorMap["transaction"] = fmt.Errorf("failed to commit transaction: %v", err)
 		}
 	}
