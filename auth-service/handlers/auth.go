@@ -173,13 +173,13 @@ func Register(writer network.ResponseWriter, data []byte, queryParams url.Values
 // 	for _, d := range userMap {
 // 		if errCode, exists := errorList[d.UserEntity.GetUsername()]; exists {
 // 			if errorList[d.UserEntity.GetUsername()] == http.StatusNotFound {
-				// hashedPassword, err := HashPassword(d.UserEntity.GetPassword())
-				// if err != nil {
-				// 	log.Printf("error hashing: %s", err)
-				// 	RespondError(d.ResponseWriter, http.StatusInternalServerError, "Error hashing password.")
-				// 	continue
-				// }
-				// d.UserEntity.SetPassword(hashedPassword)
+// hashedPassword, err := HashPassword(d.UserEntity.GetPassword())
+// if err != nil {
+// 	log.Printf("error hashing: %s", err)
+// 	RespondError(d.ResponseWriter, http.StatusInternalServerError, "Error hashing password.")
+// 	continue
+// }
+// d.UserEntity.SetPassword(hashedPassword)
 // 				_bulkRoutineRegisterCreateUser.Insert(d)
 // 				continue
 // 			} else {
@@ -210,9 +210,17 @@ func createUser(data *[]*UserBulk, TransferParams any) error {
 		return err
 	}
 	for _, d := range *users {
-		if _, ok := errorList[d.GetUniquePairing().String()]; ok {
+		if err, ok := errorList[d.GetUniquePairing().String()]; ok {
+			// Error creating user:  &{Vanguard Ltd. VanguardETF $2a$10$mGxdRY4HBDneV2FWxv3LnOElSgE7KEMwejPJ0LuKu3VXJRQUC1jIC {<nil> 2025-03-20 06:59:19.238923555 +0000 UTC 2025-03-20 06:59:19.238923555 +0000 UTC 0xc0000125a0 f9f24263-b591-40dd-af92-27e5ab2315ba}}
 			log.Println("Error creating user: ", d)
-			RespondError(userMap[d.GetUniquePairing().String()].ResponseWriter, http.StatusInternalServerError, "Internal error")
+			// This is where we can inject some individual case-by-case error handling
+			log.Println(">>> WADEY DEBUG - Since we're not satisfying the if, here's the error: ", err)
+			if err == http.StatusBadRequest {
+				log.Println("Duplicate error; ", err)
+				RespondError(userMap[d.GetUniquePairing().String()].ResponseWriter, http.StatusBadRequest, "Duplicate username error")
+			} else {
+				RespondError(userMap[d.GetUniquePairing().String()].ResponseWriter, http.StatusInternalServerError, "Internal error")
+			}
 		} else {
 			_bulkRoutineRegisterCreateWallet.Insert(&UserBulk{UserEntity: d, ResponseWriter: userMap[d.GetUniquePairing().String()].ResponseWriter})
 		}

@@ -222,14 +222,20 @@ func CreateNetworkEntityHandlers[T entity.EntityInterface, TDatabase any](networ
 		if errorsReceived != nil {
 			if _, ok := errorsReceived["transaction"]; !ok {
 				for id, err := range errorsReceived {
-					log.Println("Transfer Error: ", err)
+					log.Println("Network.go errorsRecieved Transfer Error: ", err)
 					if errors.Is(err, gorm.ErrRecordNotFound) {
 						errorList[id] = http.StatusNotFound
+					} else if errors.Is(err, gorm.ErrDuplicatedKey) {
+						// For the Auth's case of failing UNIQUE constraint
+						log.Println("Handling Wadey's expected \"violates unique constraint\" error.")
+						errorList[id] = http.StatusBadRequest
 					} else {
+						log.Println("errorsRecieved - We are not handling the unique violation, because network's if check failed.")
 						errorList[id] = http.StatusInternalServerError
 					}
 				}
 			} else {
+				log.Printf(">>> DEBUG - Proximity Test")
 				log.Printf("Transaction error: %v\n", errorsReceived["transaction"])
 				responseWriter.WriteHeader(http.StatusInternalServerError)
 				return
@@ -239,7 +245,12 @@ func CreateNetworkEntityHandlers[T entity.EntityInterface, TDatabase any](networ
 			if errors.Is(err, gorm.ErrRecordNotFound) {
 				responseWriter.WriteHeader(http.StatusNotFound)
 				return
+			} else if errors.Is(err, gorm.ErrDuplicatedKey) {
+				// For the Auth's case of failing UNIQUE constraint
+				log.Println("ALTERNATIVE LOCATION Handling Wadey's expected \"violates unique constraint\" error.")
+				responseWriter.WriteHeader(http.StatusBadRequest)
 			} else {
+				log.Println("err != null - We are not handling the unique violation, because network's if check failed.")
 				responseWriter.WriteHeader(http.StatusInternalServerError)
 				return
 			}

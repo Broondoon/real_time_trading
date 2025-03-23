@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgconn"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/gorm/schema"
@@ -384,6 +385,8 @@ func (d *PostGresEntityData[T]) GetAll() (*[]T, error) {
 }
 
 func (d *PostGresEntityData[T]) CreateBulk(entities *[]T) map[string]error {
+	log.Printf("---WADEY DEBUG - is this even the right location?")
+
 	if len(*entities) == 0 {
 		return map[string]error{"transaction": errors.New("CREATE: no entities provided")}
 	}
@@ -424,19 +427,41 @@ func (d *PostGresEntityData[T]) CreateBulk(entities *[]T) map[string]error {
 				// If an error occurs, rollback to the savepoint so that this insert is undone.
 				val := reflect.ValueOf(ent)
 				if val.Kind() == reflect.Ptr {
+					// why is this guy never used? (WADEY'S QUESTION)
 					val = val.Elem()
 				}
 				tx.RollbackTo(spName)
-				errorMap[ent.GetUniquePairing().String()] = fmt.Errorf("error creating entity: %v", err)
+				// Change made; fmt removed to return the error instead of a custom error.
+				log.Printf("postgres db error: %v", err)
+
+				// Wow another reason why Go sucks; I can't do pgErr* instead of pgErr *
+				var pgErr *pgconn.PgError
+				if errors.As(err, &pgErr) {
+					// Error code for "duplicate key value violates unique constraint"
+					if pgErr.Code == "23505" {
+						// I am manually translating the Postgre error into a Gorm one so that netowrk.go can remain db agnostic
+						log.Printf("Postgres - Duplicate key value violates unique constraint.")
+						errorMap[ent.GetUniquePairing().String()] = gorm.ErrDuplicatedKey
+					} else {
+						log.Printf("Postgres - Database error %v", err)
+						errorMap[ent.GetUniquePairing().String()] = err
+					}
+				} else {
+					// Felt decent to handle the possible outcome of an else, but honestly, this may never trigger.
+					log.Printf("Somehow, non-postgres db error in postgres-database: %v", err)
+					errorMap[ent.GetUniquePairing().String()] = fmt.Errorf("error creating entity: %v", err)
+				}
 			}
 			// Continue to the next entity.
 			continue
 		}
 		// Optionally, you can log successful insertions if needed.
 
+		// TODO: if the error does not show up, this may be the culprit.
 		// Commit the transaction.
 		if err := tx.Commit().Error; err != nil {
 			// If the commit itself fails, record a transaction-level error.
+			// log.Printf("IS THIS THE ISSUE? Transaction commit error: %v", err)
 			errorMap["transaction"] = fmt.Errorf("failed to commit transaction: %v", err)
 		}
 	}
