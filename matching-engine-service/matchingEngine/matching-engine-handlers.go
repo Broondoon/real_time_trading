@@ -102,6 +102,7 @@ func AddNewStock(stockID string, stockName string) {
 			InitalOrders:             &ordersInterface,
 			SendToOrderExecutionFunc: SendToOrderExection,
 			DatabaseManager:          _databaseManager,
+			StockName:                stockName,
 		})
 		_matchingEngineMap[stockID] = me
 		go me.RunMatchingEngineOrders()
@@ -164,20 +165,25 @@ func PlaceStockOrder(data *[]*StockOrderBulk, TransferParams any) error {
 		log.Println("No stock orders to place")
 		return nil
 	}
-	var errors map[string]int
 	log.Println("Stock Order List len: ", len(stockOrderList))
-	stockOrders, errors, err := _databaseManager.CreateBulk(&stockOrderList)
-	if err != nil {
-		log.Println("Error: ", err.Error())
-		for _, stockOrderBulk := range stockOrderPairings {
-			stockOrderBulk.ResponseWriter.WriteHeader(http.StatusInternalServerError)
+	go func() {
+		var errors map[string]int
+		stockOrders, errors, err := _databaseManager.CreateBulk(&stockOrderList)
+		if err != nil {
+			log.Println("Error: ", err.Error())
+			for _, stockOrderBulk := range stockOrderPairings {
+				stockOrderBulk.ResponseWriter.WriteHeader(http.StatusInternalServerError)
+			}
 		}
-	}
-	for _, stockOrder := range *stockOrders {
-		if _, ok := errors[stockOrder.GetUniquePairing().String()]; ok {
-			stockOrderPairings[stockOrder.GetUniquePairing().String()].ResponseWriter.WriteHeader(http.StatusBadRequest)
-			continue
+		for _, stockOrder := range *stockOrders {
+			if _, ok := errors[stockOrder.GetUniquePairing().String()]; ok {
+				_matchingEngineMap[stockOrder.GetStockIDString()].RemoveOrder(stockOrder.GetIdString(), stockOrder.GetPrice())
+				stockOrderPairings[stockOrder.GetUniquePairing().String()].ResponseWriter.WriteHeader(http.StatusBadRequest)
+				continue
+			}
 		}
+	}()
+	for _, stockOrder := range stockOrderList {
 		me := _matchingEngineMap[stockOrder.GetStockIDString()]
 		me.AddOrder(stockOrder)
 		stockOrderPairings[stockOrder.GetUniquePairing().String()].ResponseWriter.WriteHeader(http.StatusOK)
@@ -226,9 +232,16 @@ func DeleteStockOrder(orderID *uuid.UUID) error {
 }
 
 func GetStockPricesHandler(responseWriter network.ResponseWriter, data []byte, queryParams url.Values, requestType string) {
-	returnVal := make([]network.StockPrice, len(stockPriceIndex))
-	for _, stockID := range stockPriceIndex {
-		returnVal = append(returnVal, _matchingEngineMap[stockID].GetPrice())
+	stockPrices := make([]network.StockPrice, len(stockPriceIndex))
+	log.Println("Stock Price Index length: ", len(stockPriceIndex))
+	for i, stockID := range stockPriceIndex {
+		val := _matchingEngineMap[stockID].GetPrice()
+		log.Println(i, ". Appending stock: "+val.StockName, " with price: ", val.Price)
+		stockPrices[i] = _matchingEngineMap[stockID].GetPrice()
+	}
+	returnVal := network.ReturnJSON{
+		Success: true,
+		Data:    stockPrices,
 	}
 	pricesJSON, err := json.Marshal(returnVal)
 	if err != nil {

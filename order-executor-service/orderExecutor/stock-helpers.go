@@ -119,7 +119,9 @@ func updateUserStockQuantities(
 // Updates transaction status and creates filled transaction if needed
 func updateTransactionStatus(
 	buyerStockTx transaction.StockTransactionInterface,
+	buyerWalletTx transaction.WalletTransactionInterface,
 	sellerStockTx transaction.StockTransactionInterface,
+	sellerWalletTx transaction.WalletTransactionInterface,
 	isBuyPartial bool,
 	isSellPartial bool,
 	stockPrice float64,
@@ -129,8 +131,8 @@ func updateTransactionStatus(
 
 	buyerStockTx.UpdateStockPrice(stockPrice)
 	// Handle partial matching for both buy and sell orders
-	updateTransaction(buyerStockTx, isBuyPartial, stockPrice, databaseAccessTransact, quantity)
-	updateTransaction(sellerStockTx, isSellPartial, stockPrice, databaseAccessTransact, quantity)
+	updateTransaction(buyerStockTx, isBuyPartial, stockPrice, databaseAccessTransact, quantity, buyerWalletTx)
+	updateTransaction(sellerStockTx, isSellPartial, stockPrice, databaseAccessTransact, quantity, sellerWalletTx)
 
 	// Update in database
 
@@ -143,6 +145,7 @@ func updateTransaction(
 	stockPrice float64,
 	databaseAccessTransact databaseAccessTransaction.DatabaseAccessInterface,
 	quantity int,
+	walletTx transaction.WalletTransactionInterface,
 ) error {
 	if stockTx.GetOrderStatus() == "PARTIALLY_COMPLETE" {
 		partials, err := _databaseAccessTransact.StockTransaction().GetByForeignID("ParentStockTransactionID", stockTx.GetIdString())
@@ -160,6 +163,7 @@ func updateTransaction(
 		stockTx.SetOrderStatus("PARTIALLY_COMPLETE")
 	} else {
 		stockTx.SetOrderStatus("COMPLETED")
+		stockTx.SetWalletTransactionID(walletTx.GetId())
 	}
 
 	if err := databaseAccessTransact.StockTransaction().Update(stockTx); err != nil {
@@ -169,7 +173,7 @@ func updateTransaction(
 
 	// Create filled transaction for partial orders
 	if isPartial {
-		filledTx := transaction.NewStockTransaction(transaction.NewStockTransactionParams{
+		var filledTx transaction.StockTransactionInterface = transaction.NewStockTransaction(transaction.NewStockTransactionParams{
 			ParentStockTransaction: stockTx,
 		})
 
@@ -177,8 +181,15 @@ func updateTransaction(
 		filledTx.UpdateStockPrice(stockPrice)
 		filledTx.SetOrderStatus("COMPLETED")
 		filledTx.SetTimestamp(time.Now())
-		if _, err := databaseAccessTransact.StockTransaction().Create(filledTx); err != nil {
+		filledTx.SetWalletTransactionID(walletTx.GetId())
+		filledTx, err := databaseAccessTransact.StockTransaction().Create(filledTx)
+		if err != nil {
 			return fmt.Errorf("failed to create filled stock transaction: %v", err)
+		}
+
+		walletTx.SetStockTransactionID(filledTx.GetId())
+		if err := databaseAccessTransact.WalletTransaction().Update(walletTx); err != nil {
+			return fmt.Errorf("failed to update wallet transaction: %v", err)
 		}
 
 		//	log.Printf("%s", fmt.Sprintf("Created Filled Transaction with ID: %s", filledTx.GetId()))

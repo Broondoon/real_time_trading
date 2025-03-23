@@ -51,7 +51,7 @@ func createWalletTransaction(
 	sellerStockTransaction transaction.StockTransactionInterface,
 	amount float64,
 	databaseAccessTransact databaseAccessTransaction.DatabaseAccessInterface,
-) (string, string, error) {
+) (transaction.WalletTransactionInterface, transaction.WalletTransactionInterface, error) {
 	buyerWalletTx := transaction.NewWalletTransaction(transaction.NewWalletTransactionParams{
 		NewEntityParams: entity.NewEntityParams{
 			DateCreated:  time.Now(),
@@ -83,17 +83,15 @@ func createWalletTransaction(
 
 	createdTxs, errMap, err := databaseAccessTransact.WalletTransaction().CreateBulk(&[]transaction.WalletTransactionInterface{buyerWalletTx, sellerWalletTx})
 	if err != nil || len(errMap) > 0 {
-		return "", "", fmt.Errorf("failed to create wallet transaction: %v", err)
+		return nil, nil, fmt.Errorf("failed to create wallet transaction: %v", err)
 	}
 
-	var buyerWalletTxID string
-	var sellerWalletTxID string
 	for _, tx := range *createdTxs {
 		if tx.GetWalletIDString() == buyerWallet.GetIdString() {
-			buyerWalletTxID = tx.GetIdString()
+			buyerWalletTx = tx.(*transaction.WalletTransaction)
 		} else if tx.GetWalletIDString() == sellerWallet.GetIdString() {
-			sellerWalletTxID = tx.GetIdString()
+			sellerWalletTx = tx.(*transaction.WalletTransaction)
 		}
 	}
-	return buyerWalletTxID, sellerWalletTxID, nil
+	return buyerWalletTx, sellerWalletTx, nil
 }
