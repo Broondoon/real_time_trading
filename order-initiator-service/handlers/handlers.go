@@ -9,7 +9,6 @@ import (
 	"databaseAccessTransaction"
 	"databaseAccessUserManagement"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -19,7 +18,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"gorm.io/gorm"
 )
 
 const TIMEOUT = 2 * time.Second
@@ -286,7 +284,7 @@ func cancelStockTransactionHandler(responseWriter network.ResponseWriter, data [
 		return
 	}
 	err = cancelStockTransaction(stockID.StockTransactionID)
-	if errors.Is(err, gorm.ErrRecordNotFound) {
+	if err.Error() == "404 Not Found" {
 		responseWriter.WriteHeader(http.StatusNotFound)
 		return
 	}
@@ -301,6 +299,7 @@ func cancelStockTransactionHandler(responseWriter network.ResponseWriter, data [
 	}
 	returnValJSON, err := json.Marshal(returnVal)
 	if err != nil {
+		log.Println("Error: ", err.Error())
 		responseWriter.WriteHeader(http.StatusInternalServerError)
 		return
 	}
