@@ -57,7 +57,7 @@ func NewDatabaseService(params *NewDatabaseServiceParams) DatabaseServiceInterfa
 	// }
 
 	//CACHE IMPLEMENTATION
-	cachedStockTransaction := databaseService.NewCachedEntityData[*transaction.StockTransaction](&databaseService.NewCachedEntityDataParams{
+	/* cachedStockTransaction := databaseService.NewCachedEntityData[*transaction.StockTransaction](&databaseService.NewCachedEntityDataParams{
 		NewEntityDataParams: params.StockTransactionParams,
 		RedisAddr:           os.Getenv("REDIS_ADDR"),
 		Password:            os.Getenv("REDIS_PASSWORD"),
@@ -75,7 +75,7 @@ func NewDatabaseService(params *NewDatabaseServiceParams) DatabaseServiceInterfa
 		StockTransaction:  cachedStockTransaction,
 		WalletTransaction: cachedWalletTransaction,
 		DatabaseInterface: newDBConnection,
-	}
+	} */
 
 	db := &DatabaseService{
 		StockTransaction: databaseService.NewCachedEntityData[*transaction.StockTransaction, *gorm.DB](&databaseService.NewCachedEntityDataParams[*transaction.StockTransaction, *gorm.DB]{
@@ -99,7 +99,7 @@ func NewDatabaseService(params *NewDatabaseServiceParams) DatabaseServiceInterfa
 			),
 		}),
 		DatabaseInterface: newDBConnection,
-	} */
+	}
 	db.Connect()
 	db.StockTransactions().GetDatabaseSession().AutoMigrate(&transaction.StockTransaction{})
 	db.WalletTransactions().GetDatabaseSession().AutoMigrate(&transaction.WalletTransaction{})
