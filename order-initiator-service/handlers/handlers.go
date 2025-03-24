@@ -283,8 +283,9 @@ func cancelStockTransactionHandler(responseWriter network.ResponseWriter, data [
 		responseWriter.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	err = cancelStockTransaction(stockTxID.StockTransactionID)
 
+	err = cancelStockTransaction(stockTxID.StockTransactionID)
+  
 	if err != nil {
 		log.Println("Error: ", err.Error())
 		if err.Error() == "404 Not Found" {
@@ -307,6 +308,7 @@ func cancelStockTransactionHandler(responseWriter network.ResponseWriter, data [
 	responseWriter.Write(returnValJSON)
 }
 
+// initiator passes to matching
 func cancelStockTransaction(id string) error {
 	//pass to matching engine
 	err := _networkHttpManager.Transactions().Patch("cancelStockTransaction", id)

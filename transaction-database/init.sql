@@ -1,5 +1,5 @@
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-CREATE TABLE stockTransactions (
+CREATE TABLE stock_transactions (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     stock_id UUID,
     parent_stock_transaction_id UUID,
@@ -17,7 +17,7 @@ CREATE TABLE stockTransactions (
     FOREIGN KEY (parent_stock_transaction_id) REFERENCES stock_transactions(id)
 );
 
-CREATE TABLE walletTransactions (
+CREATE TABLE wallet_transactions (
     id uuid primary key default uuid_generate_v4(),
     stock_transaction_id uuid,
     wallet_id uuid,

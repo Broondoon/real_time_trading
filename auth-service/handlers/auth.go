@@ -83,9 +83,6 @@ var _walletAccess databaseAccessUserManagement.WalletDataAccessInterface
 func InitializeUser(db databaseAccessAuth.DatabaseAccessInterface, networkManager network.NetworkInterface, walletAccess databaseAccessUserManagement.WalletDataAccessInterface) {
 	_authDB = db
 	_walletAccess = walletAccess
-	_bulkRoutineRegisterGetByUsername = subfunctions.NewBulkRoutine(&subfunctions.BulkRoutineParams[*UserBulk]{
-		Routine: registerUsers,
-	})
 	_bulkRoutineRegisterCreateUser = subfunctions.NewBulkRoutine(&subfunctions.BulkRoutineParams[*UserBulk]{
 		Routine: createUser,
 	})
@@ -115,62 +112,28 @@ func healthHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // Register handles user registration.
-func Register(w network.ResponseWriter, data []byte, queryParams url.Values, requestType string) {
+func Register(writer network.ResponseWriter, data []byte, queryParams url.Values, requestType string) {
 
 	// Decode the JSON body into a User object.
-	input, err := user.Parse(data)
+	new_user, err := user.Parse(data)
 	if err != nil {
-		RespondError(w, http.StatusBadRequest, fmt.Sprintf("Invalid JSON: %v", err))
+		RespondError(writer, http.StatusBadRequest, fmt.Sprintf("Invalid JSON: %v", err))
 		return
 	}
-	_bulkRoutineRegisterGetByUsername.Insert(&UserBulk{UserEntity: input, ResponseWriter: w})
-}
 
-func registerUsers(data *[]*UserBulk, TransferParams any) error {
-	userMap := make(map[string]*UserBulk)
-	usernames := make([]string, len(*data))
-	for i, d := range *data {
-		username := d.UserEntity.GetUsername()
-		if _, ok := userMap[username]; ok {
-			RespondError(d.ResponseWriter, http.StatusBadRequest, "Username already exists.")
-			continue
-		}
-		userMap[username] = d
-		usernames[i] = username
-	}
-	//This approach is slow. Is there any chance we could try to make an alternative Insert if avaialbel, return error if present DB Call?
-	//Perhaps we alrady have a version of this. Username = unqiue is set int he DB. So it should return an error if it's present already.
-	_, errorList, err := _authDB.GetByForeignIDBulk("Username", usernames)
+	// This was pulled out from the deprecated registerUsers() func
+	// It just changes the user's password to a hashed one so that passwords are not stored plaintext
+	hashedPassword, err := HashPassword(new_user.GetPassword())
+	// hashedPassword, err := HashPassword(new_user.UserEntity.GetPassword())
 	if err != nil {
-		log.Println("error getting users: ", err)
-		for _, d := range userMap {
-			RespondError(d.ResponseWriter, http.StatusInternalServerError, "Internal error")
-		}
-		return err
+		log.Printf("error hashing: %s", err)
+		RespondError(writer, http.StatusInternalServerError, "Error hashing password.")
 	}
+	new_user.SetPassword(hashedPassword)
 
-	for _, d := range userMap {
-		if errCode, exists := errorList[d.UserEntity.GetUsername()]; exists {
-			if errorList[d.UserEntity.GetUsername()] == http.StatusNotFound {
-				hashedPassword, err := HashPassword(d.UserEntity.GetPassword())
-				if err != nil {
-					log.Printf("error hashing: %s", err)
-					RespondError(d.ResponseWriter, http.StatusInternalServerError, "Error hashing password.")
-					continue
-				}
-				d.UserEntity.SetPassword(hashedPassword)
-				_bulkRoutineRegisterCreateUser.Insert(d)
-				continue
-			} else {
-				log.Println("Error checking user: ", errCode)
-				RespondError(d.ResponseWriter, http.StatusInternalServerError, "Internal error")
-				continue
-			}
-		}
-		log.Println("User already exists: ", d.UserEntity.GetUsername())
-		RespondError(d.ResponseWriter, http.StatusBadRequest, "Username already exists.")
-	}
-	return nil
+	/// This bulk routine was replaced in order to skip duplicate username checking.
+	// _bulkRoutineRegisterGetByUsername.Insert(&UserBulk{UserEntity: new_user, ResponseWriter: writer})
+	_bulkRoutineRegisterCreateUser.Insert(&UserBulk{UserEntity: new_user, ResponseWriter: writer})
 }
 
 func createUser(data *[]*UserBulk, TransferParams any) error {
@@ -189,9 +152,15 @@ func createUser(data *[]*UserBulk, TransferParams any) error {
 		return err
 	}
 	for _, d := range *users {
-		if _, ok := errorList[d.GetUniquePairing().String()]; ok {
+		if err, ok := errorList[d.GetUniquePairing().String()]; ok {
 			log.Println("Error creating user: ", d)
-			RespondError(userMap[d.GetUniquePairing().String()].ResponseWriter, http.StatusInternalServerError, "Internal error")
+			// This is where we can inject some individual case-by-case error handling
+			if err == http.StatusBadRequest {
+				log.Println("Duplicate error; ", err)
+				RespondError(userMap[d.GetUniquePairing().String()].ResponseWriter, http.StatusBadRequest, "Duplicate username error")
+			} else {
+				RespondError(userMap[d.GetUniquePairing().String()].ResponseWriter, http.StatusInternalServerError, "Internal error")
+			}
 		} else {
 			_bulkRoutineRegisterCreateWallet.Insert(&UserBulk{UserEntity: d, ResponseWriter: userMap[d.GetUniquePairing().String()].ResponseWriter})
 		}

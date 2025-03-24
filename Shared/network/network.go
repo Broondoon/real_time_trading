@@ -222,9 +222,12 @@ func CreateNetworkEntityHandlers[T entity.EntityInterface, TDatabase any](networ
 		if errorsReceived != nil {
 			if _, ok := errorsReceived["transaction"]; !ok {
 				for id, err := range errorsReceived {
-					log.Println("Transfer Error: ", err)
 					if errors.Is(err, gorm.ErrRecordNotFound) {
 						errorList[id] = http.StatusNotFound
+					} else if errors.Is(err, gorm.ErrDuplicatedKey) {
+						// For the Auth's case of failing UNIQUE constraint
+						log.Println("Handling Wadey's expected \"violates unique constraint\" error.")
+						errorList[id] = http.StatusBadRequest
 					} else {
 						errorList[id] = http.StatusInternalServerError
 					}
