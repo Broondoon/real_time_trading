@@ -223,11 +223,14 @@ func (d *EntityDataAccessClient[TEntity, TInterface]) GetByForeignID(foreignIDCo
 // GetByForeignIDBulk gets entities by a foreign key. This is a bulk operation. Try to avoid using this if possible, as it's an O(n^2) operation, unless the DB has a better alogirthm built in.
 // It will return all the entities that match the foreign IDs, and a map of any errors that occurred, mapped to their respective foreign IDs.
 func (d *EntityDataAccessClient[TEntity, TInterface]) GetByForeignIDBulk(foreignIDColumn string, foreignIDs []string) (*[]TInterface, map[string]int, error) {
+	return d.GetByFilteredForeignIDBulk(foreignIDColumn, foreignIDs, "", "")
+}
+func (d *EntityDataAccessClient[TEntity, TInterface]) GetByFilteredForeignIDBulk(foreignIDColumn string, foreignIDs []string, filterKey string, filterVal string) (*[]TInterface, map[string]int, error) {
 	if d.GetRoute == "" {
 		d.GetRoute = d.DefaultRoute
 	}
 	// mark this as a foreign key search by passing the foreign key column name
-	queryParams := map[string]string{"foreignKey": foreignIDColumn}
+	queryParams := map[string]string{"foreignKey": foreignIDColumn, "filteredForeignKey": filterKey, "filteredForeignID": filterVal}
 	//We send a GET request to the database service to get entities by their foreign key.
 	bulkReturn, err := d._client.GetBulk(d.GetRoute, foreignIDs, queryParams)
 	if err != nil {

@@ -38,6 +38,7 @@ type EntityDataAccessInterface[TEntity entity.EntityInterface, TInterface entity
 	GetByIDs(ids []*uuid.UUID) (*[]TInterface, map[string]int, error)
 	GetByForeignID(foreignIDColumn string, foreignID string) (*[]TInterface, error)
 	GetByForeignIDBulk(foreignIDColumn string, foreignIDs []string) (*[]TInterface, map[string]int, error)
+	GetByFilteredForeignIDBulk(foreignIDKey string, foreignIDs []string, filterKey string, filterVal string) (*[]TInterface, map[string]int, error)
 	Create(entity TInterface) (TInterface, error)
 	CreateBulk(entities *[]TInterface) (*[]TInterface, map[string]int, error)
 	Update(entity TInterface) error

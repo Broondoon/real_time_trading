@@ -163,14 +163,21 @@ func convertID(id string) (uuid.UUID, error) {
 }
 
 func convertIDs(ids []string, errors map[string]error) ([]uuid.UUID, map[string]error) {
-	uids := make([]uuid.UUID, 0, len(ids))
+	existingIds := make(map[string]bool)
+	uids := make([]uuid.UUID, len(ids))
+	i := 0
 	for _, id := range ids {
+		if _, ok := existingIds[id]; ok {
+			continue
+		}
 		uid, err := convertID(id)
 		if err != nil {
 			errors[id] = err
 			continue
 		}
-		uids = append(uids, uid)
+		uids[i] = uid
+		existingIds[id] = true
+		i++
 	}
 	return uids, errors
 }
@@ -292,6 +299,10 @@ func (d *PostGresEntityData[T]) GetByForeignID(foreignIDKey string, foreignID st
 }
 
 func (d *PostGresEntityData[T]) GetByForeignIDBulk(foreignIDKey string, foreignIDs []string) (*[]T, map[string]error) {
+	return d.GetByFilteredForeignIDBulk(foreignIDKey, foreignIDs, "", "")
+}
+
+func (d *PostGresEntityData[T]) GetByFilteredForeignIDBulk(foreignIDKey string, foreignIDs []string, filterCol string, filterVal string) (*[]T, map[string]error) {
 	if foreignIDKey == "" {
 		err := fmt.Errorf("foreign key column is empty")
 		log.Printf("error getting by foreignKey: %s", err.Error())
@@ -309,24 +320,41 @@ func (d *PostGresEntityData[T]) GetByForeignIDBulk(foreignIDKey string, foreignI
 	if !ok {
 		errors["transaction"] = fmt.Errorf("foreign key column %s not found", foreignIDKey)
 		log.Printf("error getting by foreignKey: %s", errors["transaction"].Error())
-		columns := make([]string, 0, len(d.columnCache))
-		for _, d := range d.columnCache {
-			columns = append(columns, d.ColumnName)
-		}
-		//	log.Println("avalaible columns: ", strings.Join(columns, ", "))
 		return nil, errors
 	}
-	var results *gorm.DB
-	//println("key: ", foreignIDKey, "Foreign ID Column: ", foreignIDColumn.ColumnName)
+	var (
+		results   *gorm.DB
+		condition string
+		args      []interface{}
+		uids      []uuid.UUID
+	)
+	condition = foreignIDColumn.ColumnName + " IN ?"
 	if strings.Contains(foreignIDColumn.ColumnName, "_id") || foreignIDColumn.ColumnName == "id" {
-		uids, errors := convertIDs(foreignIDs, errors)
+		uids, errors = convertIDs(foreignIDs, errors)
 		if len(uids) == 0 {
 			return nil, errors
 		}
-		results = d.GetDatabaseSession().Find(&entities, foreignIDColumn.ColumnName+" IN ?", uids)
+		args = append(args, uids)
 	} else {
-		results = d.GetDatabaseSession().Find(&entities, foreignIDColumn.ColumnName+" IN ?", foreignIDs)
+		args = append(args, foreignIDs)
 	}
+
+	if filterCol != "" {
+		condition += " AND " + filterCol + " = ?"
+		if strings.Contains(filterCol, "_id") {
+			filterUid, err := uuid.Parse(filterVal)
+			if err != nil {
+				errors["transaction"] = err
+				log.Printf("error getting by foreignKey: %s", err.Error())
+				return nil, errors
+			}
+			args = append(args, filterUid)
+		} else {
+			args = append(args, filterVal)
+		}
+	}
+	results = d.GetDatabaseSession().Where(condition, args...).Find(&entities)
+
 	if results.Error != nil {
 		errors["transaction"] = results.Error
 		log.Printf("error getting by foreignKey: %s", results.Error.Error())

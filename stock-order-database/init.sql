@@ -4,7 +4,7 @@ CREATE TABLE stockOrder (
     stock_id uuid,
     parent_stock_order_id uuid,
     date_created timestamp default current_timestamp,
-    date_modified timestamp default current_timestamp ON UPDATE CURRENT_TIMESTAMP,
+    date_modified timestamp default current_timestamp,
     is_buy boolean not null,
     order_type text not null,
     price decimal not null,

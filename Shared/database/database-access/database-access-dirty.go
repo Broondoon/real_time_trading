@@ -81,6 +81,10 @@ func (d *EntityDataAccess[TEntity, TInterface, TDatabase]) GetByForeignID(foreig
 	return &converted, nil
 }
 
+func (d *EntityDataAccess[TEntity, TInterface, TDatabase]) GetByFilteredForeignIDBulk(foreignIDKey string, foreignIDs []string, filterKey string, filterVal string) (*[]TInterface, map[string]int, error) {
+	panic("implement me") // TODO: Implement
+}
+
 func (d *EntityDataAccess[TEntity, TInterface, TDatabase]) GetByForeignIDBulk(foreignIDColumn string, foreignIDs []string) (*[]TInterface, map[string]int, error) {
 	panic("implement me") // TODO: Implement
 }

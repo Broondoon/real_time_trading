@@ -125,8 +125,10 @@ type responseWriterWrapper struct {
 }
 
 func (rw *responseWriterWrapper) WriteHeader(statusCode int) {
-	rw.currentCode = statusCode
-	rw.ResponseWriter.WriteHeader(statusCode)
+	if !rw.CheckCompleted() {
+		rw.currentCode = statusCode
+		rw.ResponseWriter.WriteHeader(statusCode)
+	}
 	//check if finished is closed
 	if !rw.channelHasClosed {
 		rw.finished <- true
@@ -134,7 +136,11 @@ func (rw *responseWriterWrapper) WriteHeader(statusCode int) {
 }
 
 func (rw *responseWriterWrapper) Write(data []byte) (int, error) {
-	int, err := rw.ResponseWriter.Write(data)
+	int := 0
+	var err error
+	if !rw.CheckCompleted() {
+		int, err = rw.ResponseWriter.Write(data)
+	}
 	if !rw.channelHasClosed {
 		rw.finished <- true
 	}
@@ -148,11 +154,21 @@ func (rw *responseWriterWrapper) Header() http.Header {
 
 func (rw *responseWriterWrapper) EncodeResponse(statusCode int, response map[string]interface{}) {
 	//rw.Header().Set("Content-Type", "application/json")
-	if statusCode != http.StatusOK {
-		rw.ResponseWriter.WriteHeader(statusCode)
+	if !rw.CheckCompleted() {
+		if statusCode != http.StatusOK {
+			rw.ResponseWriter.WriteHeader(statusCode)
+		}
+		j, _ := json.Marshal(response)
+		rw.Write(j)
 	}
-	j, _ := json.Marshal(response)
-	rw.Write(j)
+}
+
+func (rw *responseWriterWrapper) CheckCompleted() bool {
+	return rw.channelHasClosed
+}
+
+func (rw *responseWriterWrapper) GetStatusCode() int {
+	return rw.currentCode
 }
 
 // For Internal handlers

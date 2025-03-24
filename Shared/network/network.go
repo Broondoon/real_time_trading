@@ -126,10 +126,10 @@ type NetworkInterface interface {
 }
 
 type ResponseWriter interface {
-	WriteHeader(statusCode int)
-	Write([]byte) (int, error)
-	Header() http.Header
+	http.ResponseWriter
 	EncodeResponse(statusCode int, response map[string]interface{})
+	CheckCompleted() bool
+	GetStatusCode() int
 }
 
 type HandlerParams struct {
@@ -164,7 +164,11 @@ func CreateNetworkEntityHandlers[T entity.EntityInterface, TDatabase any](networ
 			if bulkRequest {
 				ids := strings.Split(queryParams.Get("Ids"), ",")
 				if foreignKey := queryParams.Get("foreignKey"); foreignKey != "" {
-					entities, errorsReceived = databaseManager.GetByForeignIDBulk(foreignKey, ids)
+					if filterKey := queryParams.Get("filterKey"); filterKey != "" {
+						entities, errorsReceived = databaseManager.GetByFilteredForeignIDBulk(foreignKey, ids, filterKey, queryParams.Get("filterVal"))
+					} else {
+						entities, errorsReceived = databaseManager.GetByForeignIDBulk(foreignKey, ids)
+					}
 				} else {
 					entities, errorsReceived = databaseManager.GetByIDs(ids)
 				}

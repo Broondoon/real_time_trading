@@ -5,7 +5,7 @@ CREATE TABLE Wallets (
     user_id UUID NOT NULL,
     balance DECIMAL(18, 2) NOT NULL DEFAULT 0.00,
     date_created TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    date_modified TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    date_modified TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE UserStocks (
@@ -15,8 +15,11 @@ CREATE TABLE UserStocks (
     stock_name TEXT NOT NULL,
     quantity INT NOT NULL,
     date_created TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    date_modified TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    date_modified TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE INDEX idx_user_stocks_user_id_stock_id
+    ON UserStocks (user_id, stock_id);
 
 /*
 INSERT INTO Wallets (ID, UserID, Balance)

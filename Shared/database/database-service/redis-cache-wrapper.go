@@ -281,6 +281,10 @@ func (c *CachedEntityData[T, TDatabase]) GetByForeignIDBulk(foreignIDColumn stri
 	return c.underlying.GetByForeignIDBulk(foreignIDColumn, foreignIDs)
 }
 
+func (c *CachedEntityData[T, TDatabase]) GetByFilteredForeignIDBulk(foreignIDKey string, foreignIDs []string, filterKey string, filterVal string) (*[]T, map[string]error) {
+	return c.underlying.GetByFilteredForeignIDBulk(foreignIDKey, foreignIDs, filterKey, filterVal)
+}
+
 func (c *CachedEntityData[T, TDatabase]) Create(entity T) error {
 	if err := c.underlying.Create(entity); err != nil {
 		return err

@@ -61,6 +61,8 @@ func InitalizeHandlers(stockIDs *[]network.StockPrice,
 	_networkHttpManager.AddHandleFuncProtected(network.HandlerParams{Pattern: os.Getenv("transaction_route") + "/getStockPrices", Handler: GetStockPricesHandler})
 	http.HandleFunc("/health", healthHandler)
 	networkQueueManager.Listen()
+
+	//Add a new queue listener to handle the confirmation of database updates on stock orders and transactions.
 }
 
 func healthHandler(w http.ResponseWriter, r *http.Request) {
@@ -90,6 +92,7 @@ func AddNewStockHandler(responseWriter network.ResponseWriter, data []byte, quer
 }
 
 func AddNewStock(stockID string, stockName string) {
+	log.Println("Adding new stock: ", stockID, " / ", stockName)
 	_, ok := _matchingEngineMap[stockID]
 	//if we don't have a matching engine for this stock, create one
 	if !ok {
@@ -184,9 +187,13 @@ func PlaceStockOrder(data *[]*StockOrderBulk, TransferParams any) error {
 		}
 	}()
 	for _, stockOrder := range stockOrderList {
-		me := _matchingEngineMap[stockOrder.GetStockIDString()]
-		me.AddOrder(stockOrder)
-		stockOrderPairings[stockOrder.GetUniquePairing().String()].ResponseWriter.WriteHeader(http.StatusOK)
+		if me, ok := _matchingEngineMap[stockOrder.GetStockIDString()]; ok {
+			me.AddOrder(stockOrder)
+			stockOrderPairings[stockOrder.GetUniquePairing().String()].ResponseWriter.WriteHeader(http.StatusOK)
+		} else {
+			log.Println("Error: Matching engine not found for ID: ", stockOrder.GetStockIDString())
+			stockOrderPairings[stockOrder.GetUniquePairing().String()].ResponseWriter.WriteHeader(http.StatusBadRequest)
+		}
 	}
 	return nil
 }

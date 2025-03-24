@@ -69,6 +69,7 @@ type EntityDataInterface[T entity.EntityInterface, TDatabase any] interface {
 	GetByIDs(IDs []string) (*[]T, map[string]error)
 	GetByForeignID(foreignIDColumn string, foreignID string) (*[]T, error)
 	GetByForeignIDBulk(foreignIDColumn string, foreignIDs []string) (*[]T, map[string]error)
+	GetByFilteredForeignIDBulk(foreignIDKey string, foreignIDs []string, filterCol string, filterVal string) (*[]T, map[string]error)
 	GetAll() (*[]T, error)
 	Create(ent T) error
 	CreateBulk(entities *[]T) map[string]error
