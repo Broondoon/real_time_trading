@@ -260,7 +260,7 @@ services:
       context: .
       dockerfile: ./stock-database/database-service/Dockerfile
     ports:
-      - "${STOCK_DATABASE_SERVICE_PORT}:${STOCK_DATABASE_SERVICE_PORT}"
+      - "${STOCK_DATABASE_SERVICE_PORT}"
     env_file:
       - .env
     environment:
@@ -282,13 +282,17 @@ services:
       interval: ${HEALTHCHECK_INTERVAL}
       timeout: ${HEALTHCHECK_TIMEOUT}
       retries: ${HEALTHCHECK_RETRIES}
+    deploy:
+      replicas: ${REPLICATIONS}
+      restart_policy:
+        condition: on-failure
 
   transaction-database-service:
     build:
       context: .
       dockerfile: ./transaction-database/database-service/Dockerfile
     ports:
-      - "${TRANSACTION_DATABASE_SERVICE_PORT}:${TRANSACTION_DATABASE_SERVICE_PORT}"
+      - "${TRANSACTION_DATABASE_SERVICE_PORT}"
     env_file:
       - .env
     environment:
@@ -310,13 +314,17 @@ services:
       interval: ${HEALTHCHECK_INTERVAL}
       timeout: ${HEALTHCHECK_TIMEOUT}
       retries: ${HEALTHCHECK_RETRIES}
+    deploy:
+      replicas: ${REPLICATIONS}
+      restart_policy:
+        condition: on-failure
 
   user-management-database-service:
     build:
       context: .
       dockerfile: ./user-management-database/database-service/Dockerfile
     ports:
-      - "${USER_MANAGEMENT_DATABASE_SERVICE_PORT}:${USER_MANAGEMENT_DATABASE_SERVICE_PORT}"
+      - "${USER_MANAGEMENT_DATABASE_SERVICE_PORT}"
     env_file:
       - .env
     environment:
@@ -338,13 +346,17 @@ services:
       interval: ${HEALTHCHECK_INTERVAL}
       timeout: ${HEALTHCHECK_TIMEOUT}
       retries: ${HEALTHCHECK_RETRIES}
+    deploy:
+      replicas: ${REPLICATIONS}
+      restart_policy:
+        condition: on-failure
 
   auth-database-service:
     build:
       context: .
       dockerfile: ./auth-database/database-service/Dockerfile
     ports:
-      - "${AUTH_DATABASE_SERVICE_PORT}:${AUTH_DATABASE_SERVICE_PORT}"
+      - "${AUTH_DATABASE_SERVICE_PORT}"
     env_file:
       - .env
     environment:
@@ -368,6 +380,10 @@ services:
       interval: ${HEALTHCHECK_INTERVAL}
       timeout: ${HEALTHCHECK_TIMEOUT}
       retries: ${HEALTHCHECK_RETRIES}
+    deploy:
+      replicas: ${REPLICATIONS}
+      restart_policy:
+        condition: on-failure
 
   auth-db:
     image: postgres:latest
