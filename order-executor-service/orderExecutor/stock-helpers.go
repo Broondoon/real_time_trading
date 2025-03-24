@@ -7,7 +7,6 @@ import (
 	"databaseAccessTransaction"
 	"databaseAccessUserManagement"
 	"fmt"
-	"time"
 
 	"github.com/google/uuid"
 )
@@ -180,7 +179,6 @@ func updateTransaction(
 		// Set the stock price in the filled transaction
 		filledTx.UpdateStockPrice(stockPrice)
 		filledTx.SetOrderStatus("COMPLETED")
-		filledTx.SetTimestamp(time.Now())
 		filledTx.SetWalletTransactionID(walletTx.GetId())
 		filledTx, err := databaseAccessTransact.StockTransaction().Create(filledTx)
 		if err != nil {

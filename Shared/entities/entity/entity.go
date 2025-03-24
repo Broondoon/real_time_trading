@@ -111,8 +111,11 @@ type NewEntityParams struct {
 	UniquePairing *uuid.UUID `json:"temp"` //Do not set. This is for pairing with bulk stuff.
 }
 
-func NewEntity(params NewEntityParams) *Entity {
+func NewEntity(params *NewEntityParams) *Entity {
 	tmp := make([]*EntityUpdateData, 0)
+	if params == nil {
+		params = &NewEntityParams{}
+	}
 
 	e := &Entity{
 		ID:            params.ID,
@@ -125,8 +128,8 @@ func NewEntity(params NewEntityParams) *Entity {
 }
 
 func ParseEntity(jsonBytes []byte) (BaseEntityInterface, error) {
-	var e NewEntityParams
-	if err := json.Unmarshal(jsonBytes, &e); err != nil {
+	var e *NewEntityParams
+	if err := json.Unmarshal(jsonBytes, e); err != nil {
 		return nil, err
 	}
 	return NewEntity(e), nil
@@ -141,6 +144,7 @@ func (e *Entity) EntityToParams() NewEntityParams {
 	}
 }
 
+// possible upgrade: https://boldlygo.tech/posts/2020-06-26-go-json-tricks-embedded-marshaler/
 func (e *Entity) EntityToJSON() ([]byte, error) {
 	return json.Marshal(e.EntityToParams())
 }

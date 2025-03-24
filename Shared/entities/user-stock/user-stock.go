@@ -103,13 +103,13 @@ func (us *UserStock) SetUpdatedAt(updatedAt time.Time) {
 }
 
 type NewUserStockParams struct {
-	entity.NewEntityParams `json:"Entity"`
-	UserID                 *uuid.UUID           `json:"user_id"`
-	StockID                *uuid.UUID           `json:"stock_id"`
-	StockName              string               `json:"stock_name"`
-	Quantity               int                  `json:"quantity_owned"`
-	User                   user.UserInterface   // use this or UserID
-	Stock                  stock.StockInterface // use this or StockID and StockName
+	*entity.NewEntityParams `json:"Entity"`
+	UserID                  *uuid.UUID           `json:"user_id"`
+	StockID                 *uuid.UUID           `json:"stock_id"`
+	StockName               string               `json:"stock_name"`
+	Quantity                int                  `json:"quantity_owned"`
+	User                    user.UserInterface   // use this or UserID
+	Stock                   stock.StockInterface // use this or StockID and StockName
 }
 
 func New(params NewUserStockParams) *UserStock {
@@ -163,8 +163,9 @@ func ParseList(jsonBytes []byte) (*[]*UserStock, error) {
 }
 
 func (us *UserStock) ToParams() NewUserStockParams {
+	eparams := us.EntityToParams()
 	return NewUserStockParams{
-		NewEntityParams: us.EntityToParams(),
+		NewEntityParams: &eparams,
 		UserID:          us.GetUserID(),
 		StockID:         us.GetStockID(),
 		StockName:       us.GetStockName(),

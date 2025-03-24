@@ -149,7 +149,7 @@ func (so *StockOrder) SetUserID(userID *uuid.UUID) {
 func (so *StockOrder) CreateChildOrder(parent StockOrderInterface, partner StockOrderInterface) StockOrderInterface {
 	// Create a new Stock Order
 	return New(NewStockOrderParams{
-		NewEntityParams: entity.NewEntityParams{
+		NewEntityParams: &entity.NewEntityParams{
 			ID: parent.GetId(),
 		},
 		StockID:            parent.GetStockID(),
@@ -160,19 +160,18 @@ func (so *StockOrder) CreateChildOrder(parent StockOrderInterface, partner Stock
 		ParentStockOrderID: parent.GetId(),
 		UserID:             parent.GetUserID(),
 	})
-
 }
 
 type NewStockOrderParams struct {
-	entity.NewEntityParams `json:"Entity"`
-	Stock                  stock.StockInterface // use this or StockID
-	StockID                *uuid.UUID           `json:"stock_id"`
-	IsBuy                  bool                 `json:"is_buy"`
-	OrderType              string               `json:"order_type"` // MARKET or LIMIT. This can't be changed later.
-	Quantity               int                  `json:"quantity"`
-	Price                  float64              `json:"price"`
-	ParentStockOrderID     *uuid.UUID           `json:"ParentStockOrderID"`
-	UserID                 *uuid.UUID           `json:"user_id"`
+	*entity.NewEntityParams `json:"Entity"`
+	Stock                   stock.StockInterface // use this or StockID
+	StockID                 *uuid.UUID           `json:"stock_id"`
+	IsBuy                   bool                 `json:"is_buy"`
+	OrderType               string               `json:"order_type"` // MARKET or LIMIT. This can't be changed later.
+	Quantity                int                  `json:"quantity"`
+	Price                   float64              `json:"price"`
+	ParentStockOrderID      *uuid.UUID           `json:"ParentStockOrderID"`
+	UserID                  *uuid.UUID           `json:"user_id"`
 }
 
 func New(params NewStockOrderParams) *StockOrder {
@@ -218,8 +217,9 @@ func ParseList(jsonBytes []byte) (*[]*StockOrder, error) {
 }
 
 func (so *StockOrder) ToParams() NewStockOrderParams {
+	eparams := so.EntityToParams()
 	return NewStockOrderParams{
-		NewEntityParams: so.EntityToParams(),
+		NewEntityParams: &eparams,
 		StockID:         so.GetStockID(),
 		IsBuy:           so.GetIsBuy(),
 		OrderType:       so.GetOrderType(),
