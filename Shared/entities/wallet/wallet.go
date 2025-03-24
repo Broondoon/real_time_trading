@@ -54,10 +54,10 @@ func (w *Wallet) SetUserID(userID *uuid.UUID) {
 }
 
 type NewWalletParams struct {
-	entity.NewEntityParams `json:"Entity"`
-	UserID                 *uuid.UUID         `json:"user_id" gorm:"not null"`
-	Balance                float64            `json:"balance" gorm:"not null"`
-	User                   user.UserInterface // use this or UserId
+	*entity.NewEntityParams `json:"Entity"`
+	UserID                  *uuid.UUID         `json:"user_id" gorm:"not null"`
+	Balance                 float64            `json:"balance" gorm:"not null"`
+	User                    user.UserInterface // use this or UserId
 }
 
 func New(params NewWalletParams) *Wallet {
@@ -100,8 +100,9 @@ func ParseList(jsonBytes []byte) (*[]*Wallet, error) {
 }
 
 func (w *Wallet) ToParams() NewWalletParams {
+	eparams := w.EntityToParams()
 	return NewWalletParams{
-		NewEntityParams: w.EntityToParams(),
+		NewEntityParams: &eparams,
 		User:            nil,
 		UserID:          w.GetUserID(),
 		Balance:         w.GetBalance(),

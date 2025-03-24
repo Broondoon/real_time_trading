@@ -133,7 +133,14 @@ func getStockTransactionsBulk(data *[]*TransactionBulk, TransferParams any) erro
 
 			// Sort by timestamp
 			sort.SliceStable(formattedTransactions, func(i, j int) bool {
-				return formattedTransactions[i].Timestamp.Before(formattedTransactions[j].Timestamp)
+				//looks like this wants to get Market orders before limit orders
+				if formattedTransactions[i].OrderType >= formattedTransactions[j].OrderType {
+					//looks like this wants to get Cancelled before Completed before In Progress
+					if formattedTransactions[i].OrderStatus <= formattedTransactions[j].OrderStatus {
+						return formattedTransactions[i].Timestamp.Before(formattedTransactions[j].Timestamp)
+					}
+				}
+				return true
 			})
 
 			// Create response
@@ -146,6 +153,7 @@ func getStockTransactionsBulk(data *[]*TransactionBulk, TransferParams any) erro
 				responseWriter.WriteHeader(http.StatusInternalServerError)
 				continue
 			}
+			log.Println("Transactions: ", string(transactionsJSON))
 			responseWriter.Write(transactionsJSON)
 		} else {
 			responseWriter.WriteHeader(http.StatusNotFound)
@@ -253,6 +261,7 @@ func getWalletTransactionsBulk(data *[]*TransactionBulk, TransferParams any) err
 
 func cancelStockTransactionHandler(responseWriter network.ResponseWriter, data []byte, queryParams url.Values, requestType string) {
 	stockTransaction, err := _databaseManager.StockTransactions().GetByID(queryParams.Get("id"))
+
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		log.Println("Stock transaction not found")
 		responseWriter.WriteHeader(http.StatusNotFound)

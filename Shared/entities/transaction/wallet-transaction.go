@@ -5,12 +5,12 @@ import (
 	"Shared/entities/wallet"
 	"encoding/json"
 	"strconv"
-	"time"
 
 	"github.com/google/uuid"
 )
 
 type WalletTransactionInterface interface {
+	TransactionInterface
 	GetWalletID() *uuid.UUID
 	GetWalletIDString() string
 	SetWalletID(walletID *uuid.UUID)
@@ -21,14 +21,8 @@ type WalletTransactionInterface interface {
 	SetIsDebit(isDebit bool)
 	GetAmount() float64
 	SetAmount(amount float64)
-	GetTimestamp() time.Time
-	SetTimestamp(timestamp time.Time)
 	SetWalletTXID()
-	GetUserID() *uuid.UUID
-	GetUserIDString() string
-	SetUserID(userID *uuid.UUID)
 	ToParams() NewWalletTransactionParams
-	entity.EntityInterface
 }
 
 type WalletTransaction struct {
@@ -37,9 +31,7 @@ type WalletTransaction struct {
 	StockTransactionID *uuid.UUID `json:"stock_tx_id" gorm:"column:stock_transaction_id;type:uuid;not null"`
 	IsDebit            bool       `json:"is_debit" gorm:"not null"`
 	Amount             float64    `json:"amount" gorm:"not null"`
-	Timestamp          time.Time  `json:"time_stamp"`
-	UserID             *uuid.UUID `json:"user_id" gorm:"type:uuid;column:user_id;not null"`
-	entity.Entity      `json:"Entity" gorm:"embedded"`
+	Transaction        `json:"transaction" gorm:"embedded"`
 }
 
 func (wt *WalletTransaction) GetWalletID() *uuid.UUID {
@@ -103,58 +95,29 @@ func (wt *WalletTransaction) SetAmount(amount float64) {
 	})
 }
 
-func (wt *WalletTransaction) GetTimestamp() time.Time {
-	return wt.Timestamp
-}
-
-func (wt *WalletTransaction) SetTimestamp(timestamp time.Time) {
-	wt.Timestamp = timestamp
-	*wt.GetUpdates() = append(*wt.Updates, &entity.EntityUpdateData{
-		ID:       wt.GetId(),
-		Field:    "Timestamp",
-		NewValue: func() *string { s := timestamp.Format(time.RFC3339); return &s }(),
-	})
-}
-
 func (wt *WalletTransaction) SetWalletTXID() {
 	wt.WalletTXID = wt.GetId()
 }
 
-func (st *WalletTransaction) GetUserID() *uuid.UUID {
-	return st.UserID
-}
-
-func (st *WalletTransaction) GetUserIDString() string {
-	if st.UserID == nil {
-		return ""
-	}
-	return st.UserID.String()
-}
-
-func (st *WalletTransaction) SetUserID(userID *uuid.UUID) {
-	st.UserID = userID
-}
-
 type NewWalletTransactionParams struct {
-	entity.NewEntityParams `json:"Entity"`
-	WalletID               *uuid.UUID `json:"wallet_id" gorm:"not null"`
-	StockTransactionID     *uuid.UUID `json:"stock_tx_id" gorm:"not null"`
-	IsDebit                bool       `json:"is_debit" gorm:"not null"`
-	Amount                 float64    `json:"amount" gorm:"not null"`
-	Timestamp              time.Time  `json:"time_stamp"`
-	Wallet                 wallet.WalletInterface
-	StockTransaction       StockTransactionInterface
-	UserID                 *uuid.UUID `json:"user_id"`
+	*NewTransactionParams `json:"transaction"`
+	WalletID              *uuid.UUID `json:"wallet_id" gorm:"not null"`
+	StockTransactionID    *uuid.UUID `json:"stock_tx_id" gorm:"not null"`
+	IsDebit               bool       `json:"is_debit" gorm:"not null"`
+	Amount                float64    `json:"amount" gorm:"not null"`
+	Wallet                wallet.WalletInterface
+	StockTransaction      StockTransactionInterface
 }
 
 func NewWalletTransaction(params NewWalletTransactionParams) *WalletTransaction {
-	e := entity.NewEntity(params.NewEntityParams)
+	if params.NewTransactionParams == nil {
+		params.NewTransactionParams = &NewTransactionParams{}
+	}
+	t := New(params.NewTransactionParams)
 	wt := &WalletTransaction{
-		Entity:    *e,
-		IsDebit:   params.IsDebit,
-		Amount:    params.Amount,
-		Timestamp: params.Timestamp,
-		UserID:    params.UserID,
+		Transaction: *t,
+		IsDebit:     params.IsDebit,
+		Amount:      params.Amount,
 	}
 	if params.Wallet != nil {
 		wt.WalletID = params.Wallet.GetId()
@@ -192,14 +155,13 @@ func ParseWalletTransactionList(jsonBytes []byte) (*[]*WalletTransaction, error)
 }
 
 func (wt *WalletTransaction) ToParams() NewWalletTransactionParams {
+	tparams := wt.Transaction.ToParams()
 	return NewWalletTransactionParams{
-		NewEntityParams:    wt.EntityToParams(),
-		WalletID:           wt.GetWalletID(),
-		StockTransactionID: wt.GetStockTransactionID(),
-		IsDebit:            wt.GetIsDebit(),
-		Amount:             wt.GetAmount(),
-		Timestamp:          wt.GetTimestamp(),
-		UserID:             wt.GetUserID(),
+		NewTransactionParams: &tparams,
+		WalletID:             wt.GetWalletID(),
+		StockTransactionID:   wt.GetStockTransactionID(),
+		IsDebit:              wt.GetIsDebit(),
+		Amount:               wt.GetAmount(),
 	}
 }
 

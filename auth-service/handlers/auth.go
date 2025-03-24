@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"Shared/entities/entity"
 	"Shared/entities/user"
 	"Shared/entities/wallet"
 	"Shared/network"
@@ -206,9 +205,8 @@ func createWallet(data *[]*UserBulk, TransferParams any) error {
 	for i, d := range *data {
 		users[d.UserEntity.GetUniquePairing().String()] = d
 		w := wallet.New(wallet.NewWalletParams{
-			NewEntityParams: entity.NewEntityParams{},
-			UserID:          d.UserEntity.GetId(),
-			Balance:         0.0,
+			UserID:  d.UserEntity.GetId(),
+			Balance: 0.0,
 		})
 		w.SetUnqiuePairing(d.UserEntity.GetUniquePairing())
 		wallets[i] = w
