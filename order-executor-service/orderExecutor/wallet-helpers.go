@@ -1,14 +1,12 @@
 package orderExecutorService
 
 import (
-	"Shared/entities/entity"
 	"Shared/entities/transaction"
 	"Shared/entities/wallet"
 	"databaseAccessTransaction"
 	"databaseAccessUserManagement"
 	"errors"
 	"fmt"
-	"time"
 )
 
 // Check if buyer has enough funds to afford the quantity*stockprice
@@ -53,32 +51,26 @@ func createWalletTransaction(
 	databaseAccessTransact databaseAccessTransaction.DatabaseAccessInterface,
 ) (transaction.WalletTransactionInterface, transaction.WalletTransactionInterface, error) {
 	buyerWalletTx := transaction.NewWalletTransaction(transaction.NewWalletTransactionParams{
-		NewEntityParams: entity.NewEntityParams{
-			DateCreated:  time.Now(),
-			DateModified: time.Now(),
+		NewTransactionParams: &transaction.NewTransactionParams{
+			UserID: buyerWallet.GetUserID(),
 		},
 		WalletID:           buyerWallet.GetId(),
 		StockTransactionID: buyerStockTransaction.GetId(),
 		IsDebit:            true,
 		Amount:             amount,
-		Timestamp:          time.Now(),
 		Wallet:             buyerWallet,
 		StockTransaction:   buyerStockTransaction,
-		UserID:             buyerWallet.GetUserID(),
 	})
 	sellerWalletTx := transaction.NewWalletTransaction(transaction.NewWalletTransactionParams{
-		NewEntityParams: entity.NewEntityParams{
-			DateCreated:  time.Now(),
-			DateModified: time.Now(),
+		NewTransactionParams: &transaction.NewTransactionParams{
+			UserID: sellerWallet.GetUserID(),
 		},
 		WalletID:           sellerWallet.GetId(),
 		StockTransactionID: sellerStockTransaction.GetId(),
 		IsDebit:            false,
 		Amount:             amount,
-		Timestamp:          time.Now(),
 		Wallet:             sellerWallet,
 		StockTransaction:   sellerStockTransaction,
-		UserID:             sellerWallet.GetUserID(),
 	})
 
 	createdTxs, errMap, err := databaseAccessTransact.WalletTransaction().CreateBulk(&[]transaction.WalletTransactionInterface{buyerWalletTx, sellerWalletTx})

@@ -22,6 +22,14 @@ type DatabaseAccess struct {
 	_networkManager network.NetworkInterface
 }
 
+type WalletTransactionDataAccess struct {
+	WalletTransactionDataAccessInterface
+}
+
+type StockTransactionDataAccess struct {
+	StockTransactionDataAccessInterface
+}
+
 type NewDatabaseAccessParams struct {
 	StockTransactionParams  *databaseAccess.NewEntityDataAccessNetworkParams[*transaction.StockTransaction]
 	WalletTransactionParams *databaseAccess.NewEntityDataAccessNetworkParams[*transaction.WalletTransaction]
@@ -68,9 +76,13 @@ func NewDatabaseAccess(params *NewDatabaseAccessParams) DatabaseAccessInterface 
 	}
 
 	dba := &DatabaseAccess{
-		StockTransactionDataAccessInterface:  databaseAccess.NewEntityDataAccessNetwork[*transaction.StockTransaction, transaction.StockTransactionInterface](params.StockTransactionParams),
-		WalletTransactionDataAccessInterface: databaseAccess.NewEntityDataAccessNetwork[*transaction.WalletTransaction, transaction.WalletTransactionInterface](params.WalletTransactionParams),
-		_networkManager:                      params.Network,
+		StockTransactionDataAccessInterface: &StockTransactionDataAccess{
+			StockTransactionDataAccessInterface: databaseAccess.NewEntityDataAccessNetwork[*transaction.StockTransaction, transaction.StockTransactionInterface](params.StockTransactionParams),
+		},
+		WalletTransactionDataAccessInterface: &WalletTransactionDataAccess{
+			WalletTransactionDataAccessInterface: databaseAccess.NewEntityDataAccessNetwork[*transaction.WalletTransaction, transaction.WalletTransactionInterface](params.WalletTransactionParams),
+		},
+		_networkManager: params.Network,
 	}
 
 	dba.Connect()
