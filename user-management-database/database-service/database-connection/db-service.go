@@ -29,8 +29,8 @@ type DatabaseService struct {
 }
 
 type NewDatabaseServiceParams struct {
-	// UserStockParams *databaseService.NewEntityDataParams // leave nil for default
-	// WalletParams    *databaseService.NewEntityDataParams // leave nil for default
+	//UserStockParams *databaseService.NewEntityDataParams // leave nil for default
+	//WalletParams    *databaseService.NewEntityDataParams // leave nil for default
 	// Only the UserStockParams.NewPostGresDatabaseParams is used. The WalletParams.NewPostGresDatabaseParams is ignored.
 }
 
@@ -64,18 +64,26 @@ func NewDatabaseService(params *NewDatabaseServiceParams) DatabaseServiceInterfa
 	// }
 
 	//Cache stuff
-	/* cachedUserStock := databaseService.NewCachedEntityData[*userStock.UserStock](&databaseService.NewCachedEntityDataParams{
-		NewEntityDataParams: params.UserStockParams,
-		RedisAddr:           os.Getenv("REDIS_ADDR"),
-		Password:            os.Getenv("REDIS_PASSWORD"),
-		DefaultTTL:          5 * time.Minute,
+	/* cachedUserStock := databaseService.NewCachedEntityData[*userStock.UserStock, *gorm.DB](&databaseService.NewCachedEntityDataParams[*userStock.UserStock, *gorm.DB]{
+		RedisAddr:  os.Getenv("REDIS_USERMANAGEMENT_ADDR"),
+		Password:   os.Getenv("REDIS_PASSWORD"),
+		DefaultTTL: 5 * time.Minute,
+		EntityData: databaseService.NewPostGresEntityData[*userStock.UserStock](
+			&databaseService.NewPostGresEntityDataParams{
+				Existing: newDBConnection,
+			},
+		),
 	})
 
-	cachedWallet := databaseService.NewCachedEntityData[*wallet.Wallet](&databaseService.NewCachedEntityDataParams{
-		NewEntityDataParams: params.WalletParams,
-		RedisAddr:           os.Getenv("REDIS_ADDR"),
-		Password:            os.Getenv("REDIS_PASSWORD"),
-		DefaultTTL:          5 * time.Minute,
+	cachedWallet := databaseService.NewCachedEntityData[*wallet.Wallet, *gorm.DB](&databaseService.NewCachedEntityDataParams[*wallet.Wallet, *gorm.DB]{
+		RedisAddr:  os.Getenv("REDIS_USERMANAGEMENT_ADDR"),
+		Password:   os.Getenv("REDIS_PASSWORD"),
+		DefaultTTL: 5 * time.Minute,
+		EntityData: databaseService.NewPostGresEntityData[*wallet.Wallet](
+			&databaseService.NewPostGresEntityDataParams{
+				Existing: newDBConnection,
+			},
+		),
 	})
 
 	db := &DatabaseService{

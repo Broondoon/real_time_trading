@@ -79,7 +79,7 @@ func NewDatabaseService(params *NewDatabaseServiceParams) DatabaseServiceInterfa
 
 	db := &DatabaseService{
 		StockTransaction: databaseService.NewCachedEntityData[*transaction.StockTransaction, *gorm.DB](&databaseService.NewCachedEntityDataParams[*transaction.StockTransaction, *gorm.DB]{
-			RedisAddr:  os.Getenv("REDIS_ADDR"),
+			RedisAddr:  os.Getenv("REDIS_TRANSACTION_ADDR"),
 			Password:   os.Getenv("REDIS_PASSWORD"),
 			DefaultTTL: 5 * time.Minute,
 			EntityData: databaseService.NewPostGresEntityData[*transaction.StockTransaction](
@@ -89,7 +89,7 @@ func NewDatabaseService(params *NewDatabaseServiceParams) DatabaseServiceInterfa
 			),
 		}),
 		WalletTransaction: databaseService.NewCachedEntityData[*transaction.WalletTransaction, *gorm.DB](&databaseService.NewCachedEntityDataParams[*transaction.WalletTransaction, *gorm.DB]{
-			RedisAddr:  os.Getenv("REDIS_ADDR"),
+			RedisAddr:  os.Getenv("REDIS_TRANSACTION_ADDR"),
 			Password:   os.Getenv("REDIS_PASSWORD"),
 			DefaultTTL: 5 * time.Minute,
 			EntityData: databaseService.NewPostGresEntityData[*transaction.WalletTransaction](
