@@ -53,7 +53,7 @@ func handleFunc(params network.HandlerParams, w http.ResponseWriter, r *http.Req
 		responseWriterWrapper.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	if r.Method == http.MethodGet || r.Method == http.MethodDelete || r.Method == http.MethodPut {
+	if r.Method == http.MethodGet || r.Method == http.MethodDelete || r.Method == http.MethodPut || r.Method == http.MethodPatch {
 		//decode params
 		id := strings.TrimPrefix(r.URL.Path, "/"+params.Pattern)
 		if id != "" {

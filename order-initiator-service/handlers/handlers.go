@@ -276,21 +276,22 @@ func placeStockOrderResponse(data *[]*StockOrderBulk, TransferParams any) error 
 
 func cancelStockTransactionHandler(responseWriter network.ResponseWriter, data []byte, queryParams url.Values, requestType string) {
 	//log.Println("Cancelling stock transaction")
-	var stockID network.StockTransactionID
-	err := json.Unmarshal(data, &stockID)
+	var stockTxID network.StockTransactionID
+	err := json.Unmarshal(data, &stockTxID)
 	if err != nil {
 		log.Println("Error: ", err.Error())
 		responseWriter.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	err = cancelStockTransaction(stockID.StockTransactionID)
-	if err.Error() == "404 Not Found" {
-		responseWriter.WriteHeader(http.StatusNotFound)
-		return
-	}
+	err = cancelStockTransaction(stockTxID.StockTransactionID)
+
 	if err != nil {
 		log.Println("Error: ", err.Error())
-		responseWriter.WriteHeader(http.StatusInternalServerError)
+		if err.Error() == "404 Not Found" {
+			responseWriter.WriteHeader(http.StatusNotFound)
+		} else {
+			responseWriter.WriteHeader(http.StatusInternalServerError)
+		}
 		return
 	}
 	returnVal := network.ReturnJSON{
