@@ -1,14 +1,12 @@
 package orderExecutorService
 
 import (
-	"Shared/entities/entity"
 	"Shared/entities/transaction"
 	"Shared/entities/wallet"
 	"databaseAccessTransaction"
 	"databaseAccessUserManagement"
 	"errors"
 	"fmt"
-	"time"
 )
 
 // Check if buyer has enough funds to afford the quantity*stockprice
@@ -51,49 +49,41 @@ func createWalletTransaction(
 	sellerStockTransaction transaction.StockTransactionInterface,
 	amount float64,
 	databaseAccessTransact databaseAccessTransaction.DatabaseAccessInterface,
-) (string, string, error) {
+) (transaction.WalletTransactionInterface, transaction.WalletTransactionInterface, error) {
 	buyerWalletTx := transaction.NewWalletTransaction(transaction.NewWalletTransactionParams{
-		NewEntityParams: entity.NewEntityParams{
-			DateCreated:  time.Now(),
-			DateModified: time.Now(),
+		NewTransactionParams: &transaction.NewTransactionParams{
+			UserID: buyerWallet.GetUserID(),
 		},
 		WalletID:           buyerWallet.GetId(),
 		StockTransactionID: buyerStockTransaction.GetId(),
 		IsDebit:            true,
 		Amount:             amount,
-		Timestamp:          time.Now(),
 		Wallet:             buyerWallet,
 		StockTransaction:   buyerStockTransaction,
-		UserID:             buyerWallet.GetUserID(),
 	})
 	sellerWalletTx := transaction.NewWalletTransaction(transaction.NewWalletTransactionParams{
-		NewEntityParams: entity.NewEntityParams{
-			DateCreated:  time.Now(),
-			DateModified: time.Now(),
+		NewTransactionParams: &transaction.NewTransactionParams{
+			UserID: sellerWallet.GetUserID(),
 		},
 		WalletID:           sellerWallet.GetId(),
 		StockTransactionID: sellerStockTransaction.GetId(),
 		IsDebit:            false,
 		Amount:             amount,
-		Timestamp:          time.Now(),
 		Wallet:             sellerWallet,
 		StockTransaction:   sellerStockTransaction,
-		UserID:             sellerWallet.GetUserID(),
 	})
 
 	createdTxs, errMap, err := databaseAccessTransact.WalletTransaction().CreateBulk(&[]transaction.WalletTransactionInterface{buyerWalletTx, sellerWalletTx})
 	if err != nil || len(errMap) > 0 {
-		return "", "", fmt.Errorf("failed to create wallet transaction: %v", err)
+		return nil, nil, fmt.Errorf("failed to create wallet transaction: %v", err)
 	}
 
-	var buyerWalletTxID string
-	var sellerWalletTxID string
 	for _, tx := range *createdTxs {
 		if tx.GetWalletIDString() == buyerWallet.GetIdString() {
-			buyerWalletTxID = tx.GetIdString()
+			buyerWalletTx = tx.(*transaction.WalletTransaction)
 		} else if tx.GetWalletIDString() == sellerWallet.GetIdString() {
-			sellerWalletTxID = tx.GetIdString()
+			sellerWalletTx = tx.(*transaction.WalletTransaction)
 		}
 	}
-	return buyerWalletTxID, sellerWalletTxID, nil
+	return buyerWalletTx, sellerWalletTx, nil
 }

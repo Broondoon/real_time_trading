@@ -61,6 +61,9 @@ func (hc *HttpClient) handleResponse(resp *http.Response) ([]byte, error) {
 	if resp.StatusCode == http.StatusResetContent {
 		return nil, errors.New("204 No Content")
 	}
+	if resp.StatusCode == http.StatusNotFound {
+		return nil, errors.New("404 Not Found")
+	}
 
 	defer resp.Body.Close()
 	body, err := io.ReadAll(resp.Body)

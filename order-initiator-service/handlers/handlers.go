@@ -9,7 +9,6 @@ import (
 	"databaseAccessTransaction"
 	"databaseAccessUserManagement"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -19,7 +18,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"gorm.io/gorm"
 )
 
 const TIMEOUT = 2 * time.Second
@@ -103,7 +101,7 @@ func placeStockOrderHandler(responseWriter network.ResponseWriter, data []byte, 
 	stockOrderCarry := &StockOrderBulk{
 		StockOrder:     stockOrder,
 		ResponseWriter: responseWriter,
-		userId:         queryParams.Get("userID"),
+		userId:         userIDString,
 	}
 	_bulkRoutineStockOrderCheckUserStocks.Insert(stockOrderCarry)
 }
@@ -278,22 +276,23 @@ func placeStockOrderResponse(data *[]*StockOrderBulk, TransferParams any) error 
 
 func cancelStockTransactionHandler(responseWriter network.ResponseWriter, data []byte, queryParams url.Values, requestType string) {
 	//log.Println("Cancelling stock transaction")
-	var stockID network.StockTransactionID
-	err := json.Unmarshal(data, &stockID)
+	var stockTxID network.StockTransactionID
+	err := json.Unmarshal(data, &stockTxID)
 	if err != nil {
 		log.Println("Error: ", err.Error())
 		responseWriter.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	// Should this be := here?
-	err = cancelStockTransaction(stockID.StockTransactionID)
-	if errors.Is(err, gorm.ErrRecordNotFound) {
-		responseWriter.WriteHeader(http.StatusNotFound)
-		return
-	}
+
+	err = cancelStockTransaction(stockTxID.StockTransactionID)
+  
 	if err != nil {
 		log.Println("Error: ", err.Error())
-		responseWriter.WriteHeader(http.StatusInternalServerError)
+		if err.Error() == "404 Not Found" {
+			responseWriter.WriteHeader(http.StatusNotFound)
+		} else {
+			responseWriter.WriteHeader(http.StatusInternalServerError)
+		}
 		return
 	}
 	returnVal := network.ReturnJSON{
@@ -302,6 +301,7 @@ func cancelStockTransactionHandler(responseWriter network.ResponseWriter, data [
 	}
 	returnValJSON, err := json.Marshal(returnVal)
 	if err != nil {
+		log.Println("Error: ", err.Error())
 		responseWriter.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -326,88 +326,87 @@ func cancelStockTransaction(id string) error {
 
 }
 
-func placeStockOrderHandlerOld(responseWriter network.ResponseWriter, data []byte, queryParams url.Values, requestType string) {
-	//println("Placing stock order")
-	stockOrder, err := order.Parse(data)
-	if err != nil {
-		println("Error: ", err.Error())
-		responseWriter.WriteHeader(http.StatusBadRequest)
-		return
-	}
-	uuidNew, err := uuid.Parse(strings.TrimSpace(queryParams.Get("userID")))
-	if err != nil {
-		println("Error: ", err.Error())
-		responseWriter.WriteHeader(http.StatusBadRequest)
-		return
-	}
-	stockOrder.SetUserID(&uuidNew)
-	err = placeStockOrderOld(stockOrder)
-	if err != nil {
-		println("Error: ", err.Error())
-		responseWriter.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-	returnVal := network.ReturnJSON{
-		Success: true,
-		Data:    nil,
-	}
-	returnValJSON, err := json.Marshal(returnVal)
-	if err != nil {
-		responseWriter.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-	responseWriter.Write(returnValJSON)
-}
+// func placeStockOrderHandlerOld(responseWriter network.ResponseWriter, data []byte, queryParams url.Values, requestType string) {
+// 	//println("Placing stock order")
+// 	stockOrder, err := order.Parse(data)
+// 	if err != nil {
+// 		println("Error: ", err.Error())
+// 		responseWriter.WriteHeader(http.StatusBadRequest)
+// 		return
+// 	}
+// 	uuidNew, err := uuid.Parse(strings.TrimSpace(queryParams.Get("userID")))
+// 	if err != nil {
+// 		println("Error: ", err.Error())
+// 		responseWriter.WriteHeader(http.StatusBadRequest)
+// 		return
+// 	}
+// 	stockOrder.SetUserID(&uuidNew)
+// 	err = placeStockOrderOld(stockOrder)
+// 	if err != nil {
+// 		println("Error: ", err.Error())
+// 		responseWriter.WriteHeader(http.StatusInternalServerError)
+// 		return
+// 	}
+// 	returnVal := network.ReturnJSON{
+// 		Success: true,
+// 		Data:    nil,
+// 	}
+// 	returnValJSON, err := json.Marshal(returnVal)
+// 	if err != nil {
+// 		responseWriter.WriteHeader(http.StatusInternalServerError)
+// 		return
+// 	}
+// 	responseWriter.Write(returnValJSON)
+// }
 
-func placeStockOrderOld(stockOrder order.StockOrderInterface) error {
-	var err error
+// func placeStockOrderOld(stockOrder order.StockOrderInterface) error {
+// 	var err error
 
-	if !stockOrder.GetIsBuy() {
-		// Get seller's current stock holdings
-		sellerStockPortfolio, err := _databaseAccessUser.UserStock().GetUserStocks(stockOrder.GetUserIDString())
-		if err != nil {
-			return fmt.Errorf("failed to get seller stocks: %v", err)
-		}
+// 	if !stockOrder.GetIsBuy() {
+// 		// Get seller's current stock holdings
+// 		sellerStockPortfolio, err := _databaseAccessUser.UserStock().GetUserStocks(stockOrder.GetUserIDString())
+// 		if err != nil {
+// 			return fmt.Errorf("failed to get seller stocks: %v", err)
+// 		}
 
-		// Find the stock in the seller's portfolio
-		var sellerStock userStock.UserStockInterface
-		for _, stock := range *sellerStockPortfolio {
-			if stock.GetStockIDString() == stockOrder.GetStockIDString() {
-				sellerStock = stock
-				break
-			}
-		}
+// 		// Find the stock in the seller's portfolio
+// 		var sellerStock userStock.UserStockInterface
+// 		for _, stock := range *sellerStockPortfolio {
+// 			if stock.GetStockIDString() == stockOrder.GetStockIDString() {
+// 				sellerStock = stock
+// 				break
+// 			}
+// 		}
 
-		// Verify seller has the stock and sufficient quantity
-		if sellerStock == nil {
-			return fmt.Errorf("seller does not own stock %s", stockOrder.GetStockID())
-		}
-		if sellerStock.GetQuantity() < stockOrder.GetQuantity() {
-			return fmt.Errorf("insufficient stock quantity: has %d, wants to sell %d",
-				sellerStock.GetQuantity(), stockOrder.GetQuantity())
-		}
+// 		// Verify seller has the stock and sufficient quantity
+// 		if sellerStock == nil {
+// 			return fmt.Errorf("seller does not own stock %s", stockOrder.GetStockID())
+// 		}
+// 		if sellerStock.GetQuantity() < stockOrder.GetQuantity() {
+// 			return fmt.Errorf("insufficient stock quantity: has %d, wants to sell %d",
+// 				sellerStock.GetQuantity(), stockOrder.GetQuantity())
+// 		}
 
-		// Deduct the quantity from seller's portfolio but keep the record
-		sellerStock.UpdateQuantity(-stockOrder.GetQuantity())
-		err = _databaseAccessUser.UserStock().Update(sellerStock)
-		if err != nil {
-			return fmt.Errorf("failed to update seller stock quantity: %v", err)
-		}
-	}
+// 		// Deduct the quantity from seller's portfolio but keep the record
+// 		sellerStock.UpdateQuantity(-stockOrder.GetQuantity())
+// 		err = _databaseAccessUser.UserStock().Update(sellerStock)
+// 		if err != nil {
+// 			return fmt.Errorf("failed to update seller stock quantity: %v", err)
+// 		}
+// 	}
 
-	transaction := transaction.NewStockTransaction(transaction.NewStockTransactionParams{
-		StockOrder:  stockOrder,
-		OrderStatus: "IN_PROGRESS",
-		TimeStamp:   time.Now(),
-	})
+// 	transaction := transaction.NewStockTransaction(transaction.NewStockTransactionParams{
+// 		StockOrder:  stockOrder,
+// 		OrderStatus: "IN_PROGRESS",
+// 	})
 
-	createdTransaction, err := _databaseAccess.StockTransaction().Create(transaction)
-	if err != nil {
-		println("Error: ", err.Error())
-		return err
-	}
-	stockOrder.SetId(createdTransaction.GetId())
-	//pass to matching engine
-	_, err = _networkHttpManager.MatchingEngine().Post("placeStockOrder", stockOrder)
-	return err
-}
+// 	createdTransaction, err := _databaseAccess.StockTransaction().Create(transaction)
+// 	if err != nil {
+// 		println("Error: ", err.Error())
+// 		return err
+// 	}
+// 	stockOrder.SetId(createdTransaction.GetId())
+// 	//pass to matching engine
+// 	_, err = _networkHttpManager.MatchingEngine().Post("placeStockOrder", stockOrder)
+// 	return err
+// }

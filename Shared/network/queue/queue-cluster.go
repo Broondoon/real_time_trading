@@ -32,6 +32,7 @@ type QueueCluster struct {
 	ConsumeNoLocal   bool
 	ConsumeNoWait    bool
 	ConsumeArgs      map[string]interface{}
+	QueueName        string
 }
 
 type NewQueueClusterParams struct {
@@ -63,6 +64,7 @@ func NewQueueCluster(exchangeKey string, handler network.HandlerParams, params *
 		Exclusive:                params.Exclusive,
 		NoWait:                   params.NoWait,
 		Args:                     params.Args,
+		QueueName:                handler.Pattern,
 	}
 }
 
@@ -85,7 +87,6 @@ func GetDefaults() *NewQueueClusterParams {
 // Exchange Key. Bind this queue to an exchange with this key. We then filter incomming messages by pattern
 func (n *QueueCluster) SpawnQueue() {
 	exchangeParams := ExchangeParamsDefaults()
-	log.Println("Exchange Key: ", n.ExchangeKey)
 	exchangeParams.Name = n.ExchangeKey
 	ch := n.SpawnChannel(exchangeParams)
 	log.Println("#######")
@@ -95,12 +96,12 @@ func (n *QueueCluster) SpawnQueue() {
 	log.Println("#######")
 	defer n.CloseChannel(ch)
 	q, err := ch.QueueDeclare(
-		"",           // name
-		n.Durable,    // durable
-		n.AutoDelete, // delete when unused
-		n.Exclusive,  // exclusive
-		n.NoWait,     // no-wait
-		n.Args,       // arguments
+		n.QueueName+"_Queue", // name. We set this to make sure that any services sharing this queue all use the same queue, rather than declaring their own, which causes duplication issues.
+		n.Durable,            // durable
+		n.AutoDelete,         // delete when unused
+		n.Exclusive,          // exclusive
+		n.NoWait,             // no-wait
+		n.Args,               // arguments
 	)
 	failOnError(err, "Failed to declare a queue")
 	log.Println("Queue: ", q.Name)

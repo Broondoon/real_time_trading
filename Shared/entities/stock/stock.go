@@ -26,8 +26,8 @@ func (s *Stock) SetName(name string) {
 }
 
 type NewStockParams struct {
-	entity.NewEntityParams `json:"Entity"`
-	Name                   string `json:"stock_name"`
+	*entity.NewEntityParams `json:"Entity"`
+	Name                    string `json:"stock_name"`
 }
 
 func New(params NewStockParams) *Stock {
@@ -60,8 +60,9 @@ func ParseList(jsonBytes []byte) (*[]*Stock, error) {
 }
 
 func (s *Stock) ToParams() NewStockParams {
+	eparams := s.EntityToParams()
 	return NewStockParams{
-		NewEntityParams: s.EntityToParams(),
+		NewEntityParams: &eparams,
 		Name:            s.GetName(),
 	}
 }
