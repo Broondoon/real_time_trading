@@ -322,20 +322,24 @@ func (d *EntityDataAccessClient[TEntity, TInterface]) Update(entity TInterface) 
 		d.PutRoute = d.DefaultRoute
 	}
 	//We convert the list of updates to the right format for the bulk request.
+	updates := *entity.GetUpdates()
+	entity.ClearUpdates()
 	var updatesInterface []interface{}
-	for _, u := range *entity.GetUpdates() {
+	for _, u := range updates {
 		updatesInterface = append(updatesInterface, u)
 	}
 	//We send a PUT request to the database service to update the entity.
 	bulkReturn, err := d._client.Put(d.PutRoute, updatesInterface)
 	if err != nil {
 		log.Println("Failed to update entity: ", err)
+		entity.SetUpdates(&updates)
 		return err
 	}
 	//If there are any errors, we log them and return an error. Otherwise, we return nil, because you already have the updated entity. You don't need a new one.
 	if len(bulkReturn.Errors) > 0 {
 		log.Println("Failed to update entity: ", bulkReturn.Errors)
 		err = fmt.Errorf("failed to update entity: %v", bulkReturn.Errors)
+		entity.SetUpdates(&updates)
 		return err
 	}
 	return nil
@@ -347,12 +351,17 @@ func (d *EntityDataAccessClient[TEntity, TInterface]) UpdateBulk(entities *[]TIn
 	if d.PutRoute == "" {
 		d.PutRoute = d.DefaultRoute
 	}
+	changesPerEntity := make(map[string][]*entity.EntityUpdateData)
+	entitiesById := make(map[string]TInterface)
 	//We convert the list of updates to the right format for the bulk request.
 	var interfaces []interface{}
 	for _, v := range *entities {
+		entitiesById[v.GetIdString()] = v
+		changesPerEntity[v.GetIdString()] = *v.GetUpdates()
 		for _, u := range *v.GetUpdates() {
 			interfaces = append(interfaces, u)
 		}
+		v.ClearUpdates()
 	}
 	//We don't actually have a put bulk request, because it's always just a list of updates. So we just send a put request with the updates. This one just has updates for multiple entities, and reutrns errors for mulitple entities.
 	bulkReturn, err := d._client.Put(d.PutRoute, interfaces)
@@ -360,6 +369,12 @@ func (d *EntityDataAccessClient[TEntity, TInterface]) UpdateBulk(entities *[]TIn
 		var mapErrs map[string]int
 		log.Println("Failed to update entities: ", err)
 		return mapErrs, err
+	}
+	for id, err := range bulkReturn.Errors {
+		log.Println("Failed to update entity: ", id, " with Error Code: ", err, ". Re-adding Updates to entity.")
+		//We put the updates back in the entity, so they can be tried again.
+		tempUpdates := changesPerEntity[id]
+		entitiesById[id].SetUpdates(&tempUpdates)
 	}
 	return bulkReturn.Errors, nil
 }

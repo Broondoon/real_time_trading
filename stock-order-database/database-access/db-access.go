@@ -63,7 +63,7 @@ func (d *DatabaseAccess) GetInitialStockOrdersForStock(stockID string) *[]order.
 }
 
 func (d *DatabaseAccess) CreateBulk(entities *[]order.StockOrderInterface) (*[]order.StockOrderInterface, map[string]int, error) {
-	errors := make(map[string]int)
+	errorList := make(map[string]int)
 	tempEntities := make([]*order.StockOrder, len(*entities))
 	for i, e := range *entities {
 		tempEntities[i] = e.(*order.StockOrder)
@@ -73,11 +73,11 @@ func (d *DatabaseAccess) CreateBulk(entities *[]order.StockOrderInterface) (*[]o
 		return nil, nil, errMap["transaction"]
 	}
 	for k := range errMap {
-		errors[k] = 500
+		errorList[k] = 500
 	}
 	converted := make([]order.StockOrderInterface, len(tempEntities))
 	for i, e := range tempEntities {
 		converted[i] = e
 	}
-	return &converted, errors, nil
+	return &converted, errorList, nil
 }

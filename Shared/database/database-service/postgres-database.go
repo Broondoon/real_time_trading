@@ -162,7 +162,7 @@ func convertID(id string) (uuid.UUID, error) {
 	return uid, nil
 }
 
-func convertIDs(ids []string, errors map[string]error) ([]uuid.UUID, map[string]error) {
+func convertIDs(ids []string, errorList map[string]error) ([]uuid.UUID, map[string]error) {
 	existingIds := make(map[string]bool)
 	uids := make([]uuid.UUID, len(ids))
 	i := 0
@@ -172,14 +172,14 @@ func convertIDs(ids []string, errors map[string]error) ([]uuid.UUID, map[string]
 		}
 		uid, err := convertID(id)
 		if err != nil {
-			errors[id] = err
+			errorList[id] = err
 			continue
 		}
 		uids[i] = uid
 		existingIds[id] = true
 		i++
 	}
-	return uids, errors
+	return uids, errorList
 }
 
 func (d *PostGresEntityData[T]) PrintOutEntities() {
@@ -224,19 +224,19 @@ func (d *PostGresEntityData[T]) GetByIDs(ids []string) (*[]T, map[string]error) 
 		return nil, map[string]error{"transaction": errors.New("no ids provided")}
 	}
 	var entities []T
-	errors := make(map[string]error)
-	uids, errors := convertIDs(ids, errors)
+	errorList := make(map[string]error)
+	uids, errorList := convertIDs(ids, errorList)
 	if len(uids) == 0 {
-		return nil, errors
+		return nil, errorList
 	}
 
 	results := d.GetDatabaseSession().Find(&entities, "id IN ?", uids)
 	if results.Error != nil {
-		errors["transaction"] = results.Error
+		errorList["transaction"] = results.Error
 		log.Printf("error getting by ids: %s", results.Error.Error())
 		//d.PrintOutEntities()
 
-		return nil, errors
+		return nil, errorList
 	}
 	//get all ids in ids that are not in entities
 	idsFound := make(map[string]bool)
@@ -245,12 +245,12 @@ func (d *PostGresEntityData[T]) GetByIDs(ids []string) (*[]T, map[string]error) 
 	}
 	for _, id := range ids {
 		if val, ok := idsFound[id]; !ok && !val {
-			errors[id] = gorm.ErrRecordNotFound
+			errorList[id] = gorm.ErrRecordNotFound
 			//d.PrintOutEntities()
 		}
 	}
 
-	return &entities, errors
+	return &entities, errorList
 }
 
 // This needs the table column names, whihc is a little diffrent
@@ -315,12 +315,12 @@ func (d *PostGresEntityData[T]) GetByFilteredForeignIDBulk(foreignIDKey string, 
 	}
 
 	var entities []T
-	errors := make(map[string]error)
+	errorList := make(map[string]error)
 	foreignIDColumn, ok := d.columnCache[foreignIDKey]
 	if !ok {
-		errors["transaction"] = fmt.Errorf("foreign key column %s not found", foreignIDKey)
-		log.Printf("error getting by foreignKey: %s", errors["transaction"].Error())
-		return nil, errors
+		errorList["transaction"] = fmt.Errorf("foreign key column %s not found", foreignIDKey)
+		log.Printf("error getting by foreignKey: %s", errorList["transaction"].Error())
+		return nil, errorList
 	}
 	var (
 		results   *gorm.DB
@@ -330,9 +330,9 @@ func (d *PostGresEntityData[T]) GetByFilteredForeignIDBulk(foreignIDKey string, 
 	)
 	condition = foreignIDColumn.ColumnName + " IN ?"
 	if strings.Contains(foreignIDColumn.ColumnName, "_id") || foreignIDColumn.ColumnName == "id" {
-		uids, errors = convertIDs(foreignIDs, errors)
+		uids, errorList = convertIDs(foreignIDs, errorList)
 		if len(uids) == 0 {
-			return nil, errors
+			return nil, errorList
 		}
 		args = append(args, uids)
 	} else {
@@ -344,9 +344,9 @@ func (d *PostGresEntityData[T]) GetByFilteredForeignIDBulk(foreignIDKey string, 
 		if strings.Contains(filterCol, "_id") {
 			filterUid, err := uuid.Parse(filterVal)
 			if err != nil {
-				errors["transaction"] = err
+				errorList["transaction"] = err
 				log.Printf("error getting by foreignKey: %s", err.Error())
-				return nil, errors
+				return nil, errorList
 			}
 			args = append(args, filterUid)
 		} else {
@@ -356,10 +356,10 @@ func (d *PostGresEntityData[T]) GetByFilteredForeignIDBulk(foreignIDKey string, 
 	results = d.GetDatabaseSession().Where(condition, args...).Find(&entities)
 
 	if results.Error != nil {
-		errors["transaction"] = results.Error
+		errorList["transaction"] = results.Error
 		log.Printf("error getting by foreignKey: %s", results.Error.Error())
 		//	d.PrintOutEntities()
-		return nil, errors
+		return nil, errorList
 	}
 
 	//get all ids in ids that are not in entities
@@ -395,10 +395,10 @@ func (d *PostGresEntityData[T]) GetByFilteredForeignIDBulk(foreignIDKey string, 
 		//log.Println("Checking for foreign ID: ", id)
 		if val, ok := idsFound[id]; !ok || !val {
 			//d.PrintOutEntities()
-			errors[id] = gorm.ErrRecordNotFound
+			errorList[id] = gorm.ErrRecordNotFound
 		}
 	}
-	return &entities, errors
+	return &entities, errorList
 }
 
 func (d *PostGresEntityData[T]) GetAll() (*[]T, error) {

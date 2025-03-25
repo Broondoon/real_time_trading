@@ -126,7 +126,7 @@ func (c *CachedEntityData[T, TDatabase]) GetByID(id string) (T, error) {
 }
 
 func (c *CachedEntityData[T, TDatabase]) GetByIDs(ids []string) (*[]T, map[string]error) {
-	errors := make(map[string]error)
+	errorList := make(map[string]error)
 	ctx := context.Background()
 	entityMap := make(map[string]T)
 	keys := make([]string, len(ids))
@@ -167,11 +167,11 @@ func (c *CachedEntityData[T, TDatabase]) GetByIDs(ids []string) (*[]T, map[strin
 	// Step 2: Fetch missing IDs from database
 	if len(missingIds) > 0 {
 		//log.Printf("[Cache] GetByIDs: 📡 Fetching missing IDs from database: %v", missingIds)
-		dbEntities, errors := c.underlying.GetByIDs(missingIds)
+		dbEntities, errorList := c.underlying.GetByIDs(missingIds)
 
 		// Step 3: Cache newly retrieved entities
 		for _, entity := range *dbEntities {
-			if _, ok := errors[entity.GetIdString()]; !ok {
+			if _, ok := errorList[entity.GetIdString()]; !ok {
 				id := entity.GetIdString()
 				entityMap[id] = entity
 				jsonBytes, err := json.MarshalIndent(entity, "", "  ")
@@ -197,7 +197,7 @@ func (c *CachedEntityData[T, TDatabase]) GetByIDs(ids []string) (*[]T, map[strin
 			log.Printf("[Cache] GetByIDs: ❌ No entity found for ID %s", id)
 		}
 	}
-	return &finalEntities, errors
+	return &finalEntities, errorList
 }
 
 /* func (c *CachedEntityData[T]) GetByForeignID(foreignIDColumn string, foreignID string) (*[]T, error) {
@@ -472,10 +472,10 @@ func (c *CachedEntityData[T, TDatabase]) Delete(id string) error {
 
 func (c *CachedEntityData[T, TDatabase]) DeleteBulk(ids []string) map[string]error {
 	//log.Printf("[Cache] DeleteBulk: Deleting %d entities", len(ids))
-	errors := c.underlying.DeleteBulk(ids)
+	errorList := c.underlying.DeleteBulk(ids)
 	ctx := context.Background()
 	for _, id := range ids {
-		if _, ok := errors[id]; !ok {
+		if _, ok := errorList[id]; !ok {
 			key := c.redisKey(id)
 			if err := c.redisClient.Del(ctx, key).Err(); err != nil {
 				log.Printf("[Cache] DeleteBulk: Error deleting cache for key %s: %v", key, err)
@@ -484,5 +484,5 @@ func (c *CachedEntityData[T, TDatabase]) DeleteBulk(ids []string) map[string]err
 			}
 		}
 	}
-	return errors
+	return errorList
 }

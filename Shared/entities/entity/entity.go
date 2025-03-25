@@ -16,6 +16,8 @@ type BaseEntityInterface interface {
 	GetDateModified() time.Time
 	SetDateModified(dateModified time.Time)
 	GetUpdates() *[]*EntityUpdateData
+	SetUpdates(updates *[]*EntityUpdateData)
+	ClearUpdates()
 	EntityToParams() NewEntityParams
 	EntityToJSON() ([]byte, error)
 	GenUniquePairing() *uuid.UUID
@@ -102,6 +104,14 @@ func (e *Entity) GetUpdates() *[]*EntityUpdateData {
 		e.Updates = &tmp
 	}
 	return e.Updates
+}
+
+func (e *Entity) SetUpdates(updates *[]*EntityUpdateData) {
+	*e.Updates = append(*e.Updates, *updates...)
+}
+
+func (e *Entity) ClearUpdates() {
+	*e.Updates = make([]*EntityUpdateData, 0)
 }
 
 type NewEntityParams struct {

@@ -3,9 +3,11 @@ package databaseAccess
 import (
 	"Shared/database/database-service"
 	"Shared/entities/entity"
+	"errors"
 	"log"
 
 	"github.com/google/uuid"
+	"gorm.io/gorm"
 )
 
 // This is a dirty implementation that combines the Database access and the database service.
@@ -122,17 +124,45 @@ func (d *EntityDataAccess[TEntity, TInterface, TDatabase]) Create(entity TInterf
 }
 
 func (d *EntityDataAccess[TEntity, TInterface, TDatabase]) Update(entity TInterface) error {
+	updates := *entity.GetUpdates()
+	entity.ClearUpdates()
 	err := d.EntityDataServiceTemp.Update(*entity.GetUpdates())
 	if len(err) > 0 {
-		for _, e := range err {
-			log.Fatal("Failed to update entity: ", e)
+		for _, singleErr := range err {
+			log.Println("Failed to update entity: ", singleErr)
+			break
 		}
+		entity.SetUpdates(&updates)
 	}
 	return nil
 }
 
 func (d *EntityDataAccess[TEntity, TInterface, TDatabase]) UpdateBulk(entities *[]TInterface) (map[string]int, error) {
-	panic("implement me") // TODO: Implement
+	changesPerEntity := make(map[string][]*entity.EntityUpdateData)
+	entitiesById := make(map[string]TInterface)
+	//We convert the list of updates to the right format for the bulk request.
+	var interfaces []*entity.EntityUpdateData
+	for _, v := range *entities {
+		entitiesById[v.GetIdString()] = v
+		changesPerEntity[v.GetIdString()] = *v.GetUpdates()
+		interfaces = append(interfaces, *v.GetUpdates()...)
+		v.ClearUpdates()
+	}
+	//We don't actually have a put bulk request, because it's always just a list of updates. So we just send a put request with the updates. This one just has updates for multiple entities, and reutrns errors for mulitple entities.
+	err := d.EntityDataServiceTemp.Update(interfaces)
+	errorList := make(map[string]int)
+	for id, err := range err {
+		log.Println("Failed to update entity: ", id, " with Error: ", err, ". Re-adding Updates to entity.")
+		//We put the updates back in the entity, so they can be tried again.
+		tempUpdates := changesPerEntity[id]
+		entitiesById[id].SetUpdates(&tempUpdates)
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			errorList[id] = 404
+		} else {
+			errorList[id] = 500
+		}
+	}
+	return errorList, nil
 }
 
 func (d *EntityDataAccess[TEntity, TInterface, TDatabase]) Delete(id *uuid.UUID) error {
