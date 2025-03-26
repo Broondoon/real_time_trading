@@ -75,7 +75,7 @@ func NewMatchingEngineForStock(params *NewMatchingEngineParams) MatchingEngineIn
 		StockId:             params.StockID,
 		BuyOrderBook:        matchingEngineStructures.DefaultBuyOrderBook(&marketOrders),
 		SellOrderBook:       matchingEngineStructures.DefaultSellOrderBook(&limitOrders),
-		orderChannel:        make(chan int, 1000),
+		orderChannel:        make(chan int, 5000),
 		updateChannel:       make(chan *UpdateParams, 1000),
 		SendToOrderExection: params.SendToOrderExecutionFunc,
 		DatabaseManager:     params.DatabaseManager,

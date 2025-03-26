@@ -15,12 +15,12 @@ CREATE TABLE UserStocks (
     stock_name TEXT NOT NULL,
     quantity INT NOT NULL,
     date_created TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    date_modified TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    date_modified TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (user_id, stock_id)
 );
 
-CREATE INDEX idx_user_stocks_user_id_stock_id
-    ON UserStocks (user_id, stock_id);
+-- CREATE INDEX idx_user_stocks_user_id_stock_id
+--     ON UserStocks (user_id, stock_id);
 
 /*
 INSERT INTO Wallets (ID, UserID, Balance)

@@ -169,12 +169,27 @@ func CreateNetworkEntityHandlers[T entity.EntityInterface, TDatabase any](networ
 					for i := 0; i < len(ids); i += 2 {
 						pairedIds[i/2] = objects.Pair{ID1: ids[i], ID2: ids[i+1]}
 					}
-					entities, errorsReceived = databaseManager.GetByPairedIDBulk(key1, queryParams.Get("IdColumn2"), &pairedIds)
+					if len(pairedIds) == 1 {
+						entityObj, err = databaseManager.GetByPairedID(key1, queryParams.Get("IdColumn2"), pairedIds[0])
+						entities = &[]T{entityObj}
+						if err != nil {
+							errorsReceived[pairedIds[0].String()] = err
+						}
+					} else {
+						entities, errorsReceived = databaseManager.GetByPairedIDBulk(key1, queryParams.Get("IdColumn2"), &pairedIds)
+					}
 				} else if foreignKey := queryParams.Get("foreignKey"); foreignKey != "" {
 					if filterKey := queryParams.Get("filterKey"); filterKey != "" {
 						entities, errorsReceived = databaseManager.GetByFilteredForeignIDBulk(foreignKey, ids, filterKey, queryParams.Get("filterVal"))
 					} else {
-						entities, errorsReceived = databaseManager.GetByForeignIDBulk(foreignKey, ids)
+						if len(ids) == 1 {
+							entities, err = databaseManager.GetByForeignID(foreignKey, ids[0])
+							if err != nil {
+								errorsReceived[ids[0]] = err
+							}
+						} else {
+							entities, errorsReceived = databaseManager.GetByForeignIDBulk(foreignKey, ids)
+						}
 					}
 				} else {
 					entities, errorsReceived = databaseManager.GetByIDs(ids)
@@ -206,7 +221,16 @@ func CreateNetworkEntityHandlers[T entity.EntityInterface, TDatabase any](networ
 				return
 			}
 			if bulkRequest {
-				errorsReceived = databaseManager.CreateBulk(entities)
+				if len(*entities) == 1 {
+					err := databaseManager.Create((*entities)[0])
+					if err != nil {
+						errorsReceived = map[string]error{(*entities)[0].GetUniquePairing().String(): err}
+					} else {
+						errorsReceived = nil
+					}
+				} else {
+					errorsReceived = databaseManager.CreateBulk(entities)
+				}
 				useEntities = true
 			} else {
 				err = databaseManager.Create(entityObj)
@@ -223,7 +247,15 @@ func CreateNetworkEntityHandlers[T entity.EntityInterface, TDatabase any](networ
 			noReturns = true
 		case "DELETE":
 			if bulkRequest {
-				errorsReceived = databaseManager.DeleteBulk(strings.Split(queryParams.Get("Ids"), ","))
+				ids := strings.Split(queryParams.Get("Ids"), ",")
+				if len(ids) == 1 {
+					err = databaseManager.Delete(ids[0])
+					if err != nil {
+						errorsReceived = map[string]error{ids[0]: err}
+					}
+				} else {
+					errorsReceived = databaseManager.DeleteBulk(ids)
+				}
 			} else {
 				err = databaseManager.Delete(queryParams.Get("id"))
 			}
