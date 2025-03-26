@@ -4,6 +4,8 @@ use (
 	./Shared
 	./auth-database/database-access
 	./auth-database/database-service
+	./auth-database-mongodb/database-access
+	./auth-database-mongodb/database-service
 	./auth-service
 	./matching-engine-service
 	./microservice-template

@@ -460,6 +460,226 @@ services:
     networks:
       - go-network
 
+  # Config Server 1
+  auth-mongo-configsvr1:
+    image: mongo:5.0
+    command:
+      [
+        "mongod",
+        "--configsvr",
+        "--replSet",
+        "configReplSet",
+        "--bind_ip_all",
+        "--port",
+        "27019",
+      ]
+    ports:
+      - "27019:27019"
+    volumes:
+      - ./configsvr1/data:/data/db
+    healthcheck:
+      test:
+        ["CMD", "mongo", "--eval", "db.adminCommand('ping')", "--port", "27019"]
+      interval: ${HEALTHCHECK_INTERVAL}
+      timeout: ${HEALTHCHECK_TIMEOUT}
+      retries: ${HEALTHCHECK_RETRIES}
+    networks:
+      - go-network
+
+  # Config Server 2
+  auth-mongo-configsvr2:
+    image: mongo:5.0
+    command:
+      [
+        "mongod",
+        "--configsvr",
+        "--replSet",
+        "configReplSet",
+        "--bind_ip_all",
+        "--port",
+        "27021",
+      ]
+    ports:
+      - "27021:27021"
+    volumes:
+      - ./configsvr2/data:/data/db
+    healthcheck:
+      test:
+        ["CMD", "mongo", "--eval", "db.adminCommand('ping')", "--port", "27021"]
+      interval: ${HEALTHCHECK_INTERVAL}
+      timeout: ${HEALTHCHECK_TIMEOUT}
+      retries: ${HEALTHCHECK_RETRIES}
+    networks:
+      - go-network
+
+  # Config Server 3
+  auth-mongo-configsvr3:
+    image: mongo:5.0
+    command:
+      [
+        "mongod",
+        "--configsvr",
+        "--replSet",
+        "configReplSet",
+        "--bind_ip_all",
+        "--port",
+        "27022",
+      ]
+    ports:
+      - "27022:27022"
+    volumes:
+      - ./configsvr3/data:/data/db
+    healthcheck:
+      test:
+        ["CMD", "mongo", "--eval", "db.adminCommand('ping')", "--port", "27022"]
+      interval: ${HEALTHCHECK_INTERVAL}
+      timeout: ${HEALTHCHECK_TIMEOUT}
+      retries: ${HEALTHCHECK_RETRIES}
+    networks:
+      - go-network
+
+  # Shard 1
+  auth-mongo-shard1:
+    image: mongo:5.0
+    command:
+      [
+        "mongod",
+        "--shardsvr",
+        "--replSet",
+        "shard1ReplSet",
+        "--bind_ip_all",
+        "--port",
+        "27018",
+      ]
+    ports:
+      - "27018:27018"
+    volumes:
+      - ./shard1/data:/data/db
+    healthcheck:
+      test:
+        ["CMD", "mongo", "--eval", "db.adminCommand('ping')", "--port", "27018"]
+      interval: ${HEALTHCHECK_INTERVAL}
+      timeout: ${HEALTHCHECK_TIMEOUT}
+      retries: ${HEALTHCHECK_RETRIES}
+    networks:
+      - go-network
+
+  # Shard 2
+  auth-mongo-shard2:
+    image: mongo:5.0
+    command:
+      [
+        "mongod",
+        "--shardsvr",
+        "--replSet",
+        "shard2ReplSet",
+        "--bind_ip_all",
+        "--port",
+        "27020",
+      ]
+    ports:
+      - "27020:27020"
+    volumes:
+      - ./shard2/data:/data/db
+    healthcheck:
+      test:
+        ["CMD", "mongo", "--eval", "db.adminCommand('ping')", "--port", "27020"]
+      interval: ${HEALTHCHECK_INTERVAL}
+      timeout: ${HEALTHCHECK_TIMEOUT}
+      retries: ${HEALTHCHECK_RETRIES}
+    networks:
+      - go-network
+
+  # Mongos Router
+  auth-mongo-router:
+    image: mongo:5.0
+    depends_on:
+      - auth-mongo-configsvr1
+      - auth-mongo-configsvr2
+      - auth-mongo-configsvr3
+      - auth-mongo-shard1
+      - auth-mongo-shard2
+    command: >
+      bash -c "
+      sleep 10;
+      mongos --configdb configReplSet/auth-mongo-configsvr1:27019,auth-mongo-configsvr2:27021,auth-mongo-configsvr3:27022 --bind_ip_all --port 27017
+      "
+    ports:
+      - "27017:27017"
+    healthcheck:
+      test:
+        ["CMD", "mongo", "--eval", "db.adminCommand('ping')", "--port", "27017"]
+      interval: ${HEALTHCHECK_INTERVAL}
+      timeout: ${HEALTHCHECK_TIMEOUT}
+      retries: ${HEALTHCHECK_RETRIES}
+    networks:
+      - go-network
+
+  # Initialization Container to Add Shards
+  # Initialization Container to Configure Replica Sets and Add Shards
+  auth-mongo-init:
+    image: mongo:5.0
+    depends_on:
+      - auth-mongo-configsvr1
+      - auth-mongo-configsvr2
+      - auth-mongo-configsvr3
+      - auth-mongo-shard1
+      - auth-mongo-shard2
+      - auth-mongo-router
+    entrypoint: [
+        "/bin/sh",
+        "-c",
+        '
+        echo ''Waiting for all Mongo containers to initialize...'';
+        sleep 20;
+
+        echo ''Initiating Config Server Replica Set'';
+        mongo --host auth-mongo-configsvr1:27019 --eval ''
+        rs.initiate({
+        _id: "configReplSet",
+        configsvr: true,
+        members: [
+        { _id: 0, host: "auth-mongo-configsvr1:27019" },
+        { _id: 1, host: "auth-mongo-configsvr2:27021" },
+        { _id: 2, host: "auth-mongo-configsvr3:27022" }
+        ]
+        })
+        '';
+        sleep 10;
+
+        echo ''Initiating Shard1 Replica Set'';
+        mongo --host auth-mongo-shard1:27018 --eval ''
+        rs.initiate({
+        _id: "shard1ReplSet",
+        members: [
+        { _id: 0, host: "auth-mongo-shard1:27018" }
+        ]
+        })
+        '';
+        sleep 10;
+
+        echo ''Initiating Shard2 Replica Set'';
+        mongo --host auth-mongo-shard2:27020 --eval ''
+        rs.initiate({
+        _id: "shard2ReplSet",
+        members: [
+        { _id: 0, host: "auth-mongo-shard2:27020" }
+        ]
+        })
+        '';
+        sleep 10;
+
+        echo ''Adding Shards to the Cluster via Mongos'';
+        mongo --host auth-mongo-router:27017 --eval ''
+        sh.addShard("shard1ReplSet/auth-mongo-shard1:27018");
+        sh.addShard("shard2ReplSet/auth-mongo-shard2:27020");
+        '';
+        echo ''Cluster configuration complete'';
+        ',
+      ]
+    networks:
+      - go-network
+
   rabbitmq:
     image: rabbitmq:3-management
     container_name: rabbitmq
@@ -493,21 +713,6 @@ services:
       - "5050:80"
     networks:
       - go-network
-
-#    auth-mongodb:
-#    image: mongo # Uses latest image
-#
-#    environment:
-#      - MONGO_INITDB_ROOT_USERNAME=user
-#      - MONGO_INITDB_ROOT_PASSWORD=pass
-#    healthcheck:
-#      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017 --quiet
-#      interval: 10s
-#      timeout: 10s
-#      retries: 5
-#      start_period: 40s
-#  networks:
-#    - go-network
 
 volumes:
   user-management-db-data:
