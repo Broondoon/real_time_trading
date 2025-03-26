@@ -37,7 +37,6 @@ func NewDatabaseService(params *NewDatabaseServiceParams) DatabaseServiceInterfa
 			DefaultTTL: 5 * time.Minute,
 			EntityData: entityDataInterface,
 		}),
-		//EntityDataInterface: databaseService.NewEntityData[*user.User](params.NewEntityDataParams),
 	}
 	//Connect and ensure the schemea in the DB matches the User Entity
 	db.Connect()

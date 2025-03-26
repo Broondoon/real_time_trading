@@ -4,6 +4,8 @@ import (
 	databaseService "Shared/database/database-service"
 	userStock "Shared/entities/user-stock"
 	"Shared/entities/wallet"
+	"os"
+	"time"
 
 	"gorm.io/gorm"
 )
@@ -35,37 +37,10 @@ type NewDatabaseServiceParams struct {
 }
 
 func NewDatabaseService(params *NewDatabaseServiceParams) DatabaseServiceInterface {
-
-	// if params.UserStockParams == nil {
-	// 	params.UserStockParams = &databaseService.NewEntityDataParams{
-	// 		NewPostGresDatabaseParams: &databaseService.NewPostGresDatabaseParams{},
-	// 	}
-	// }
-	// if params.WalletParams == nil {
-	// 	params.WalletParams = &databaseService.NewEntityDataParams{
-	// 		NewPostGresDatabaseParams: &databaseService.NewPostGresDatabaseParams{},
-	// 	}
-	// }
 	newDBConnection := databaseService.NewPostGresDatabase(&databaseService.NewPostGresDatabaseParams{})
 
-	// var newDBConnection databaseService.PostGresDatabaseInterface
-	// if params.UserStockParams.Existing != nil {
-	// 	newDBConnection = params.UserStockParams.Existing
-	// 	if params.WalletParams.Existing == nil {
-	// 		params.WalletParams.Existing = newDBConnection
-	// 	}
-	// } else if params.WalletParams.Existing != nil {
-	// 	newDBConnection = params.WalletParams.Existing
-	// 	params.UserStockParams.Existing = newDBConnection
-	// } else {
-	// 	newDBConnection = databaseService.NewPostGresDatabase(params.UserStockParams.NewPostGresDatabaseParams)
-	// 	params.UserStockParams.Existing = newDBConnection
-	// 	params.WalletParams.Existing = newDBConnection
-	// }
-
-	//Cache stuff
-	/* cachedUserStock := databaseService.NewCachedEntityData[*userStock.UserStock, *gorm.DB](&databaseService.NewCachedEntityDataParams[*userStock.UserStock, *gorm.DB]{
-		RedisAddr:  os.Getenv("REDIS_USERMANAGEMENT_ADDR"),
+	cachedUserStock := databaseService.NewCachedEntityData[*userStock.UserStock, *gorm.DB](&databaseService.NewCachedEntityDataParams[*userStock.UserStock, *gorm.DB]{
+		RedisAddr:  os.Getenv("REDIS_USER_MANAGEMENT_ADDR"),
 		Password:   os.Getenv("REDIS_PASSWORD"),
 		DefaultTTL: 5 * time.Minute,
 		EntityData: databaseService.NewPostGresEntityData[*userStock.UserStock](
@@ -76,7 +51,7 @@ func NewDatabaseService(params *NewDatabaseServiceParams) DatabaseServiceInterfa
 	})
 
 	cachedWallet := databaseService.NewCachedEntityData[*wallet.Wallet, *gorm.DB](&databaseService.NewCachedEntityDataParams[*wallet.Wallet, *gorm.DB]{
-		RedisAddr:  os.Getenv("REDIS_USERMANAGEMENT_ADDR"),
+		RedisAddr:  os.Getenv("REDIS_USER_MANAGEMENT_ADDR"),
 		Password:   os.Getenv("REDIS_PASSWORD"),
 		DefaultTTL: 5 * time.Minute,
 		EntityData: databaseService.NewPostGresEntityData[*wallet.Wallet](
@@ -89,15 +64,6 @@ func NewDatabaseService(params *NewDatabaseServiceParams) DatabaseServiceInterfa
 	db := &DatabaseService{
 		UserStock:         cachedUserStock,
 		Wallet:            cachedWallet,
-		DatabaseInterface: newDBConnection,
-	} */
-	db := &DatabaseService{
-		UserStock: databaseService.NewPostGresEntityData[*userStock.UserStock](&databaseService.NewPostGresEntityDataParams{
-			Existing: newDBConnection,
-		}),
-		Wallet: databaseService.NewPostGresEntityData[*wallet.Wallet](&databaseService.NewPostGresEntityDataParams{
-			Existing: newDBConnection,
-		}),
 		DatabaseInterface: newDBConnection,
 	}
 
