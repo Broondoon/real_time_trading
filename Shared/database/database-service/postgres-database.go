@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgconn"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/gorm/schema"
@@ -625,10 +626,29 @@ func (d *PostGresEntityData[T]) CreateBulk(entities *[]T) map[string]error {
 				// If an error occurs, rollback to the savepoint so that this insert is undone.
 				val := reflect.ValueOf(ent)
 				if val.Kind() == reflect.Ptr {
+					// why is this guy never used? (WADEY'S QUESTION)
 					val = val.Elem()
 				}
 				tx.RollbackTo(spName)
-				errorMap[ent.GetUniquePairing().String()] = fmt.Errorf("error creating entity: %v", err)
+
+				// This is the error handler which can catch postgres' thrown errors.
+				var pgErr *pgconn.PgError // Wow another reason why Go sucks; I can't do pgErr* instead of pgErr *
+				if errors.As(err, &pgErr) {
+					log.Printf("postgres db error: %v", err)
+
+					// Error code for "duplicate key value violates unique constraint"
+					if pgErr.Code == "23505" {
+						// I am manually translating the Postgre error into a Gorm one so that netowrk.go can remain db agnostic
+						log.Printf("Postgres duplicate key error converted to gorm.")
+						errorMap[ent.GetUniquePairing().String()] = gorm.ErrDuplicatedKey
+					} else {
+						errorMap[ent.GetUniquePairing().String()] = err
+					}
+				} else {
+					// Felt decent to handle the possible outcome of an else, but honestly, this may never trigger.
+					log.Printf("Somehow, non-postgres db error in postgres-database: %v", err)
+					errorMap[ent.GetUniquePairing().String()] = fmt.Errorf("error creating entity: %v", err)
+				}
 			}
 			// Continue to the next entity.
 			continue

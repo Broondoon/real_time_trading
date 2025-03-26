@@ -5,6 +5,7 @@ import (
 	"Shared/entities/order"
 	"sort"
 	"sync"
+	"log"
 )
 
 type OrderBookInterface interface {
@@ -120,7 +121,10 @@ type SellOrderBook struct {
 	OrderBookInterface
 }
 
+// This seems to be part of removing orders which are held within the orderbook
+// Since buys are instance, removing orders only realy applies to Sells it seems.
 func (s *SellOrderBook) RemoveOrder(params *RemoveParams) order.StockOrderInterface {
+	log.Println("Matching Engine RemoveOrder")
 	s.GetMutex().Lock()
 	defer s.GetMutex().Unlock()
 	return s.GetData().Remove(params)

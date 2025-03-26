@@ -175,7 +175,7 @@ services:
       timeout: ${HEALTHCHECK_TIMEOUT}
       retries: ${HEALTHCHECK_RETRIES}
     deploy:
-      replicas: ${ORDER_EXECUTOR_REPLICATIONS}
+      replicas: ${ORDER_INITIATOR_REPLICATIONS}
       restart_policy:
         condition: on-failure
 
