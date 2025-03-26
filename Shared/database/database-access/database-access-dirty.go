@@ -3,6 +3,7 @@ package databaseAccess
 import (
 	"Shared/database/database-service"
 	"Shared/entities/entity"
+	"Shared/objects"
 	"errors"
 	"log"
 
@@ -81,6 +82,14 @@ func (d *EntityDataAccess[TEntity, TInterface, TDatabase]) GetByForeignID(foreig
 		converted[i] = interface{}(e).(TInterface)
 	}
 	return &converted, nil
+}
+
+func (d *EntityDataAccess[TEntity, TInterface, TDatabase]) GetByPairedID(idColumn1 string, idColumn2 string, ids objects.Pair) (TInterface, error) {
+	panic("implement me") // TODO: Implement
+}
+
+func (d *EntityDataAccess[TEntity, TInterface, TDatabase]) GetByPairedIDBulk(idColumn1 string, idColumn2 string, ids *[]objects.Pair) (*[]TInterface, map[string]int, error) {
+	panic("implement me") // TODO: Implement
 }
 
 func (d *EntityDataAccess[TEntity, TInterface, TDatabase]) GetByFilteredForeignIDBulk(foreignIDKey string, foreignIDs []string, filterKey string, filterVal string) (*[]TInterface, map[string]int, error) {

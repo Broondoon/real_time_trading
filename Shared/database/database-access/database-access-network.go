@@ -3,6 +3,7 @@ package databaseAccess
 import (
 	"Shared/entities/entity"
 	"Shared/network"
+	"Shared/objects"
 	"fmt"
 	"log"
 	"net/http"
@@ -170,6 +171,64 @@ func (d *EntityDataAccessClient[TEntity, TInterface]) GetByIDs(ids []*uuid.UUID)
 		var zero []TInterface
 		var mapErrs map[string]int
 		log.Println("Failed to get entities by IDs: ", err)
+		return &zero, mapErrs, err
+	}
+	//We parse the JSON response into a list of entity structs.
+	jsonBytes := bulkReturn.Entities
+	entities, err := d.ParserList(jsonBytes)
+	if err != nil {
+		var zero []TInterface
+		var mapErrs map[string]int
+		log.Println("Failed to unmarshal entities: ", err)
+		return &zero, mapErrs, err
+	}
+	//We convert the list of entity structs to a list of interfaces and return it.
+	converted := make([]TInterface, len(*entities))
+	for i, e := range *entities {
+		converted[i] = interface{}(e).(TInterface)
+	}
+	return &converted, bulkReturn.Errors, nil
+}
+
+func (d *EntityDataAccessClient[TEntity, TInterface]) GetByPairedID(idColumn1 string, idColumn2 string, ids objects.Pair) (TInterface, error) {
+	if d.GetRoute == "" {
+		d.GetRoute = d.DefaultRoute
+	}
+	//We attach the ID to the route and send a GET request to the database service.
+	queryParams := map[string]string{"IdColumn1": idColumn1, "IdColumn2": idColumn2, "Id1": ids.ID1, "Id2": ids.ID2}
+	jsonBytes, err := d._client.Get(d.GetRoute, queryParams)
+	if err != nil {
+		var zero TInterface
+		return zero, err
+	}
+	//We parse the JSON response into the entity struct.
+	entity, err := d.Parser(jsonBytes)
+	if err != nil {
+		var zero TInterface
+		log.Println("Failed to unmarshal entity: ", err)
+		return zero, err
+	}
+	//We convert the entity struct to the interface and return it.
+	return interface{}(entity).(TInterface), nil
+}
+
+func (d *EntityDataAccessClient[TEntity, TInterface]) GetByPairedIDBulk(idColumn1 string, idColumn2 string, ids *[]objects.Pair) (*[]TInterface, map[string]int, error) {
+	if d.GetRoute == "" {
+		d.GetRoute = d.DefaultRoute
+	}
+	//We send a GET request to the database service to get entities by their paired IDs.
+	queryParams := map[string]string{"IdColumn1": idColumn1, "IdColumn2": idColumn2}
+	//We convert the list of paired IDs to the right format for the bulk request.
+	var interfaces []string
+	for _, v := range *ids {
+		interfaces = append(interfaces, v.String())
+	}
+	//We send a GET request to the database service to get entities by their paired IDs.
+	bulkReturn, err := d._client.GetBulk(d.GetRoute, interfaces, queryParams)
+	if err != nil {
+		var zero []TInterface
+		var mapErrs map[string]int
+		log.Println("Failed to get entities by paired IDs: ", err)
 		return &zero, mapErrs, err
 	}
 	//We parse the JSON response into a list of entity structs.

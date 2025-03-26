@@ -5,6 +5,7 @@ import (
 	"Shared/entities/transaction"
 	userStock "Shared/entities/user-stock"
 	"Shared/network"
+	"Shared/objects"
 	subfunctions "Shared/subfunctions/Multithreading"
 	"databaseAccessStock"
 	"databaseAccessTransaction"
@@ -142,71 +143,78 @@ func placeStockOrderHandler(responseWriter network.ResponseWriter, data []byte, 
 }
 
 func checkUserStocks(data *[]*StockOrderBulk, TransferParams any) error {
-	//log.Println("Checking user stocks")
-	// bul routine, taking in stock order.
-	//then we organize the stock order's by USer IDS
-	//then we run the bulk routine on user stocks. That will give us back
-	//map stock orders by user id.
-	ordersByUserId := make(map[string][]*StockOrderBulk)
-	userIdsByStockId := make(map[string][]string)
-	userIds := []string{}
+	pairs := make([]objects.Pair, len(*data))
+	ordersByPairs := make(map[string][]*StockOrderBulk)
+	i := 0
 	for _, stockOrderCarry := range *data {
 		if stockOrderCarry.StockOrder.GetIsBuy() {
 			_bulkRoutineCreateStockOrderTransactions.Insert(stockOrderCarry)
 		} else {
-			ordersByUserId[stockOrderCarry.userId] = append(ordersByUserId[stockOrderCarry.userId], stockOrderCarry)
-			if _, ok := userIdsByStockId[stockOrderCarry.StockOrder.GetStockIDString()]; !ok {
-				userIdsByStockId[stockOrderCarry.StockOrder.GetStockIDString()] = []string{}
+			paired := objects.Pair{
+				ID1: stockOrderCarry.StockOrder.GetUserIDString(),
+				ID2: stockOrderCarry.StockOrder.GetStockIDString(),
 			}
-			userIdsByStockId[stockOrderCarry.StockOrder.GetStockIDString()] = append(userIdsByStockId[stockOrderCarry.StockOrder.GetStockIDString()], stockOrderCarry.userId)
-			userIds = append(userIds, stockOrderCarry.userId)
+			if _, ok := ordersByPairs[paired.String()]; !ok {
+				ordersByPairs[paired.String()] = []*StockOrderBulk{}
+				pairs[i] = paired
+				i++
+			}
+			ordersByPairs[paired.String()] = append(ordersByPairs[paired.String()], stockOrderCarry)
 		}
 	}
-	if len(userIdsByStockId) == 0 {
+
+	if i == 0 {
+		log.Println("DEBUG: GetUserStocksBulk called with empty userIDs")
 		return nil
 	}
+	var (
+		userStocks *[]userStock.UserStockInterface
+		errList    = make(map[string]int)
+		err        error
+	)
+	userStocks, errList, err = _databaseAccessUser.UserStock().GetByPairedIDBulk("UserID", "StockID", &pairs)
+	//lets make a variant which is get by foregin ids. Get back multiple, then perform a function for each userId
+	if err != nil {
+		log.Println("Error fetching user stocks by foreign ID for userIDs: ", err)
+		return err
+	}
 
-	handleSellOrders := func(userID string, sellerStockPortfolio *[]userStock.UserStockInterface, errorCode int) {
-		if errorCode != 0 {
-			for _, stockOrderCarry := range ordersByUserId[userID] {
-				if errorCode == http.StatusNotFound {
-					log.Printf("user %s not found", userID)
+	userStocksByPairs := make(map[string]userStock.UserStockInterface)
+	for _, userStock := range *userStocks {
+		paired := objects.Pair{
+			ID1: userStock.GetUserIDString(),
+			ID2: userStock.GetStockIDString(),
+		}
+		userStocksByPairs[paired.String()] = userStock
+	}
+	for key, stockOrderCarries := range ordersByPairs {
+		if err, ok := errList[key]; ok && err != 0 {
+			for _, stockOrderCarry := range stockOrderCarries {
+				if err == http.StatusNotFound {
+					log.Printf("user %s not found", stockOrderCarry.userId)
 					stockOrderCarry.ResponseWriter.WriteHeader(http.StatusNotFound)
 				} else {
-					log.Printf("failed to get user stocks for user %s", userID)
+					log.Printf("failed to get user stocks for user %s", stockOrderCarry.userId)
 					stockOrderCarry.ResponseWriter.WriteHeader(http.StatusInternalServerError)
 				}
 			}
-			return
+			continue
 		}
-		sellOrders := ordersByUserId[userID]
-		for _, stockOrderCarry := range sellOrders {
-			// Find the stock in the seller's portfolio
-			var sellerStock userStock.UserStockInterface
-			for _, stock := range *sellerStockPortfolio {
-				if stock.GetStockIDString() == stockOrderCarry.StockOrder.GetStockIDString() {
-					sellerStock = stock
-					break
-				}
-			}
+		sellerStock := userStocksByPairs[key]
 
+		for _, stockOrderCarry := range stockOrderCarries {
 			// Verify seller has the stock and sufficient quantity
 			if sellerStock == nil {
 				log.Printf("seller does not own stock %s", stockOrderCarry.StockOrder.GetStockIDString())
 				stockOrderCarry.ResponseWriter.WriteHeader(http.StatusBadRequest)
 				continue
 			}
-			if sellerStock.GetQuantity() < stockOrderCarry.StockOrder.GetQuantity() {
+			if sellerStock.UpdateQuantity(-stockOrderCarry.StockOrder.GetQuantity()) != nil {
 				log.Printf("insufficient stock quantity: has %d, wants to sell %d\n",
 					sellerStock.GetQuantity(), stockOrderCarry.StockOrder.GetQuantity())
 				stockOrderCarry.ResponseWriter.WriteHeader(http.StatusBadRequest)
 				continue
 			}
-
-			// Deduct the quantity from seller's portfolio but keep the record
-			//need to bulkify this...
-			sellerStock.UpdateQuantity(-stockOrderCarry.StockOrder.GetQuantity())
-			//what if we create a map of user to stock and subtract the quantity from the map, creatinga  subtraction value that we apply at the end.
 			stockOrderCarry.UserStock = sellerStock
 			_bulkRoutineStockOrderUpdateUserStocks.Insert(stockOrderCarry)
 			//matching enigne doesn't care if the user stock is updated or not. It only cares if theres a failure here, and we can cancel the transaction.
@@ -214,15 +222,6 @@ func checkUserStocks(data *[]*StockOrderBulk, TransferParams any) error {
 			_bulkRoutineCreateStockOrderTransactions.Insert(stockOrderCarry)
 		}
 	}
-	// for stockId, userIds := range userIdsByStockId {
-	err := _databaseAccessUser.UserStock().GetUserStocksBulk(userIds, "", handleSellOrders)
-	if err != nil {
-		for _, stockOrderCarry := range *data {
-			stockOrderCarry.ResponseWriter.WriteHeader(http.StatusInternalServerError)
-		}
-		log.Printf("failed to get user stocks: %v", err)
-	}
-	//}
 	return nil
 }
 

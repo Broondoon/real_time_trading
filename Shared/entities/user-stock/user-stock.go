@@ -5,6 +5,7 @@ import (
 	"Shared/entities/stock"
 	"Shared/entities/user"
 	"encoding/json"
+	"fmt"
 	"strconv"
 	"time"
 
@@ -23,7 +24,7 @@ type UserStockInterface interface {
 	GetStockName() string
 	SetStockName(stockName string)
 	GetQuantity() int
-	UpdateQuantity(quantityToAdd int)
+	UpdateQuantity(quantityToAdd int) error
 	SetUpdatedAt(time.Time)
 	GetUpdatedAt() time.Time
 	ToParams() NewUserStockParams
@@ -31,8 +32,8 @@ type UserStockInterface interface {
 }
 
 type UserStock struct {
-	UserID        *uuid.UUID `json:"user_id" gorm:"type:uuid;column:user_id;not null"`
-	StockID       *uuid.UUID `json:"stock_id" gorm:"type:uuid;column:stock_id;not null"`
+	UserID        *uuid.UUID `json:"user_id" gorm:"type:uuid;primaryKey;column:user_id;not null"`
+	StockID       *uuid.UUID `json:"stock_id" gorm:"type:uuid;primaryKey;column:stock_id;not null"`
 	StockName     string     `json:"stock_name" gorm:"not null"`
 	Quantity      int        `json:"quantity_owned" gorm:"not null"`
 	entity.Entity `json:"Entity" gorm:"embedded"`
@@ -42,13 +43,17 @@ func (us *UserStock) GetQuantity() int {
 	return us.Quantity
 }
 
-func (us *UserStock) UpdateQuantity(quantityToAdd int) {
+func (us *UserStock) UpdateQuantity(quantityToAdd int) error {
+	if quantityToAdd+us.Quantity < 0 {
+		return fmt.Errorf("quantity cannot be negative")
+	}
 	us.Quantity += quantityToAdd
 	*us.GetUpdates() = append(*us.Updates, &entity.EntityUpdateData{
 		ID:         us.GetId(),
 		Field:      "Quantity",
 		AlterValue: func() *string { s := strconv.Itoa(quantityToAdd); return &s }(),
 	})
+	return nil
 }
 
 func (us *UserStock) GetUserID() *uuid.UUID {

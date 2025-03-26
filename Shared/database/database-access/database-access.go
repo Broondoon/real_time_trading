@@ -2,6 +2,7 @@ package databaseAccess
 
 import (
 	"Shared/entities/entity"
+	"Shared/objects"
 
 	"github.com/google/uuid"
 )
@@ -36,6 +37,8 @@ type EntityDataAccessInterface[TEntity entity.EntityInterface, TInterface entity
 	GetByID(id *uuid.UUID) (TInterface, error) //Get an entity by its ID. Mapped to
 	GetAll() (*[]TInterface, error)
 	GetByIDs(ids []*uuid.UUID) (*[]TInterface, map[string]int, error)
+	GetByPairedID(idColumn1 string, idColumn2 string, ids objects.Pair) (TInterface, error)
+	GetByPairedIDBulk(idColumn1 string, idColumn2 string, ids *[]objects.Pair) (*[]TInterface, map[string]int, error)
 	GetByForeignID(foreignIDColumn string, foreignID string) (*[]TInterface, error)
 	GetByForeignIDBulk(foreignIDColumn string, foreignIDs []string) (*[]TInterface, map[string]int, error)
 	GetByFilteredForeignIDBulk(foreignIDKey string, foreignIDs []string, filterKey string, filterVal string) (*[]TInterface, map[string]int, error)

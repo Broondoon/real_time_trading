@@ -3,6 +3,7 @@ package network
 import (
 	databaseService "Shared/database/database-service"
 	"Shared/entities/entity"
+	"Shared/objects"
 	"log"
 
 	"encoding/json"
@@ -163,7 +164,13 @@ func CreateNetworkEntityHandlers[T entity.EntityInterface, TDatabase any](networ
 		case "GET":
 			if bulkRequest {
 				ids := strings.Split(queryParams.Get("Ids"), ",")
-				if foreignKey := queryParams.Get("foreignKey"); foreignKey != "" {
+				if key1 := queryParams.Get("IdColumn1"); key1 != "" {
+					pairedIds := make([]objects.Pair, len(ids)/2)
+					for i := 0; i < len(ids); i += 2 {
+						pairedIds[i/2] = objects.Pair{ID1: ids[i], ID2: ids[i+1]}
+					}
+					entities, errorsReceived = databaseManager.GetByPairedIDBulk(key1, queryParams.Get("IdColumn2"), &pairedIds)
+				} else if foreignKey := queryParams.Get("foreignKey"); foreignKey != "" {
 					if filterKey := queryParams.Get("filterKey"); filterKey != "" {
 						entities, errorsReceived = databaseManager.GetByFilteredForeignIDBulk(foreignKey, ids, filterKey, queryParams.Get("filterVal"))
 					} else {
@@ -180,6 +187,8 @@ func CreateNetworkEntityHandlers[T entity.EntityInterface, TDatabase any](networ
 				} else {
 					entityObj, err = databaseManager.GetByID(id)
 				}
+			} else if key1 := queryParams.Get("IdColumn1"); key1 != "" {
+				entityObj, err = databaseManager.GetByPairedID(key1, queryParams.Get("IdColumn2"), objects.Pair{ID1: queryParams.Get("Id1"), ID2: queryParams.Get("Id2")})
 			} else {
 				entities, err = databaseManager.GetAll()
 				useEntities = true

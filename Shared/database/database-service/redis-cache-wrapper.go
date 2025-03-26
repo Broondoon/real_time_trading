@@ -2,6 +2,7 @@ package database
 
 import (
 	"Shared/entities/entity"
+	"Shared/objects"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -485,4 +486,10 @@ func (c *CachedEntityData[T, TDatabase]) DeleteBulk(ids []string) map[string]err
 		}
 	}
 	return errorList
+}
+func (c *CachedEntityData[T, TDatabase]) GetByPairedID(idColumn1 string, idColumn2 string, ids objects.Pair) (T, error) {
+	panic("implement me")
+}
+func (c *CachedEntityData[T, TDatabase]) GetByPairedIDBulk(idColumn1 string, idColumn2 string, ids *[]objects.Pair) (*[]T, map[string]error) {
+	panic("implement me")
 }

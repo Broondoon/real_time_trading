@@ -31,9 +31,9 @@ type EntityInterface interface {
 }
 
 type Entity struct {
-	ID            *uuid.UUID           `json:"ID" gorm:"primaryKey;type:uuid;default:uuid_generate_v4()"` // gorm:"primaryKey" is used to set the primary key in the database.
-	DateCreated   time.Time            `json:"DateCreated" gorm:"autoCreateTime:milli"`                   // gorm:"autoCreateTime:milli" is used to set the time the entity was created in the database.
-	DateModified  time.Time            `json:"DateModified" gorm:"autoUpdateTime:milli"`                  // gorm:"autoUpdateTime:milli" is used to set the time the entity was last modified in the database.
+	ID            *uuid.UUID           `json:"ID" gorm:"type:uuid;default:uuid_generate_v4();unique;"` // gorm:"primaryKey" is used to set the primary key in the database.
+	DateCreated   time.Time            `json:"DateCreated" gorm:"autoCreateTime:milli"`                // gorm:"autoCreateTime:milli" is used to set the time the entity was created in the database.
+	DateModified  time.Time            `json:"DateModified" gorm:"autoUpdateTime:milli"`               // gorm:"autoUpdateTime:milli" is used to set the time the entity was last modified in the database.
 	Updates       *[]*EntityUpdateData `json:"-" gorm:"-"`
 	UniquePairing *uuid.UUID           `json:"temp" gorm:"-"`
 }
