@@ -23,7 +23,7 @@ func ProcessTrade(orderData network.MatchingEngineToExecutionJSON, databaseAcces
 	}
 	sellerID, err := uuid.Parse(strings.TrimSpace(orderData.SellerID))
 	if err != nil {
-		return "", "", "", true, false, fmt.Errorf("failed to parse stockID: %v", err)
+		return "", "", "", true, false, fmt.Errorf("failed to parse sellerID: %v", err)
 	}
 	buyOrderID, err := uuid.Parse(strings.TrimSpace(orderData.BuyOrderID))
 	if err != nil {
