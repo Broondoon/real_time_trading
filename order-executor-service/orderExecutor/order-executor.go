@@ -16,26 +16,26 @@ import (
 	"github.com/google/uuid"
 )
 
-func ProcessTrade(orderData network.MatchingEngineToExecutionJSON, databaseAccessTransact databaseAccessTransaction.DatabaseAccessInterface, databaseAccessUser databaseAccessUserManagement.DatabaseAccessInterface) (bool, bool, error) {
+func ProcessTrade(orderData network.MatchingEngineToExecutionJSON, databaseAccessTransact databaseAccessTransaction.DatabaseAccessInterface, databaseAccessUser databaseAccessUserManagement.DatabaseAccessInterface, matchingEngineAccess network.ClientInterface) (string, string, string, bool, bool, error) {
 	buyerID, err := uuid.Parse(strings.TrimSpace(orderData.BuyerID))
 	if err != nil {
-		return false, true, fmt.Errorf("failed to parse buyerID: %v", err)
+		return "", "", "", false, true, fmt.Errorf("failed to parse buyerID: %v", err)
 	}
 	sellerID, err := uuid.Parse(strings.TrimSpace(orderData.SellerID))
 	if err != nil {
-		return true, false, fmt.Errorf("failed to parse stockID: %v", err)
+		return "", "", "", true, false, fmt.Errorf("failed to parse sellerID: %v", err)
 	}
 	buyOrderID, err := uuid.Parse(strings.TrimSpace(orderData.BuyOrderID))
 	if err != nil {
-		return false, true, fmt.Errorf("failed to parse buyerID: %v", err)
+		return "", "", "", false, true, fmt.Errorf("failed to parse buyerID: %v", err)
 	}
 	sellOrderID, err := uuid.Parse(strings.TrimSpace(orderData.SellOrderID))
 	if err != nil {
-		return true, false, fmt.Errorf("failed to parse stockID: %v", err)
+		return "", buyOrderID.String(), "", true, false, fmt.Errorf("failed to parse sellOrderID: %v", err)
 	}
 	stockID, err := uuid.Parse(strings.TrimSpace(orderData.StockID))
 	if err != nil {
-		return false, false, fmt.Errorf("failed to parse buyerID: %v", err)
+		return "", buyOrderID.String(), sellOrderID.String(), false, false, fmt.Errorf("failed to parse stockID: %v", err)
 	}
 
 	// Transfer Entity received from the Matching Engine //
@@ -68,6 +68,105 @@ func ProcessTrade(orderData network.MatchingEngineToExecutionJSON, databaseAcces
 	// 	quantity,
 	// 	totalCost))
 
+	// 2. Go to User-Managment DB, get wallet of userID present on  Buy order transaction
+	walletList, errList, err := databaseAccessUser.Wallet().GetByIDs([]*uuid.UUID{&buyerID, &sellerID})
+
+	if err != nil {
+		log.Println("Error: ", err.Error())
+		return stockID.String(), buyOrderID.String(), sellOrderID.String(), false, false, fmt.Errorf("failed to get wallets: %v", err)
+	}
+
+	if len(errList) > 0 {
+		buyerValid := true
+		sellerValid := true
+		if _, ok := errList["transaction"]; ok {
+			return stockID.String(), buyOrderID.String(), sellOrderID.String(), false, false, fmt.Errorf("failed to get wallets: %v", errList["transaction"])
+		}
+		for i, err := range errList {
+			log.Println("Getting Wallet Transactions Error code: ", err, ". Id us ", i)
+			if i == buyOrderID.String() {
+				buyerValid = false
+			} else {
+				sellerValid = false
+			}
+		}
+		return stockID.String(), buyOrderID.String(), sellOrderID.String(), buyerValid, sellerValid, nil
+	}
+
+	//log.Println("Wallet List:")
+	// for i, wallet := range *walletList {
+	// 	json, err := wallet.ToJSON()
+	// 	if err != nil {
+	// 		log.Println("Error converting wallet to JSON: ", err.Error())
+	// 		continue // Continue with next wallet instead of failing
+	// 	}
+	// 	log.Printf("Wallet %d (UserID: %s): %s\n", i, wallet.GetUserID(), string(json))
+	// }
+
+	if len(*walletList) != 2 { // Validate we got both wallets
+		return stockID.String(), buyOrderID.String(), sellOrderID.String(), false, false, fmt.Errorf("expected 2 wallets, got %d", len(*walletList))
+	}
+
+	var buyerWallet, sellerWallet wallet.WalletInterface
+	for _, w := range *walletList {
+		if w.GetUserIDString() == buyerID.String() {
+			buyerWallet = w
+		} else if w.GetUserIDString() == sellerID.String() {
+			sellerWallet = w
+		}
+	}
+
+	// 3. Check if buyer has enough funds to afford the quantity*stockprice
+	buyerHasFunds, err := validateBuyerWalletBalance(buyerWallet, totalCost)
+	//log.Println("The buyer has enough funds in their wallet?: ", buyerHasFunds)
+	if err != nil {
+		log.Println("Error: ", err.Error())
+		return stockID.String(), buyOrderID.String(), sellOrderID.String(), false, false, err
+	}
+	if !buyerHasFunds {
+		return stockID.String(), buyOrderID.String(), sellOrderID.String(), false, true, nil
+	}
+
+	go func() {
+		isBuyFailure, isSellFailure, err := ProcessDatabaseUpdates(orderData, databaseAccessTransact, databaseAccessUser, buyOrderID, sellOrderID, buyerID, sellerID, stockID, quantity, totalCost, isBuyPartial, isSellPartial, stockPrice, stockName, buyerWallet, sellerWallet)
+		if err != nil {
+			log.Println("Error: ", err.Error())
+		}
+
+		_, err = matchingEngineAccess.Post("executor", network.ExecutorToMatchingEngineJSON{
+			StockID:            stockID.String(),
+			BuyerStockOrderId:  buyOrderID.String(),
+			SellerStockOrderId: sellOrderID.String(),
+			IsBuyFailure:       isBuyFailure,
+			IsSellFailure:      isSellFailure,
+		})
+		if err != nil {
+			log.Println("Error: ", err.Error(), ". We kinda don't have any recovery for this...")
+		}
+	}()
+	return stockID.String(), buyOrderID.String(), sellOrderID.String(), true, true, nil
+}
+
+// Idea, see how much of this we can combine into database internal functions.
+func ProcessDatabaseUpdates(orderData network.MatchingEngineToExecutionJSON,
+	databaseAccessTransact databaseAccessTransaction.DatabaseAccessInterface,
+	databaseAccessUser databaseAccessUserManagement.DatabaseAccessInterface,
+	buyOrderID uuid.UUID,
+	sellOrderID uuid.UUID,
+	buyerID uuid.UUID,
+	sellerID uuid.UUID,
+	stockID uuid.UUID,
+	quantity int,
+	totalCost float64,
+	isBuyPartial bool,
+	isSellPartial bool,
+	stockPrice float64,
+	stockName string,
+	buyerWallet wallet.WalletInterface,
+	sellerWallet wallet.WalletInterface,
+
+) (bool, bool, error) {
+
 	// 1. Go to the Transaction DB, get stock transactions associated with the buyOrder ID and the sellOrder ID
 	transactionList, errList, err := databaseAccessTransact.StockTransaction().GetByIDs([]*uuid.UUID{&buyOrderID, &sellOrderID})
 	if err != nil {
@@ -82,7 +181,7 @@ func ProcessTrade(orderData network.MatchingEngineToExecutionJSON, databaseAcces
 			return false, false, fmt.Errorf("failed to get transactions: %v", errList["transaction"])
 		}
 		for i, err := range errList {
-			log.Println("Getting stock transationcs: Error code: ", err, ". Id us ", i)
+			log.Println("Getting stock transactions: Error code: ", err, ". ID is ", i)
 			if i == buyOrderID.String() {
 				buyerValid = false
 			} else {
@@ -106,65 +205,6 @@ func ProcessTrade(orderData network.MatchingEngineToExecutionJSON, databaseAcces
 		return false, false, fmt.Errorf("expected 2 transactions, got %d", len(*transactionList))
 	}
 
-	// 2. Go to User-Managment DB, get wallet of userID present on  Buy order transaction
-	walletList, errList, err := databaseAccessUser.Wallet().GetByIDs([]*uuid.UUID{&buyerID, &sellerID})
-
-	if err != nil {
-		log.Println("Error: ", err.Error())
-		return false, false, fmt.Errorf("failed to get wallets: %v", err)
-	}
-
-	if len(errList) > 0 {
-		buyerValid := true
-		sellerValid := true
-		if _, ok := errList["transaction"]; ok {
-			return false, false, fmt.Errorf("failed to get wallets: %v", errList["transaction"])
-		}
-		for i, err := range errList {
-			log.Println("Getting Wallet Transactions Error code: ", err, ". Id us ", i)
-			if i == buyOrderID.String() {
-				buyerValid = false
-			} else {
-				sellerValid = false
-			}
-		}
-		return buyerValid, sellerValid, nil
-	}
-
-	//log.Println("Wallet List:")
-	// for i, wallet := range *walletList {
-	// 	json, err := wallet.ToJSON()
-	// 	if err != nil {
-	// 		log.Println("Error converting wallet to JSON: ", err.Error())
-	// 		continue // Continue with next wallet instead of failing
-	// 	}
-	// 	log.Printf("Wallet %d (UserID: %s): %s\n", i, wallet.GetUserID(), string(json))
-	// }
-
-	if len(*walletList) != 2 { // Validate we got both wallets
-		return false, false, fmt.Errorf("expected 2 wallets, got %d", len(*walletList))
-	}
-
-	var buyerWallet, sellerWallet wallet.WalletInterface
-	for _, w := range *walletList {
-		if w.GetUserIDString() == buyerID.String() {
-			buyerWallet = w
-		} else if w.GetUserIDString() == sellerID.String() {
-			sellerWallet = w
-		}
-	}
-
-	// 3. Check if buyer has enough funds to afford the quantity*stockprice
-	buyerHasFunds, err := validateBuyerWalletBalance(buyerWallet, totalCost)
-	//log.Println("The buyer has enough funds in their wallet?: ", buyerHasFunds)
-	if err != nil {
-		log.Println("Error: ", err.Error())
-		return false, false, err
-	}
-	if !buyerHasFunds {
-		return false, true, nil
-	}
-
 	var buyerStockTransaction transaction.StockTransactionInterface
 	var sellerStockTransaction transaction.StockTransactionInterface
 	for _, tx := range *transactionList {
@@ -178,9 +218,9 @@ func ProcessTrade(orderData network.MatchingEngineToExecutionJSON, databaseAcces
 	// 4. Update buyer and seller wallet balances and create wallet transactions for these changes
 	buyerWalletTx, sellerWalletTx, err := updateUserWallets(buyerWallet, sellerWallet, totalCost, buyerStockTransaction, sellerStockTransaction, databaseAccessUser, databaseAccessTransact)
 	//log.Println("Done updating wallets")
-	if len(*walletList) != 2 {
-		return false, false, fmt.Errorf("expected 2 wallets, got %d", len(*walletList))
-	}
+	// if len(*walletList) != 2 {
+	// 	return false, false, fmt.Errorf("expected 2 wallets, got %d", len(*walletList))
+	// }
 	if err != nil {
 		log.Println("Error: ", err.Error())
 		return false, false, fmt.Errorf("failed to update wallet balances: %v", err)

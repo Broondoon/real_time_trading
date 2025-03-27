@@ -2,6 +2,7 @@ package database
 
 import (
 	"Shared/entities/entity"
+	"Shared/objects"
 	"errors"
 	"fmt"
 	"log"
@@ -163,17 +164,24 @@ func convertID(id string) (uuid.UUID, error) {
 	return uid, nil
 }
 
-func convertIDs(ids []string, errors map[string]error) ([]uuid.UUID, map[string]error) {
-	uids := make([]uuid.UUID, 0, len(ids))
+func convertIDs(ids []string, errorList map[string]error) ([]uuid.UUID, map[string]error) {
+	existingIds := make(map[string]bool)
+	uids := make([]uuid.UUID, len(ids))
+	i := 0
 	for _, id := range ids {
-		uid, err := convertID(id)
-		if err != nil {
-			errors[id] = err
+		if _, ok := existingIds[id]; ok {
 			continue
 		}
-		uids = append(uids, uid)
+		uid, err := convertID(id)
+		if err != nil {
+			errorList[id] = err
+			continue
+		}
+		uids[i] = uid
+		existingIds[id] = true
+		i++
 	}
-	return uids, errors
+	return uids, errorList
 }
 
 func (d *PostGresEntityData[T]) PrintOutEntities() {
@@ -199,7 +207,8 @@ func (d *PostGresEntityData[T]) GetByID(id string) (T, error) {
 		log.Printf("error getting: %s", err.Error())
 		return zero, err
 	}
-	result := d.GetDatabaseSession().First(&ent, "id = ?", uid)
+
+	result := d.GetDatabaseSession().First(&ent, uid)
 	if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 		log.Printf("record not found for id: %s", id)
 		//d.PrintOutEntities()
@@ -218,19 +227,19 @@ func (d *PostGresEntityData[T]) GetByIDs(ids []string) (*[]T, map[string]error) 
 		return nil, map[string]error{"transaction": errors.New("no ids provided")}
 	}
 	var entities []T
-	errors := make(map[string]error)
-	uids, errors := convertIDs(ids, errors)
+	errorList := make(map[string]error)
+	uids, errorList := convertIDs(ids, errorList)
 	if len(uids) == 0 {
-		return nil, errors
+		return nil, errorList
 	}
 
 	results := d.GetDatabaseSession().Find(&entities, "id IN ?", uids)
 	if results.Error != nil {
-		errors["transaction"] = results.Error
+		errorList["transaction"] = results.Error
 		log.Printf("error getting by ids: %s", results.Error.Error())
 		//d.PrintOutEntities()
 
-		return nil, errors
+		return nil, errorList
 	}
 	//get all ids in ids that are not in entities
 	idsFound := make(map[string]bool)
@@ -239,12 +248,196 @@ func (d *PostGresEntityData[T]) GetByIDs(ids []string) (*[]T, map[string]error) 
 	}
 	for _, id := range ids {
 		if val, ok := idsFound[id]; !ok && !val {
-			errors[id] = gorm.ErrRecordNotFound
+			errorList[id] = gorm.ErrRecordNotFound
 			//d.PrintOutEntities()
 		}
 	}
 
-	return &entities, errors
+	return &entities, errorList
+}
+func (d *PostGresEntityData[T]) GetByPairedID(idColumn1 string, idColumn2 string, ids objects.Pair) (T, error) {
+	var zero T
+	if ids.ID1 == "" || ids.ID2 == "" {
+		return zero, fmt.Errorf("one or both IDs are empty")
+	}
+	var ent T
+	uid1, err := convertID(ids.ID1)
+	if err != nil {
+		log.Printf("error getting: %s", err.Error())
+		return zero, err
+	}
+
+	uid2, err := convertID(ids.ID2)
+	if err != nil {
+		log.Printf("error getting: %s", err.Error())
+		return zero, err
+	}
+
+	column1, ok := d.columnCache[idColumn1]
+	if !ok {
+		log.Printf("No Column: ", idColumn1)
+		return zero, fmt.Errorf("400: column %s not found", idColumn1)
+	}
+
+	column2, ok := d.columnCache[idColumn2]
+	if !ok {
+		log.Printf("No Column: ", idColumn1)
+		return zero, fmt.Errorf("400: column %s not found", idColumn2)
+	}
+
+	query := fmt.Sprintf("%s = ? AND %s = ?", column1.ColumnName, column2.ColumnName)
+	result := d.GetDatabaseSession().First(&ent, query, uid1, uid2)
+	if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+		log.Printf("record not found for paired IDs: %s, %s", ids.ID1, ids.ID2)
+		//d.PrintOutEntities()
+		return zero, result.Error
+	}
+	if result.Error != nil {
+		log.Printf("error getting: %s", result.Error.Error())
+		//d.PrintOutEntities()
+		return zero, result.Error
+	}
+	return ent, nil
+}
+func getValueForColumn(entity any, columnName string) (interface{}, error) {
+	v := reflect.ValueOf(entity)
+	if v.Kind() == reflect.Pointer {
+		v = v.Elem()
+	}
+	if !v.IsValid() {
+		return nil, fmt.Errorf("invalid entity (nil or not set)")
+	}
+
+	t := v.Type()
+	for i := 0; i < t.NumField(); i++ {
+		fieldType := t.Field(i)
+		fieldValue := v.Field(i)
+
+		// Check if this field is itself a struct (e.g. embedded Entity). If so, we might need to recurse.
+		if fieldValue.Kind() == reflect.Struct && fieldType.Anonymous {
+			val, err := getValueForColumn(fieldValue.Interface(), columnName)
+			if err == nil {
+				return val, nil
+			}
+			// else keep going in case the column is not inside this embedded struct
+		}
+
+		// Get the gorm tag
+		gormTag := fieldType.Tag.Get("gorm")
+		// For example, the tag might be: 'primaryKey;column:user_id;type:uuid;not null'
+		// We'll parse out "column:user_id"
+		if strings.Contains(gormTag, fmt.Sprintf("column:%s", columnName)) {
+			// Found the matching column
+			return fieldValue.Interface(), nil
+		}
+
+		// Alternatively, if the field name exactly matches columnName (less precise):
+		if strings.EqualFold(fieldType.Name, columnName) {
+			return fieldValue.Interface(), nil
+		}
+	}
+
+	// Not found
+	return nil, fmt.Errorf("could not find field for column '%s' in entity %T", columnName, entity)
+}
+
+// GetByPairedIDBulk does a batched lookup on (idColumn1, idColumn2) pairs.
+func (d *PostGresEntityData[T]) GetByPairedIDBulk(
+	idColumn1 string,
+	idColumn2 string,
+	ids *[]objects.Pair,
+) (*[]T, map[string]error) {
+
+	var results []T
+	errorList := make(map[string]error)
+	if len(*ids) == 0 {
+		// No pairs; just return empty
+		return &results, errorList
+	}
+
+	// 1. Build a list of valid pairs (converted to UUID) and record any input errors in errorsMap.
+	placeholders := make([]string, 0, len(*ids))
+	args := make([]interface{}, 0, len(*ids)*2)
+	validPairs := make([]objects.Pair, 0, len(*ids))
+
+	for _, pair := range *ids {
+		if pair.ID1 == "" || pair.ID2 == "" {
+			errorList[pair.String()] = fmt.Errorf("one or both IDs are empty")
+			continue
+		}
+
+		uid1, err1 := convertID(pair.ID1)
+		uid2, err2 := convertID(pair.ID2)
+		if err1 != nil || err2 != nil {
+			// Some parsing failure
+			combinedErr := fmt.Errorf("invalid IDs: %v, %v", err1, err2)
+			errorList[pair.String()] = combinedErr
+			continue
+		}
+
+		// Build "(?, ?)" placeholders for each valid pair
+		placeholders = append(placeholders, "(?, ?)")
+		args = append(args, uid1, uid2)
+		validPairs = append(validPairs, pair)
+	}
+
+	// If no valid pairs remain, just return any errors we recorded
+	if len(validPairs) == 0 {
+		return &results, errorList
+	}
+
+	column1, ok := d.columnCache[idColumn1]
+	if !ok {
+		errorList["transaction"] = fmt.Errorf("400: column %s not found", idColumn1)
+		log.Printf("error getting by paired ID: %s", errorList["transaction"].Error())
+		return nil, errorList
+	}
+
+	column2, ok := d.columnCache[idColumn2]
+	if !ok {
+		errorList["transaction"] = fmt.Errorf("400: column %s not found", idColumn2)
+		log.Printf("error getting by foreignPaired IDKey: %s", errorList["transaction"].Error())
+		return nil, errorList
+	}
+
+	// 2. Perform one bulk query using the multi-column IN clause
+	whereClause := fmt.Sprintf("(%s, %s) IN (%s)",
+		column1.ColumnName,
+		column2.ColumnName,
+		strings.Join(placeholders, ","),
+	)
+
+	db := d.GetDatabaseSession()
+	if err := db.Where(whereClause, args...).Find(&results).Error; err != nil {
+		// If the query itself failed (e.g. DB error), all valid pairs share that error
+		errorList["transaction"] = err
+		return &results, errorList
+	}
+
+	// 3. Figure out which valid pairs are actually present in `results`
+	//    We'll map "id1|id2" -> true
+	foundMap := make(map[string]bool, len(results))
+
+	for _, ent := range results {
+		val1, e1 := getValueForColumn(ent, idColumn1)
+		val2, e2 := getValueForColumn(ent, idColumn2)
+		if e1 == nil && e2 == nil && val1 != nil && val2 != nil {
+			key := fmt.Sprintf("%v|%v", val1, val2)
+			foundMap[key] = true
+		}
+	}
+
+	// 4. Any valid pair that isn't in foundMap is "record not found"
+	for _, vp := range validPairs {
+		key := fmt.Sprintf("%s|%s", vp.ID1, vp.ID2)
+		if !foundMap[key] {
+			// We found no row for that pair
+			errorList[vp.String()] = gorm.ErrRecordNotFound
+		}
+	}
+
+	// Return the array of found entities + partial error map
+	return &results, errorList
 }
 
 // This needs the table column names, whihc is a little diffrent
@@ -293,6 +486,10 @@ func (d *PostGresEntityData[T]) GetByForeignID(foreignIDKey string, foreignID st
 }
 
 func (d *PostGresEntityData[T]) GetByForeignIDBulk(foreignIDKey string, foreignIDs []string) (*[]T, map[string]error) {
+	return d.GetByFilteredForeignIDBulk(foreignIDKey, foreignIDs, "", "")
+}
+
+func (d *PostGresEntityData[T]) GetByFilteredForeignIDBulk(foreignIDKey string, foreignIDs []string, filterCol string, filterVal string) (*[]T, map[string]error) {
 	if foreignIDKey == "" {
 		err := fmt.Errorf("foreign key column is empty")
 		log.Printf("error getting by foreignKey: %s", err.Error())
@@ -305,34 +502,51 @@ func (d *PostGresEntityData[T]) GetByForeignIDBulk(foreignIDKey string, foreignI
 	}
 
 	var entities []T
-	errors := make(map[string]error)
+	errorList := make(map[string]error)
 	foreignIDColumn, ok := d.columnCache[foreignIDKey]
 	if !ok {
-		errors["transaction"] = fmt.Errorf("foreign key column %s not found", foreignIDKey)
-		log.Printf("error getting by foreignKey: %s", errors["transaction"].Error())
-		columns := make([]string, 0, len(d.columnCache))
-		for _, d := range d.columnCache {
-			columns = append(columns, d.ColumnName)
-		}
-		//	log.Println("avalaible columns: ", strings.Join(columns, ", "))
-		return nil, errors
+		errorList["transaction"] = fmt.Errorf("foreign key column %s not found", foreignIDKey)
+		log.Printf("error getting by foreignKey: %s", errorList["transaction"].Error())
+		return nil, errorList
 	}
-	var results *gorm.DB
-	//println("key: ", foreignIDKey, "Foreign ID Column: ", foreignIDColumn.ColumnName)
+	var (
+		results   *gorm.DB
+		condition string
+		args      []interface{}
+		uids      []uuid.UUID
+	)
+	condition = foreignIDColumn.ColumnName + " IN ?"
 	if strings.Contains(foreignIDColumn.ColumnName, "_id") || foreignIDColumn.ColumnName == "id" {
-		uids, errors := convertIDs(foreignIDs, errors)
+		uids, errorList = convertIDs(foreignIDs, errorList)
 		if len(uids) == 0 {
-			return nil, errors
+			return nil, errorList
 		}
-		results = d.GetDatabaseSession().Find(&entities, foreignIDColumn.ColumnName+" IN ?", uids)
+		args = append(args, uids)
 	} else {
-		results = d.GetDatabaseSession().Find(&entities, foreignIDColumn.ColumnName+" IN ?", foreignIDs)
+		args = append(args, foreignIDs)
 	}
+
+	if filterCol != "" {
+		condition += " AND " + filterCol + " = ?"
+		if strings.Contains(filterCol, "_id") {
+			filterUid, err := uuid.Parse(filterVal)
+			if err != nil {
+				errorList["transaction"] = err
+				log.Printf("error getting by foreignKey: %s", err.Error())
+				return nil, errorList
+			}
+			args = append(args, filterUid)
+		} else {
+			args = append(args, filterVal)
+		}
+	}
+	results = d.GetDatabaseSession().Where(condition, args...).Find(&entities)
+
 	if results.Error != nil {
-		errors["transaction"] = results.Error
+		errorList["transaction"] = results.Error
 		log.Printf("error getting by foreignKey: %s", results.Error.Error())
 		//	d.PrintOutEntities()
-		return nil, errors
+		return nil, errorList
 	}
 
 	//get all ids in ids that are not in entities
@@ -368,10 +582,10 @@ func (d *PostGresEntityData[T]) GetByForeignIDBulk(foreignIDKey string, foreignI
 		//log.Println("Checking for foreign ID: ", id)
 		if val, ok := idsFound[id]; !ok || !val {
 			//d.PrintOutEntities()
-			errors[id] = gorm.ErrRecordNotFound
+			errorList[id] = gorm.ErrRecordNotFound
 		}
 	}
-	return &entities, errors
+	return &entities, errorList
 }
 
 func (d *PostGresEntityData[T]) GetAll() (*[]T, error) {
@@ -472,8 +686,19 @@ func (d *PostGresEntityData[T]) Create(ent T) error {
 		ent.SetId(nil)
 		result = d.GetNewDatabaseSession().Create(&ent)
 		if result.Error != nil {
-			log.Printf("error creating %s: %s", ent.GetId(), result.Error.Error())
-			return result.Error
+			err := result.Error
+			var pgErr *pgconn.PgError // Wow another reason why Go sucks; I can't do pgErr* instead of pgErr *
+			if errors.As(err, &pgErr) {
+				log.Printf("postgres db error: %v", err)
+				// Error code for "duplicate key value violates unique constraint"
+				if pgErr.Code == "23505" {
+					// I am manually translating the Postgre error into a Gorm one so that netowrk.go can remain db agnostic
+					log.Printf("Postgres duplicate key error converted to gorm.")
+					return gorm.ErrDuplicatedKey
+				} else {
+					return err
+				}
+			}
 		}
 	}
 

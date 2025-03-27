@@ -152,59 +152,73 @@ func (n *QueueCluster) SpawnQueue() {
 }
 
 type QueueResponseHandler struct {
-	d  amqp091.Delivery
-	ch *amqp.Channel
+	d          amqp091.Delivery
+	ch         *amqp.Channel
+	Completed  bool
+	statusCode int
 }
 
 func NewQueueResponseHandler(d amqp091.Delivery, ch *amqp.Channel) network.ResponseWriter {
 	return &QueueResponseHandler{
-		d:  d,
-		ch: ch,
+		d:          d,
+		ch:         ch,
+		Completed:  false,
+		statusCode: http.StatusOK,
 	}
 }
 
 func (n *QueueResponseHandler) WriteHeader(statusCode int) {
-	log.Println("Writing header: ", statusCode)
-	switch statusCode {
-	case http.StatusOK:
-		// log.Println("Acking")
-		// n.d.Ack(false)
-		n.Write([]byte("OK")) //Bad situation here, since we need to make a few adjustments to the response. We have to send back a body right now
-	case http.StatusNotFound:
-		n.d.Nack(false, false)
-	case http.StatusBadRequest:
-		n.d.Nack(false, false)
-	case http.StatusInternalServerError:
-		n.d.Nack(false, true)
-	default:
-		n.d.Nack(false, false)
+	if !n.CheckCompleted() {
+		n.statusCode = statusCode
+		log.Println("Writing header: ", statusCode)
+		switch statusCode {
+		case http.StatusOK:
+			// log.Println("Acking")
+			// n.d.Ack(false)
+			n.Write([]byte("OK")) //Bad situation here, since we need to make a few adjustments to the response. We have to send back a body right now
+		case http.StatusNotFound:
+			n.d.Nack(false, false)
+		case http.StatusBadRequest:
+			n.d.Nack(false, false)
+		case http.StatusInternalServerError:
+			n.d.Nack(false, true)
+		default:
+			n.d.Nack(false, false)
+		}
+		n.Completed = true
 	}
 }
 
 func (n *QueueResponseHandler) Write(body []byte) (int, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-	log.Println("Writing body: ", string(body))
-	err := n.ch.PublishWithContext(
-		ctx,
-		"",
-		n.d.ReplyTo,
-		false,
-		false,
-		amqp.Publishing{
-			ContentType:   "text/plain",
-			CorrelationId: n.d.CorrelationId,
-			Body:          body,
-		})
+	if !n.CheckCompleted() {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		log.Println("Writing body: ", string(body))
+		err := n.ch.PublishWithContext(
+			ctx,
+			"",
+			n.d.ReplyTo,
+			false,
+			false,
+			amqp.Publishing{
+				ContentType:   "text/plain",
+				CorrelationId: n.d.CorrelationId,
+				Body:          body,
+			})
 
-	if err != nil {
-		log.Println("Failed to publish response: ", err.Error())
-		defer n.d.Nack(false, true)
-		return http.StatusInternalServerError, err
+		if err != nil {
+			log.Println("Failed to publish response: ", err.Error())
+			defer n.d.Nack(false, true)
+			n.statusCode = http.StatusInternalServerError
+			return http.StatusInternalServerError, err
+		}
+		log.Println("Response published")
+		defer n.d.Ack(false)
+		n.Completed = true
+		n.statusCode = http.StatusOK
+		return http.StatusOK, nil
 	}
-	log.Println("Response published")
-	defer n.d.Ack(false)
-	return http.StatusOK, nil
+	return n.statusCode, nil
 }
 
 func (n *QueueResponseHandler) Header() http.Header {
@@ -220,11 +234,21 @@ func (n *QueueResponseHandler) Header() http.Header {
 }
 
 func (n *QueueResponseHandler) EncodeResponse(statusCode int, data map[string]interface{}) {
-	jsonData, err := json.Marshal(data)
-	if err != nil {
-		n.WriteHeader(http.StatusInternalServerError)
-		return
+	if !n.CheckCompleted() {
+		jsonData, err := json.Marshal(data)
+		if err != nil {
+			n.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		n.WriteHeader(statusCode)
+		n.Write(jsonData)
 	}
-	n.WriteHeader(statusCode)
-	n.Write(jsonData)
+}
+
+func (n *QueueResponseHandler) CheckCompleted() bool {
+	return n.Completed
+}
+
+func (n *QueueResponseHandler) GetStatusCode() int {
+	return n.statusCode
 }

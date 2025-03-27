@@ -2,6 +2,7 @@ package database
 
 import (
 	"Shared/entities/entity"
+	"Shared/objects"
 	"log"
 	"os"
 )
@@ -67,8 +68,11 @@ type EntityDataInterface[T entity.EntityInterface, TDatabase any] interface {
 	DatabaseInterface[TDatabase]
 	GetByID(ID string) (T, error)
 	GetByIDs(IDs []string) (*[]T, map[string]error)
+	GetByPairedID(idColumn1 string, idColumn2 string, ids objects.Pair) (T, error)
+	GetByPairedIDBulk(idColumn1 string, idColumn2 string, ids *[]objects.Pair) (*[]T, map[string]error)
 	GetByForeignID(foreignIDColumn string, foreignID string) (*[]T, error)
 	GetByForeignIDBulk(foreignIDColumn string, foreignIDs []string) (*[]T, map[string]error)
+	GetByFilteredForeignIDBulk(foreignIDKey string, foreignIDs []string, filterCol string, filterVal string) (*[]T, map[string]error)
 	GetAll() (*[]T, error)
 	Create(ent T) error
 	CreateBulk(entities *[]T) map[string]error

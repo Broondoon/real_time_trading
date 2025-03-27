@@ -13,7 +13,7 @@ import (
 type UserStocksDataAccessInterface interface {
 	databaseAccess.EntityDataAccessInterface[*userStock.UserStock, userStock.UserStockInterface]
 	GetUserStocks(userID string) (*[]userStock.UserStockInterface, error)
-	GetUserStocksBulk(userIDs []string, routine func(userID string, userStocks *[]userStock.UserStockInterface, errorCode int)) error
+	GetUserStocksBulk(userIDs []string, stockId string, routine func(userID string, userStocks *[]userStock.UserStockInterface, errorCode int)) error
 }
 
 type UserStocksDataAccess struct {
@@ -124,14 +124,23 @@ func (d *UserStocksDataAccess) GetUserStocks(userID string) (*[]userStock.UserSt
 	return userStocks, nil
 }
 
-func (d *UserStocksDataAccess) GetUserStocksBulk(userIDs []string, routine func(userID string, userStocks *[]userStock.UserStockInterface, errorCode int)) error {
+func (d *UserStocksDataAccess) GetUserStocksBulk(userIDs []string, stockId string, routine func(userID string, userStocks *[]userStock.UserStockInterface, errorCode int)) error {
 
 	if len(userIDs) == 0 {
 		log.Printf("DEBUG: GetUserStocksBulk called with empty userIDs\n")
 		return nil
 	}
 	//log.Println("DEBUG: GetUserStocksBulk called for userIDs %s\n", userIDs)
-	userStocks, errList, err := d.GetByForeignIDBulk("UserID", userIDs)
+	var (
+		userStocks *[]userStock.UserStockInterface
+		errList    = make(map[string]int)
+		err        error
+	)
+	if stockId != "" {
+		userStocks, errList, err = d.GetByFilteredForeignIDBulk("UserID", userIDs, "StockID", stockId)
+	} else {
+		userStocks, errList, err = d.GetByForeignIDBulk("UserID", userIDs)
+	}
 	//lets make a variant which is get by foregin ids. Get back multiple, then perform a function for each userId
 	if err != nil {
 		log.Printf("Error fetching user stocks by foreign ID for userIDs %s: %v\n", userIDs, err)
