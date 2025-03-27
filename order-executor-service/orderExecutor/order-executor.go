@@ -35,7 +35,7 @@ func ProcessTrade(orderData network.MatchingEngineToExecutionJSON, databaseAcces
 	}
 	stockID, err := uuid.Parse(strings.TrimSpace(orderData.StockID))
 	if err != nil {
-		return "", buyOrderID.String(), sellOrderID.String(), false, false, fmt.Errorf("failed to parse buyerID: %v", err)
+		return "", buyOrderID.String(), sellOrderID.String(), false, false, fmt.Errorf("failed to parse stockID: %v", err)
 	}
 
 	// Transfer Entity received from the Matching Engine //
