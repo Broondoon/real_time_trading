@@ -273,7 +273,20 @@ func (d *PostGresEntityData[T]) GetByPairedID(idColumn1 string, idColumn2 string
 		return zero, err
 	}
 
-	result := d.GetDatabaseSession().First(&ent, idColumn1, " = ? AND ", idColumn2, " = ?", uid1, uid2)
+	column1, ok := d.columnCache[idColumn1]
+	if !ok {
+		log.Printf("No Column: ", idColumn1)
+		return zero, fmt.Errorf("400: column %s not found", idColumn1)
+	}
+
+	column2, ok := d.columnCache[idColumn2]
+	if !ok {
+		log.Printf("No Column: ", idColumn1)
+		return zero, fmt.Errorf("400: column %s not found", idColumn2)
+	}
+
+	query := fmt.Sprintf("%s = ? AND %s = ?", column1.ColumnName, column2.ColumnName)
+	result := d.GetDatabaseSession().First(&ent, query, uid1, uid2)
 	if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 		log.Printf("record not found for paired IDs: %s, %s", ids.ID1, ids.ID2)
 		//d.PrintOutEntities()
@@ -375,15 +388,15 @@ func (d *PostGresEntityData[T]) GetByPairedIDBulk(
 
 	column1, ok := d.columnCache[idColumn1]
 	if !ok {
-		errorList["transaction"] = fmt.Errorf("foreign key column %s not found", idColumn1)
-		log.Printf("error getting by foreignKey: %s", errorList["transaction"].Error())
+		errorList["transaction"] = fmt.Errorf("400: column %s not found", idColumn1)
+		log.Printf("error getting by paired ID: %s", errorList["transaction"].Error())
 		return nil, errorList
 	}
 
 	column2, ok := d.columnCache[idColumn2]
 	if !ok {
-		errorList["transaction"] = fmt.Errorf("foreign key column %s not found", idColumn2)
-		log.Printf("error getting by foreignKey: %s", errorList["transaction"].Error())
+		errorList["transaction"] = fmt.Errorf("400: column %s not found", idColumn2)
+		log.Printf("error getting by foreignPaired IDKey: %s", errorList["transaction"].Error())
 		return nil, errorList
 	}
 
@@ -673,8 +686,19 @@ func (d *PostGresEntityData[T]) Create(ent T) error {
 		ent.SetId(nil)
 		result = d.GetNewDatabaseSession().Create(&ent)
 		if result.Error != nil {
-			log.Printf("error creating %s: %s", ent.GetId(), result.Error.Error())
-			return result.Error
+			err := result.Error
+			var pgErr *pgconn.PgError // Wow another reason why Go sucks; I can't do pgErr* instead of pgErr *
+			if errors.As(err, &pgErr) {
+				log.Printf("postgres db error: %v", err)
+				// Error code for "duplicate key value violates unique constraint"
+				if pgErr.Code == "23505" {
+					// I am manually translating the Postgre error into a Gorm one so that netowrk.go can remain db agnostic
+					log.Printf("Postgres duplicate key error converted to gorm.")
+					return gorm.ErrDuplicatedKey
+				} else {
+					return err
+				}
+			}
 		}
 	}
 

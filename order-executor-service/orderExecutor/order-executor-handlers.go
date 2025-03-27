@@ -11,6 +11,7 @@ import (
 
 var _databaseAccessTransact databaseAccessTransaction.DatabaseAccessInterface
 var _databaseAccessUser databaseAccessUserManagement.DatabaseAccessInterface
+var _matchingEngineClientManager network.ClientInterface
 
 func InitalizeExecutorHandlers(
 	networkManager network.NetworkInterface,
@@ -20,6 +21,7 @@ func InitalizeExecutorHandlers(
 
 	_databaseAccessTransact = databaseAccessTransact
 	_databaseAccessUser = databaseAccessUser
+	_matchingEngineClientManager = queueManager.MatchingEngine()
 
 	queueManager.AddHandleFuncUnprotected(network.HandlerParams{Pattern: "executor", Handler: executorHandler})
 
@@ -41,7 +43,7 @@ func executorHandler(responseWriter network.ResponseWriter, data []byte, queryPa
 	}
 
 	// Process the orderData (transferEntity) from the Matching Engine
-	buySuccess, sellSuccess, err := ProcessTrade(orderData, _databaseAccessTransact, _databaseAccessUser)
+	stockID, buyerStockOrderID, sellerStockOrderID, buySuccess, sellSuccess, err := ProcessTrade(orderData, _databaseAccessTransact, _databaseAccessUser, _matchingEngineClientManager)
 	if err != nil {
 		responseWriter.WriteHeader(http.StatusInternalServerError)
 		return
@@ -51,8 +53,11 @@ func executorHandler(responseWriter network.ResponseWriter, data []byte, queryPa
 	// If the match was unsuccessful, only one of IsBuyFailure and IsSellFailure will be true
 	// If there was an error, both IsBuyFailure and IsSellFailure will be true
 	responseEntity := network.ExecutorToMatchingEngineJSON{
-		IsBuyFailure:  !buySuccess,
-		IsSellFailure: !sellSuccess,
+		IsBuyFailure:       !buySuccess,
+		IsSellFailure:      !sellSuccess,
+		StockID:            stockID,
+		BuyerStockOrderId:  buyerStockOrderID,
+		SellerStockOrderId: sellerStockOrderID,
 	}
 
 	jsonResponseToMatchingEngine, err := json.Marshal(responseEntity)

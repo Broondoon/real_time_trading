@@ -260,7 +260,7 @@ func (me *MatchingEngine) GetPrice() network.StockPrice {
 }
 
 func (me *MatchingEngine) CompletePairedOrder(params network.ExecutorToMatchingEngineJSON) error {
-	if PairedOrder, ok := me.PairedOrders[params.BuyerId+params.SellerId]; ok {
+	if PairedOrder, ok := me.PairedOrders[params.BuyerStockOrderId+params.SellerStockOrderId]; ok {
 		buyOrder := PairedOrder.Buyer
 		sellOrder := PairedOrder.Seller
 		if buyOrder == nil || sellOrder == nil {

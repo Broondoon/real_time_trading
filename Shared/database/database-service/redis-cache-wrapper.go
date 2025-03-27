@@ -487,6 +487,8 @@ func (c *CachedEntityData[T, TDatabase]) DeleteBulk(ids []string) map[string]err
 	}
 	return errorList
 }
+
+// TODO: Implement the following methods
 func (c *CachedEntityData[T, TDatabase]) GetByPairedID(idColumn1 string, idColumn2 string, ids objects.Pair) (T, error) {
 	panic("implement me")
 }

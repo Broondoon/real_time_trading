@@ -508,6 +508,15 @@ services:
       start_period: 10s # Allow 30 seconds for initialization before starting health checks
     networks:
       - go-network
+    depends_on:
+      auth-db:
+        condition: service_healthy
+      user-management-db:
+        condition: service_healthy
+      stock-db:
+        condition: service_healthy
+      transaction-db:
+        condition: service_healthy
   
   pgadmin:
     image: dpage/pgadmin4
