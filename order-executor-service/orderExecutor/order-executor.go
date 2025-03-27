@@ -181,7 +181,7 @@ func ProcessDatabaseUpdates(orderData network.MatchingEngineToExecutionJSON,
 			return false, false, fmt.Errorf("failed to get transactions: %v", errList["transaction"])
 		}
 		for i, err := range errList {
-			log.Println("Getting stock transationcs: Error code: ", err, ". Id us ", i)
+			log.Println("Getting stock transactions: Error code: ", err, ". ID is ", i)
 			if i == buyOrderID.String() {
 				buyerValid = false
 			} else {
