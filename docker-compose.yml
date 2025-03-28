@@ -74,7 +74,7 @@ services:
       restart_policy:
         condition: on-failure
 
-  # ---------------------- Redis Service ----------------------
+# ---------------------- Redis Service ----------------------
   redis:
     image: redis:latest
     ports:
@@ -87,7 +87,7 @@ services:
       timeout: 10s
       retries: 3
 
-  # ---------------------- Existing Services ----------------------
+# ---------------------- Existing Services ----------------------
   # microservice-template:
   #   build:
   #     context: .
@@ -430,6 +430,8 @@ services:
     networks:
       - go-network
 
+# ---------------------- Transaction Database ----------------------
+
   transaction-db:
     image: postgres:latest
     restart: always
@@ -439,6 +441,8 @@ services:
       POSTGRES_USER: ${TRANSACTION_POSTGRES_USER}
       POSTGRES_PASSWORD: ${TRANSACTION_POSTGRES_PASSWORD}
       POSTGRES_DB: ${TRANSACTION_POSTGRES_DB}
+      POSTGRES_HOST_AUTH_METHOD: "scram-sha-256\nhost replication all 0.0.0.0/0 md5"
+    shm_size: 1g # dunno what this does
     volumes:
       - transaction-db-data:/var/lib/postgresql/data
       - ./transaction-database/init.sql:/docker-entrypoint-initdb.d/init.sql
@@ -453,6 +457,41 @@ services:
       retries: ${HEALTHCHECK_RETRIES}
     networks:
       - go-network
+
+  transaction-db-replica:
+    image: postgres:latest
+    shm_size: 1g
+    restart: always
+    env_file:
+      - .env
+    environment:
+      PGUSER: ${TRANSACTION_POSTGRES_REPLICATED_USER}
+      PGPASSWORD: ${TRANSACTION_POSTGRES_REPLICATED_PASSWORD}
+      # POSTGRES_DB: ${TRANSACTION_POSTGRES_DB}
+      PGHOST: transaction-db
+    command: |
+      bash -c "
+      PGUSER=${TRANSACTION_POSTGRES_USER} PGPASSWORD=${TRANSACTION_POSTGRES_PASSWORD} psql -c \"CREATE USER ${TRANSACTION_POSTGRES_REPLICATED_USER} WITH REPLICATION ENCRYPTED PASSWORD '${TRANSACTION_POSTGRES_REPLICATED_PASSWORD}';\";  
+      PGUSER=${TRANSACTION_POSTGRES_USER} PGPASSWORD=${TRANSACTION_POSTGRES_PASSWORD} psql -c \"SELECT pg_create_physical_replication_slot('replication_slot');\";  
+      rm -rf /var/lib/postgresql/data/* && pg_basebackup --pgdata=/var/lib/postgresql/data -R --slot=replication_slot; 
+      chown -R transaction-db:transaction-db /var/lib/postgresql/data && chmod 0700 /var/lib/postgresql/data; 
+      su transaction-db -c transaction-db; 
+      "
+    depends_on:
+      - transaction-db
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U $TRANSACTION_POSTGRES_USER -d $TRANSACTION_POSTGRES_DB",
+        ]
+      interval: ${HEALTHCHECK_INTERVAL}
+      timeout: ${HEALTHCHECK_TIMEOUT}
+      retries: ${HEALTHCHECK_RETRIES}
+    networks:
+      - go-network
+
+# ---------------------- Stock Database ----------------------
 
   stock-db:
     image: postgres:latest
