@@ -442,15 +442,18 @@ services:
       - .env
     environment:
       POSTGRESQL_REPLICATION_MODE: master
-      POSTGRESQL_REPLICATION_USER: ${TRANSACTION_REPLICATION_USER}
+      POSTGRESQL_REPLICATION_USERNAME: ${TRANSACTION_REPLICATION_USER}
       POSTGRESQL_REPLICATION_PASSWORD: ${TRANSACTION_REPLICATION_PASSWORD}
-      POSTGRESQL_USER: ${TRANSACTION_POSTGRES_USER}
+      POSTGRESQL_USERNAME: ${TRANSACTION_POSTGRES_USER}
       POSTGRESQL_PASSWORD: ${TRANSACTION_POSTGRES_PASSWORD}
-      POSTGRESQL_DB: ${TRANSACTION_POSTGRES_DB}
+      POSTGRESQL_DATABASE: ${TRANSACTION_POSTGRES_DB}
+      ALLOW_EMPTY_PASSWORD: yes
     volumes:
       # - transaction-db-data:/var/lib/postgresql/data
-      - transaction-db-data:/bitnami/postgresql
-      - ./transaction-database/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - transaction-db-data:/bitnami/postgresql # Mounts a specific docker volume for persistence
+      - ./db-replication-config/pg_hba.conf:/bitnami/postgresql/conf/pg_hba.conf # Mounts a config file so the container has access to it
+      - ./db-replication-config/postgresql.conf:/bitnami/postgresql/conf/postgresql.conf # Mounts a config file so the container has access to it
+      - ./transaction-database/init.sql:/docker-entrypoint-initdb.d/init.sql # Mounts the init file so the container has access to it
     healthcheck:
       test:
         [
@@ -472,16 +475,20 @@ services:
     environment:
       POSTGRESQL_REPLICATION_MODE: slave
       POSTGRESQL_MASTER_HOST: transaction-db
+      POSTGRESQL_MASTER_PORT_NUMBER: 5432 # postgre default
       POSTGRESQL_REPLICATION_USER: ${TRANSACTION_REPLICATION_USER}
       POSTGRESQL_REPLICATION_PASSWORD: ${TRANSACTION_REPLICATION_PASSWORD}
-      POSTGRESQL_USER: ${TRANSACTION_POSTGRES_USER}
+      # POSTGRESQL_USER: ${TRANSACTION_POSTGRES_USER}
       POSTGRESQL_PASSWORD: ${TRANSACTION_POSTGRES_PASSWORD}
       # POSTGRESQL_DB: ${TRANSACTION_POSTGRES_DB}
+      ALLOW_EMPTY_PASSWORD: yes
     depends_on:
       transaction-db:
         condition: service_healthy
     volumes:
       - transaction-db-secondary-data:/bitnami/postgresql
+      - ./db-replication-config/pg_hba.conf:/bitnami/postgresql/conf/pg_hba.conf
+      - ./db-replication-config/postgresql.conf:/bitnami/postgresql/conf/postgresql.conf
       # Replica does not need the initialization, since as a secondary, it auto gets the tables from primary
       # - ./transaction-database/init.sql:/docker-entrypoint-initdb.d/init.sql
     healthcheck:
@@ -500,29 +507,30 @@ services:
     #   restart_policy:
     #     condition: on-failure
 
-  transaction-pgpool:
-    image: bitnami/pgpool:latest
-    container_name: transaction-pgpool
-    ports:
-      - "6432:6432"
-      # NOTE: postgre default port: 5432
-    environment:
-      PGPOOL_PORT_NUMBER: 6432 # Apparently specifying the ports wasn't enough; you gotta do it here too.
-      PGPOOL_BACKEND_NODES: 0:transaction-db:5432, 1:transaction-db-replica:5432
-      PGPOOL_SR_CHECK_USER: ${TRANSACTION_POSTGRES_USER}
-      PGPOOL_SR_CHECK_PASSWORD: ${TRANSACTION_POSTGRES_PASSWORD}
-      PGPOOL_ENABLE_LOAD_BALANCING: yes
-      PGPOOL_ADMIN_USERNAME: ${TRANSACTION_POSTGRES_USER} # Required for pgpool
-      PGPOOL_ADMIN_PASSWORD: ${TRANSACTION_POSTGRES_PASSWORD} # Required for pgpool
-      PGPOOL_POSTGRES_USERNAME: ${TRANSACTION_POSTGRES_USER}
-      PGPOOL_POSTGRES_PASSWORD: ${TRANSACTION_POSTGRES_PASSWORD}
-    depends_on:
-      transaction-db-replica:
-        condition: service_healthy
-      transaction-db:
-        condition: service_healthy
-    networks:
-      - go-network
+  # transaction-pgpool:
+  #   image: bitnami/pgpool:latest
+  #   container_name: transaction-pgpool
+  #   ports:
+  #     - "6432:6432"
+  #     # NOTE: postgre default port: 5432
+  #   environment:
+  #     PGPOOL_PORT_NUMBER: 6432 # Apparently specifying the ports wasn't enough; you gotta do it here too.
+  #     PGPOOL_BACKEND_NODES: 0:transaction-db:5432,1:transaction-db-replica:5432
+  #     PGPOOL_SR_CHECK_USER: ${TRANSACTION_POSTGRES_USER}
+  #     PGPOOL_SR_CHECK_PASSWORD: ${TRANSACTION_POSTGRES_PASSWORD}
+  #     PGPOOL_ENABLE_LOAD_BALANCING: yes
+  #     PGPOOL_ADMIN_USERNAME: ${TRANSACTION_POSTGRES_USER} # Required for pgpool
+  #     PGPOOL_ADMIN_PASSWORD: ${TRANSACTION_POSTGRES_PASSWORD} # Required for pgpool
+  #     PGPOOL_POSTGRES_USERNAME: ${TRANSACTION_POSTGRES_USER}
+  #     PGPOOL_POSTGRES_PASSWORD: ${TRANSACTION_POSTGRES_PASSWORD}
+  #     ALLOW_EMPTY_PASSWORD: yes
+  #   depends_on:
+  #     transaction-db-replica:
+  #       condition: service_healthy
+  #     transaction-db:
+  #       condition: service_healthy
+  #   networks:
+  #     - go-network
 
 # ---------------------- Stock Database ----------------------
 
