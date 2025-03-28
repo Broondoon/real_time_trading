@@ -430,17 +430,26 @@ services:
     networks:
       - go-network
 
+# ---------------------- Transaction Database ----------------------
+
+  # TODO: I'm not sure the difference between the user and the replication user...
+  # Apparently the normal user is optional with bitnami?
   transaction-db:
-    image: postgres:latest
+    image: 'bitnami/postgresql:latest'
+    container_name: transaction-db
     restart: always
     env_file:
       - .env
     environment:
-      POSTGRES_USER: ${TRANSACTION_POSTGRES_USER}
-      POSTGRES_PASSWORD: ${TRANSACTION_POSTGRES_PASSWORD}
-      POSTGRES_DB: ${TRANSACTION_POSTGRES_DB}
+      POSTGRESQL_REPLICATION_MODE: master
+      POSTGRESQL_REPLICATION_USER: ${TRANSACTION_REPLICATION_USER}
+      POSTGRESQL_REPLICATION_PASSWORD: ${TRANSACTION_REPLICATION_PASSWORD}
+      POSTGRESQL_USER: ${TRANSACTION_POSTGRES_USER}
+      POSTGRESQL_PASSWORD: ${TRANSACTION_POSTGRES_PASSWORD}
+      POSTGRESQL_DB: ${TRANSACTION_POSTGRES_DB}
     volumes:
-      - transaction-db-data:/var/lib/postgresql/data
+      # - transaction-db-data:/var/lib/postgresql/data
+      - transaction-db-data:/bitnami/postgresql
       - ./transaction-database/init.sql:/docker-entrypoint-initdb.d/init.sql
     healthcheck:
       test:
@@ -453,6 +462,69 @@ services:
       retries: ${HEALTHCHECK_RETRIES}
     networks:
       - go-network
+
+  transaction-db-replica:
+    image: 'bitnami/postgresql:latest'
+    container_name: transaction-db-replica
+    restart: always
+    env_file:
+      - .env
+    environment:
+      POSTGRESQL_REPLICATION_MODE: slave
+      POSTGRESQL_MASTER_HOST: transaction-db
+      POSTGRESQL_REPLICATION_USER: ${TRANSACTION_REPLICATION_USER}
+      POSTGRESQL_REPLICATION_PASSWORD: ${TRANSACTION_REPLICATION_PASSWORD}
+      POSTGRESQL_USER: ${TRANSACTION_POSTGRES_USER}
+      POSTGRESQL_PASSWORD: ${TRANSACTION_POSTGRES_PASSWORD}
+      # POSTGRESQL_DB: ${TRANSACTION_POSTGRES_DB}
+    depends_on:
+      transaction-db:
+        condition: service_healthy
+    volumes:
+      - transaction-db-secondary-data:/bitnami/postgresql
+      # Replica does not need the initialization, since as a secondary, it auto gets the tables from primary
+      # - ./transaction-database/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U $TRANSACTION_POSTGRES_USER -d $TRANSACTION_POSTGRES_DB",
+        ]
+      interval: ${HEALTHCHECK_INTERVAL}
+      timeout: ${HEALTHCHECK_TIMEOUT}
+      retries: ${HEALTHCHECK_RETRIES}
+    networks:
+      - go-network
+    # deploy:
+    #   replicas: 1
+    #   restart_policy:
+    #     condition: on-failure
+
+  transaction-pgpool:
+    image: bitnami/pgpool:latest
+    container_name: transaction-pgpool
+    ports:
+      - "6432:6432"
+      # NOTE: postgre default port: 5432
+    environment:
+      PGPOOL_PORT_NUMBER: 6432 # Apparently specifying the ports wasn't enough; you gotta do it here too.
+      PGPOOL_BACKEND_NODES: 0:transaction-db:5432, 1:transaction-db-replica:5432
+      PGPOOL_SR_CHECK_USER: ${TRANSACTION_POSTGRES_USER}
+      PGPOOL_SR_CHECK_PASSWORD: ${TRANSACTION_POSTGRES_PASSWORD}
+      PGPOOL_ENABLE_LOAD_BALANCING: yes
+      PGPOOL_ADMIN_USERNAME: ${TRANSACTION_POSTGRES_USER} # Required for pgpool
+      PGPOOL_ADMIN_PASSWORD: ${TRANSACTION_POSTGRES_PASSWORD} # Required for pgpool
+      PGPOOL_POSTGRES_USERNAME: ${TRANSACTION_POSTGRES_USER}
+      PGPOOL_POSTGRES_PASSWORD: ${TRANSACTION_POSTGRES_PASSWORD}
+    depends_on:
+      transaction-db-replica:
+        condition: service_healthy
+      transaction-db:
+        condition: service_healthy
+    networks:
+      - go-network
+
+# ---------------------- Stock Database ----------------------
 
   stock-db:
     image: postgres:latest
@@ -541,6 +613,7 @@ volumes:
   auth-db-data:
   stock-order-db-data:
   transaction-db-data:
+  transaction-db-secondary-data:
   rabbitmq_data:
 
 # ---------------------- Networks ----------------------
