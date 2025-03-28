@@ -3,6 +3,7 @@ package network
 import (
 	databaseService "Shared/database/database-service"
 	"Shared/entities/entity"
+	"Shared/objects"
 	"log"
 
 	"encoding/json"
@@ -126,10 +127,10 @@ type NetworkInterface interface {
 }
 
 type ResponseWriter interface {
-	WriteHeader(statusCode int)
-	Write([]byte) (int, error)
-	Header() http.Header
+	http.ResponseWriter
 	EncodeResponse(statusCode int, response map[string]interface{})
+	CheckCompleted() bool
+	GetStatusCode() int
 }
 
 type HandlerParams struct {
@@ -140,14 +141,14 @@ type HandlerParams struct {
 
 func CreateNetworkEntityHandlers[T entity.EntityInterface, TDatabase any](network NetworkInterface, entityName string, databaseManager databaseService.EntityDataInterface[T, TDatabase], Parse func(jsonBytes []byte) (T, error), ParseList func(jsonBytes []byte) (*[]T, error)) {
 	defaults := func(responseWriter ResponseWriter, data []byte, queryParams url.Values, requestType string) {
-		// log.Println("-----------------\nRequest:")
-		// log.Println("entityName: ", entityName)
-		// if requestType == "POST" || requestType == "PUT" {
-		// 	log.Println("data: ", string(data))
-		// }
-		// log.Println("queryParams: ", queryParams.Encode())
-		// log.Println("requestType: ", requestType)
-		// log.Println("-----------------")
+		log.Println("-----------------\nRequest:")
+		log.Println("entityName: ", entityName)
+		if requestType == "POST" || requestType == "PUT" {
+			log.Println("data: ", string(data))
+		}
+		log.Println("queryParams: ", queryParams.Encode())
+		log.Println("requestType: ", requestType)
+		log.Println("-----------------")
 		bulkRequest := queryParams.Get("Isbulk") != ""
 		useEntities := false
 		noReturns := false
@@ -163,8 +164,35 @@ func CreateNetworkEntityHandlers[T entity.EntityInterface, TDatabase any](networ
 		case "GET":
 			if bulkRequest {
 				ids := strings.Split(queryParams.Get("Ids"), ",")
-				if foreignKey := queryParams.Get("foreignKey"); foreignKey != "" {
-					entities, errorsReceived = databaseManager.GetByForeignIDBulk(foreignKey, ids)
+				if key1 := queryParams.Get("IdColumn1"); key1 != "" {
+					pairedIds := make([]objects.Pair, len(ids)/2)
+					for i := 0; i < len(ids); i += 2 {
+						pairedIds[i/2] = objects.Pair{ID1: ids[i], ID2: ids[i+1]}
+					}
+					if len(pairedIds) == 1 {
+						log.Println("using single val version")
+						entityObj, err = databaseManager.GetByPairedID(key1, queryParams.Get("IdColumn2"), pairedIds[0])
+						entities = &[]T{entityObj}
+						if err != nil {
+							errorsReceived[pairedIds[0].String()] = err
+						}
+					} else {
+						entities, errorsReceived = databaseManager.GetByPairedIDBulk(key1, queryParams.Get("IdColumn2"), &pairedIds)
+					}
+				} else if foreignKey := queryParams.Get("foreignKey"); foreignKey != "" {
+					if filterKey := queryParams.Get("filterKey"); filterKey != "" {
+						entities, errorsReceived = databaseManager.GetByFilteredForeignIDBulk(foreignKey, ids, filterKey, queryParams.Get("filterVal"))
+					} else {
+						if len(ids) == 1 {
+							log.Println("using single val version")
+							entities, err = databaseManager.GetByForeignID(foreignKey, ids[0])
+							if err != nil {
+								errorsReceived[ids[0]] = err
+							}
+						} else {
+							entities, errorsReceived = databaseManager.GetByForeignIDBulk(foreignKey, ids)
+						}
+					}
 				} else {
 					entities, errorsReceived = databaseManager.GetByIDs(ids)
 				}
@@ -176,6 +204,8 @@ func CreateNetworkEntityHandlers[T entity.EntityInterface, TDatabase any](networ
 				} else {
 					entityObj, err = databaseManager.GetByID(id)
 				}
+			} else if key1 := queryParams.Get("IdColumn1"); key1 != "" {
+				entityObj, err = databaseManager.GetByPairedID(key1, queryParams.Get("IdColumn2"), objects.Pair{ID1: queryParams.Get("Id1"), ID2: queryParams.Get("Id2")})
 			} else {
 				entities, err = databaseManager.GetAll()
 				useEntities = true
@@ -193,7 +223,17 @@ func CreateNetworkEntityHandlers[T entity.EntityInterface, TDatabase any](networ
 				return
 			}
 			if bulkRequest {
-				errorsReceived = databaseManager.CreateBulk(entities)
+				if len(*entities) == 1 {
+					log.Println("using single val version")
+					err := databaseManager.Create((*entities)[0])
+					if err != nil {
+						errorsReceived = map[string]error{(*entities)[0].GetUniquePairing().String(): err}
+					} else {
+						errorsReceived = nil
+					}
+				} else {
+					errorsReceived = databaseManager.CreateBulk(entities)
+				}
 				useEntities = true
 			} else {
 				err = databaseManager.Create(entityObj)
@@ -210,7 +250,16 @@ func CreateNetworkEntityHandlers[T entity.EntityInterface, TDatabase any](networ
 			noReturns = true
 		case "DELETE":
 			if bulkRequest {
-				errorsReceived = databaseManager.DeleteBulk(strings.Split(queryParams.Get("Ids"), ","))
+				ids := strings.Split(queryParams.Get("Ids"), ",")
+				if len(ids) == 1 {
+					log.Println("using single val version")
+					err = databaseManager.Delete(ids[0])
+					if err != nil {
+						errorsReceived = map[string]error{ids[0]: err}
+					}
+				} else {
+					errorsReceived = databaseManager.DeleteBulk(ids)
+				}
 			} else {
 				err = databaseManager.Delete(queryParams.Get("id"))
 			}
@@ -222,9 +271,12 @@ func CreateNetworkEntityHandlers[T entity.EntityInterface, TDatabase any](networ
 		if errorsReceived != nil {
 			if _, ok := errorsReceived["transaction"]; !ok {
 				for id, err := range errorsReceived {
-					log.Println("Transfer Error: ", err)
 					if errors.Is(err, gorm.ErrRecordNotFound) {
 						errorList[id] = http.StatusNotFound
+					} else if errors.Is(err, gorm.ErrDuplicatedKey) {
+						// For the Auth's case of failing UNIQUE constraint
+						log.Println("Handling Wadey's expected \"violates unique constraint\" error.")
+						errorList[id] = http.StatusBadRequest
 					} else {
 						errorList[id] = http.StatusInternalServerError
 					}

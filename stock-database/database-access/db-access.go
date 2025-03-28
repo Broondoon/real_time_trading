@@ -15,6 +15,7 @@ type DatabaseAccessInterface interface {
 	databaseAccess.DatabaseAccessInterface
 	EntityDataAccessInterface
 	GetStockIDs() (*[]*uuid.UUID, error)
+	AddNewStock(stock *stock.Stock) (stock.StockInterface, error)
 }
 
 type DatabaseAccess struct {
@@ -63,4 +64,17 @@ func (d *DatabaseAccess) GetStockIDs() (*[]*uuid.UUID, error) {
 		stockIDs[i] = stock.GetId()
 	}
 	return &stockIDs, err
+}
+
+func (d *DatabaseAccess) AddNewStock(stockVal *stock.Stock) (stock.StockInterface, error) {
+	json, err := d._networkManager.Stocks().Post("createStock", stockVal)
+	if err != nil {
+		return nil, err
+	}
+	stockVal, err = stock.Parse(json)
+	if err != nil {
+		return nil, err
+	}
+	return stockVal, nil
+
 }

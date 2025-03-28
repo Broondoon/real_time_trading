@@ -59,8 +59,11 @@ func InitalizeHandlers(stockIDs *[]network.StockPrice,
 	_networkQueueManager.AddHandleFuncUnprotected(network.HandlerParams{Pattern: "placeStockOrder", Handler: PlaceStockOrderHandler})
 	_networkHttpManager.AddHandleFuncUnprotected(network.HandlerParams{Pattern: "deleteOrder/", Handler: DeleteStockOrderHandler})
 	_networkHttpManager.AddHandleFuncProtected(network.HandlerParams{Pattern: os.Getenv("transaction_route") + "/getStockPrices", Handler: GetStockPricesHandler})
+	_networkQueueManager.AddHandleFuncUnprotected(network.HandlerParams{Pattern: "CompletePairedOrder", Handler: CompletePairedOrderHandler})
 	http.HandleFunc("/health", healthHandler)
 	networkQueueManager.Listen()
+
+	//Add a new queue listener to handle the confirmation of database updates on stock orders and transactions.
 }
 
 func healthHandler(w http.ResponseWriter, r *http.Request) {
@@ -90,6 +93,7 @@ func AddNewStockHandler(responseWriter network.ResponseWriter, data []byte, quer
 }
 
 func AddNewStock(stockID string, stockName string) {
+	log.Println("Adding new stock: ", stockID, " / ", stockName)
 	_, ok := _matchingEngineMap[stockID]
 	//if we don't have a matching engine for this stock, create one
 	if !ok {
@@ -167,8 +171,8 @@ func PlaceStockOrder(data *[]*StockOrderBulk, TransferParams any) error {
 	}
 	log.Println("Stock Order List len: ", len(stockOrderList))
 	go func() {
-		var errors map[string]int
-		stockOrders, errors, err := _databaseManager.CreateBulk(&stockOrderList)
+		var errorList map[string]int
+		stockOrders, errorList, err := _databaseManager.CreateBulk(&stockOrderList)
 		if err != nil {
 			log.Println("Error: ", err.Error())
 			for _, stockOrderBulk := range stockOrderPairings {
@@ -176,7 +180,7 @@ func PlaceStockOrder(data *[]*StockOrderBulk, TransferParams any) error {
 			}
 		}
 		for _, stockOrder := range *stockOrders {
-			if _, ok := errors[stockOrder.GetUniquePairing().String()]; ok {
+			if _, ok := errorList[stockOrder.GetUniquePairing().String()]; ok {
 				_matchingEngineMap[stockOrder.GetStockIDString()].RemoveOrder(stockOrder.GetIdString(), stockOrder.GetPrice())
 				stockOrderPairings[stockOrder.GetUniquePairing().String()].ResponseWriter.WriteHeader(http.StatusBadRequest)
 				continue
@@ -184,13 +188,18 @@ func PlaceStockOrder(data *[]*StockOrderBulk, TransferParams any) error {
 		}
 	}()
 	for _, stockOrder := range stockOrderList {
-		me := _matchingEngineMap[stockOrder.GetStockIDString()]
-		me.AddOrder(stockOrder)
-		stockOrderPairings[stockOrder.GetUniquePairing().String()].ResponseWriter.WriteHeader(http.StatusOK)
+		if me, ok := _matchingEngineMap[stockOrder.GetStockIDString()]; ok {
+			me.AddOrder(stockOrder)
+			stockOrderPairings[stockOrder.GetUniquePairing().String()].ResponseWriter.WriteHeader(http.StatusOK)
+		} else {
+			log.Println("Error: Matching engine not found for ID: ", stockOrder.GetStockIDString())
+			stockOrderPairings[stockOrder.GetUniquePairing().String()].ResponseWriter.WriteHeader(http.StatusBadRequest)
+		}
 	}
 	return nil
 }
 
+// this handles the delete order request from initiator, spawned by /cancelStockOrder from user
 func DeleteStockOrderHandler(responseWriter network.ResponseWriter, data []byte, queryParams url.Values, requestType string) {
 	orderID, err := uuid.Parse(strings.TrimSpace(queryParams.Get("id")))
 	if err != nil {
@@ -214,17 +223,17 @@ func DeleteStockOrderHandler(responseWriter network.ResponseWriter, data []byte,
 func DeleteStockOrder(orderID *uuid.UUID) error {
 	order, err := _databaseManager.GetByID(orderID)
 	if err != nil {
-		log.Println("Error: ", err.Error())
+		log.Println("Cancel Stock GetByID Error: ", err.Error())
 		return err
 	}
 	err = _databaseManager.Delete(orderID)
 	if err != nil {
-		log.Println("Error: ", err.Error())
+		log.Println("Cancel Stock Delete Error: ", err.Error())
 		return err
 	}
 	me, ok := _matchingEngineMap[order.GetStockIDString()]
 	if !ok {
-		log.Println("Error: Matching engine not found for ID: ", order.GetStockID())
+		log.Println("Cancel Stock Error: Matching engine not found for ID: ", order.GetStockID())
 		return nil
 	}
 	me.RemoveOrder(orderID.String(), order.GetPrice())
@@ -280,14 +289,39 @@ func SendToOrderExection(buyOrder order.StockOrderInterface, sellOrder order.Sto
 		return network.ExecutorToMatchingEngineJSON{}, err
 	}
 	var matchedData network.ExecutorToMatchingEngineJSON
-	// matchedData = network.ExecutorToMatchingEngineJSON{
-	// 	IsBuyFailure:  false,
-	// 	IsSellFailure: false,
-	// }
 	err = json.Unmarshal(data, &matchedData)
 	if err != nil {
 		log.Println("Error: ", err.Error())
 		return network.ExecutorToMatchingEngineJSON{}, err
 	}
 	return matchedData, nil
+}
+
+func CompletePairedOrderHandler(responseWriter network.ResponseWriter, data []byte, queryParams url.Values, requestType string) {
+	//parse the stock order
+	var matchedData network.ExecutorToMatchingEngineJSON
+	err := json.Unmarshal(data, &matchedData)
+	if err != nil {
+		log.Println("Error: ", err.Error())
+		responseWriter.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	me, ok := _matchingEngineMap[matchedData.StockID]
+	if !ok {
+		log.Println("Error: Matching engine not found for ID: ", matchedData.StockID)
+		responseWriter.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	err = me.CompletePairedOrder(matchedData)
+	if err != nil {
+		log.Println("Error: ", err.Error())
+		//check if the error string has 404
+		if strings.Contains(err.Error(), "404") {
+			responseWriter.WriteHeader(http.StatusNotFound)
+			return
+		} else {
+			responseWriter.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+	}
 }

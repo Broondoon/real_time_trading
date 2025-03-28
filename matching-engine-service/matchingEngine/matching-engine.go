@@ -4,7 +4,9 @@ import (
 	"MatchingEngineService/matchingEngineStructures"
 	"Shared/entities/order"
 	"Shared/network"
+	subfunctions "Shared/subfunctions/Multithreading"
 	"databaseAccessStockOrder"
+	"fmt"
 	"log"
 )
 
@@ -19,6 +21,21 @@ type MatchingEngineInterface interface {
 	RunMatchingEngineOrders()
 	RunMatchingEngineUpdates()
 	GetPrice() network.StockPrice
+	CompletePairedOrder(params network.ExecutorToMatchingEngineJSON) error
+}
+
+// things to do:
+// Shift the completion logic into a new routine.
+// store the paired orders in a backlog.
+// Setup handlers for the completion logic.
+type PairedOrders struct {
+	Buyer    order.StockOrderInterface
+	Seller   order.StockOrderInterface
+	Quantity int
+}
+
+func (po *PairedOrders) GetKey() string {
+	return po.Buyer.GetIdString() + po.Seller.GetIdString()
 }
 
 type MatchingEngine struct {
@@ -29,8 +46,10 @@ type MatchingEngine struct {
 	updateChannel       chan *UpdateParams
 	SendToOrderExection func(buyOrder order.StockOrderInterface, sellOrder order.StockOrderInterface) (network.ExecutorToMatchingEngineJSON, error)
 	//dirty fix
-	DatabaseManager databaseAccessStockOrder.DatabaseAccessInterface
-	StockName       string
+	DatabaseManager   databaseAccessStockOrder.DatabaseAccessInterface
+	StockName         string
+	PairedOrders      map[string]PairedOrders
+	UpdateBulkRoutine subfunctions.BulkRoutineInterface[order.StockOrderInterface]
 }
 
 type NewMatchingEngineParams struct {
@@ -51,16 +70,35 @@ func NewMatchingEngineForStock(params *NewMatchingEngineParams) MatchingEngineIn
 			limitOrders = append(limitOrders, order)
 		}
 	}
+
 	me := &MatchingEngine{
 		StockId:             params.StockID,
 		BuyOrderBook:        matchingEngineStructures.DefaultBuyOrderBook(&marketOrders),
 		SellOrderBook:       matchingEngineStructures.DefaultSellOrderBook(&limitOrders),
-		orderChannel:        make(chan int, 1000),
+		orderChannel:        make(chan int, 5000),
 		updateChannel:       make(chan *UpdateParams, 1000),
 		SendToOrderExection: params.SendToOrderExecutionFunc,
 		DatabaseManager:     params.DatabaseManager,
 		StockName:           params.StockName,
+		PairedOrders:        make(map[string]PairedOrders),
 	}
+
+	updateFunc := func(data *[]order.StockOrderInterface, TransferParams any) error {
+		errorList, err := me.DatabaseManager.UpdateBulk(data)
+		if err != nil {
+			log.Println("Error in deleting bulk orders")
+			return err
+		}
+		for id, err := range errorList {
+			log.Println("Failed to update stock order: ", id, " with Error Code: ", err)
+		}
+		return nil
+	}
+
+	me.UpdateBulkRoutine = subfunctions.NewBulkRoutine(&subfunctions.BulkRoutineParams[order.StockOrderInterface]{
+		Routine: updateFunc,
+	})
+
 	return me
 }
 
@@ -121,6 +159,10 @@ func (me *MatchingEngine) RunMatchingEngineOrders() {
 			result, err := me.SendToOrderExection(buyOrder, sellOrder)
 			sellOrderQuantity := sellOrder.GetQuantity()
 			buyOrderQuantity := buyOrder.GetQuantity()
+			quantity := sellOrderQuantity
+			if buyOrderQuantity < sellOrderQuantity {
+				quantity = buyOrderQuantity
+			}
 			if sellIsChild {
 				sellOrder = parentOrder
 			} else if buyIsChild {
@@ -138,20 +180,20 @@ func (me *MatchingEngine) RunMatchingEngineOrders() {
 			} else if result.IsSellFailure {
 				sellOrder = nil
 			} else {
-				sellOrder.UpdateQuantity(-buyOrderQuantity)
-				buyOrder.UpdateQuantity(-sellOrderQuantity)
+				sellOrder.UpdateQuantity(-quantity)
+				buyOrder.UpdateQuantity(-quantity)
+				PairedOrders := PairedOrders{
+					Buyer:    buyOrder,
+					Seller:   sellOrder,
+					Quantity: quantity,
+				}
+				me.PairedOrders[PairedOrders.GetKey()] = PairedOrders
 				if sellOrder.GetQuantity() == 0 {
-					_databaseManager.Delete(sellOrder.GetId())
 					sellOrder = nil
-				} else {
-					_databaseManager.Update(sellOrder)
 				}
 
 				if buyOrder.GetQuantity() == 0 {
-					_databaseManager.Delete(buyOrder.GetId())
 					buyOrder = nil
-				} else {
-					_databaseManager.Update(buyOrder)
 				}
 			}
 		} else {
@@ -215,4 +257,32 @@ func (me *MatchingEngine) GetPrice() network.StockPrice {
 		StockName: me.StockName,
 	}
 
+}
+
+func (me *MatchingEngine) CompletePairedOrder(params network.ExecutorToMatchingEngineJSON) error {
+	if PairedOrder, ok := me.PairedOrders[params.BuyerStockOrderId+params.SellerStockOrderId]; ok {
+		buyOrder := PairedOrder.Buyer
+		sellOrder := PairedOrder.Seller
+		if buyOrder == nil || sellOrder == nil {
+			return fmt.Errorf("500: buy or Sell Order not found")
+		}
+		if params.IsBuyFailure {
+			sellOrder.UpdateQuantity(PairedOrder.Quantity)
+			me.SellOrderBook.ReturnOrder(sellOrder)
+		}
+		if params.IsSellFailure {
+			buyOrder.UpdateQuantity(PairedOrder.Quantity)
+			me.BuyOrderBook.ReturnOrder(buyOrder)
+		}
+		if len(*buyOrder.GetUpdates()) > 0 {
+			me.UpdateBulkRoutine.Insert(buyOrder)
+		}
+		if len(*sellOrder.GetUpdates()) > 0 {
+			me.UpdateBulkRoutine.Insert(sellOrder)
+		}
+		delete(me.PairedOrders, PairedOrder.GetKey())
+		return nil
+	} else {
+		return fmt.Errorf("404: paired Order not found")
+	}
 }

@@ -2,6 +2,7 @@ package database
 
 import (
 	"Shared/entities/entity"
+	"Shared/objects"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -128,7 +129,7 @@ func (c *CachedEntityData[T, TDatabase]) GetByID(id string) (T, error) {
 
 func (c *CachedEntityData[T, TDatabase]) GetByIDs(ids []string) (*[]T, map[string]error) {
 	log.Printf("[Cache] GetByIDs: Looking up multiple IDs: %v", ids)
-	errors := make(map[string]error)
+	errorList := make(map[string]error)
 	ctx := context.Background()
 	entityMap := make(map[string]T)
 	keys := make([]string, len(ids))
@@ -169,11 +170,11 @@ func (c *CachedEntityData[T, TDatabase]) GetByIDs(ids []string) (*[]T, map[strin
 	// Step 2: Fetch missing IDs from database
 	if len(missingIds) > 0 {
 		log.Printf("[Cache] GetByIDs: 📡 Fetching missing IDs from database: %v", missingIds)
-		dbEntities, errors := c.underlying.GetByIDs(missingIds)
+		dbEntities, errorList := c.underlying.GetByIDs(missingIds)
 
 		// Step 3: Cache newly retrieved entities
 		for _, entity := range *dbEntities {
-			if _, ok := errors[entity.GetIdString()]; !ok {
+			if _, ok := errorList[entity.GetIdString()]; !ok {
 				id := entity.GetIdString()
 				entityMap[id] = entity
 				jsonBytes, err := json.MarshalIndent(entity, "", "  ")
@@ -199,7 +200,7 @@ func (c *CachedEntityData[T, TDatabase]) GetByIDs(ids []string) (*[]T, map[strin
 			log.Printf("[Cache] GetByIDs: ❌ No entity found for ID %s", id)
 		}
 	}
-	return &finalEntities, errors
+	return &finalEntities, errorList
 }
 
 func (c *CachedEntityData[T, TDatabase]) GetByForeignID(foreignIDColumn, foreignID string) (*[]T, error) {
@@ -239,6 +240,10 @@ func (c *CachedEntityData[T, TDatabase]) GetByForeignID(foreignIDColumn, foreign
 
 func (c *CachedEntityData[T, TDatabase]) GetByForeignIDBulk(foreignIDColumn string, foreignIDs []string) (*[]T, map[string]error) {
 	return c.underlying.GetByForeignIDBulk(foreignIDColumn, foreignIDs)
+}
+
+func (c *CachedEntityData[T, TDatabase]) GetByFilteredForeignIDBulk(foreignIDKey string, foreignIDs []string, filterKey string, filterVal string) (*[]T, map[string]error) {
+	return c.underlying.GetByFilteredForeignIDBulk(foreignIDKey, foreignIDs, filterKey, filterVal)
 }
 
 func (c *CachedEntityData[T, TDatabase]) Create(entity T) error {
@@ -438,11 +443,11 @@ func (c *CachedEntityData[T, TDatabase]) Delete(id string) error {
 
 func (c *CachedEntityData[T, TDatabase]) DeleteBulk(ids []string) map[string]error {
 	log.Printf("[Cache] DeleteBulk: Deleting entities with IDs: %v", ids)
-	errors := c.underlying.DeleteBulk(ids)
+	errorList := c.underlying.DeleteBulk(ids)
 
 	ctx := context.Background()
 	for _, id := range ids {
-		if _, ok := errors[id]; !ok {
+		if _, ok := errorList[id]; !ok {
 			key := c.redisKey(id)
 			_ = c.redisClient.Del(ctx, key)
 		}
@@ -451,5 +456,13 @@ func (c *CachedEntityData[T, TDatabase]) DeleteBulk(ids []string) map[string]err
 	// ❗ Invalidate the all_entities cache
 	_ = c.redisClient.Del(ctx, "all_entities")
 
-	return errors
+	return errorList
+}
+
+// TODO: Implement the following methods
+func (c *CachedEntityData[T, TDatabase]) GetByPairedID(idColumn1 string, idColumn2 string, ids objects.Pair) (T, error) {
+	panic("implement me")
+}
+func (c *CachedEntityData[T, TDatabase]) GetByPairedIDBulk(idColumn1 string, idColumn2 string, ids *[]objects.Pair) (*[]T, map[string]error) {
+	panic("implement me")
 }

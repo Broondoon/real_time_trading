@@ -3,6 +3,7 @@ package databaseAccess
 import (
 	"Shared/entities/entity"
 	"Shared/network"
+	"Shared/objects"
 	"fmt"
 	"log"
 	"net/http"
@@ -189,6 +190,64 @@ func (d *EntityDataAccessClient[TEntity, TInterface]) GetByIDs(ids []*uuid.UUID)
 	return &converted, bulkReturn.Errors, nil
 }
 
+func (d *EntityDataAccessClient[TEntity, TInterface]) GetByPairedID(idColumn1 string, idColumn2 string, ids objects.Pair) (TInterface, error) {
+	if d.GetRoute == "" {
+		d.GetRoute = d.DefaultRoute
+	}
+	//We attach the ID to the route and send a GET request to the database service.
+	queryParams := map[string]string{"IdColumn1": idColumn1, "IdColumn2": idColumn2, "Id1": ids.ID1, "Id2": ids.ID2}
+	jsonBytes, err := d._client.Get(d.GetRoute, queryParams)
+	if err != nil {
+		var zero TInterface
+		return zero, err
+	}
+	//We parse the JSON response into the entity struct.
+	entity, err := d.Parser(jsonBytes)
+	if err != nil {
+		var zero TInterface
+		log.Println("Failed to unmarshal entity: ", err)
+		return zero, err
+	}
+	//We convert the entity struct to the interface and return it.
+	return interface{}(entity).(TInterface), nil
+}
+
+func (d *EntityDataAccessClient[TEntity, TInterface]) GetByPairedIDBulk(idColumn1 string, idColumn2 string, ids *[]objects.Pair) (*[]TInterface, map[string]int, error) {
+	if d.GetRoute == "" {
+		d.GetRoute = d.DefaultRoute
+	}
+	//We send a GET request to the database service to get entities by their paired IDs.
+	queryParams := map[string]string{"IdColumn1": idColumn1, "IdColumn2": idColumn2}
+	//We convert the list of paired IDs to the right format for the bulk request.
+	var interfaces []string
+	for _, v := range *ids {
+		interfaces = append(interfaces, v.String())
+	}
+	//We send a GET request to the database service to get entities by their paired IDs.
+	bulkReturn, err := d._client.GetBulk(d.GetRoute, interfaces, queryParams)
+	if err != nil {
+		var zero []TInterface
+		var mapErrs map[string]int
+		log.Println("Failed to get entities by paired IDs: ", err)
+		return &zero, mapErrs, err
+	}
+	//We parse the JSON response into a list of entity structs.
+	jsonBytes := bulkReturn.Entities
+	entities, err := d.ParserList(jsonBytes)
+	if err != nil {
+		var zero []TInterface
+		var mapErrs map[string]int
+		log.Println("Failed to unmarshal entities: ", err)
+		return &zero, mapErrs, err
+	}
+	//We convert the list of entity structs to a list of interfaces and return it.
+	converted := make([]TInterface, len(*entities))
+	for i, e := range *entities {
+		converted[i] = interface{}(e).(TInterface)
+	}
+	return &converted, bulkReturn.Errors, nil
+}
+
 // GetByForeignID gets entities by a foreign key.
 func (d *EntityDataAccessClient[TEntity, TInterface]) GetByForeignID(foreignIDColumn string, foreignID string) (*[]TInterface, error) {
 	//log.Println("Getting by foreign ID")
@@ -223,11 +282,14 @@ func (d *EntityDataAccessClient[TEntity, TInterface]) GetByForeignID(foreignIDCo
 // GetByForeignIDBulk gets entities by a foreign key. This is a bulk operation. Try to avoid using this if possible, as it's an O(n^2) operation, unless the DB has a better alogirthm built in.
 // It will return all the entities that match the foreign IDs, and a map of any errors that occurred, mapped to their respective foreign IDs.
 func (d *EntityDataAccessClient[TEntity, TInterface]) GetByForeignIDBulk(foreignIDColumn string, foreignIDs []string) (*[]TInterface, map[string]int, error) {
+	return d.GetByFilteredForeignIDBulk(foreignIDColumn, foreignIDs, "", "")
+}
+func (d *EntityDataAccessClient[TEntity, TInterface]) GetByFilteredForeignIDBulk(foreignIDColumn string, foreignIDs []string, filterKey string, filterVal string) (*[]TInterface, map[string]int, error) {
 	if d.GetRoute == "" {
 		d.GetRoute = d.DefaultRoute
 	}
 	// mark this as a foreign key search by passing the foreign key column name
-	queryParams := map[string]string{"foreignKey": foreignIDColumn}
+	queryParams := map[string]string{"foreignKey": foreignIDColumn, "filteredForeignKey": filterKey, "filteredForeignID": filterVal}
 	//We send a GET request to the database service to get entities by their foreign key.
 	bulkReturn, err := d._client.GetBulk(d.GetRoute, foreignIDs, queryParams)
 	if err != nil {
@@ -319,20 +381,24 @@ func (d *EntityDataAccessClient[TEntity, TInterface]) Update(entity TInterface) 
 		d.PutRoute = d.DefaultRoute
 	}
 	//We convert the list of updates to the right format for the bulk request.
+	updates := *entity.GetUpdates()
+	entity.ClearUpdates()
 	var updatesInterface []interface{}
-	for _, u := range *entity.GetUpdates() {
+	for _, u := range updates {
 		updatesInterface = append(updatesInterface, u)
 	}
 	//We send a PUT request to the database service to update the entity.
 	bulkReturn, err := d._client.Put(d.PutRoute, updatesInterface)
 	if err != nil {
 		log.Println("Failed to update entity: ", err)
+		entity.SetUpdates(&updates)
 		return err
 	}
 	//If there are any errors, we log them and return an error. Otherwise, we return nil, because you already have the updated entity. You don't need a new one.
 	if len(bulkReturn.Errors) > 0 {
 		log.Println("Failed to update entity: ", bulkReturn.Errors)
 		err = fmt.Errorf("failed to update entity: %v", bulkReturn.Errors)
+		entity.SetUpdates(&updates)
 		return err
 	}
 	return nil
@@ -344,12 +410,17 @@ func (d *EntityDataAccessClient[TEntity, TInterface]) UpdateBulk(entities *[]TIn
 	if d.PutRoute == "" {
 		d.PutRoute = d.DefaultRoute
 	}
+	changesPerEntity := make(map[string][]*entity.EntityUpdateData)
+	entitiesById := make(map[string]TInterface)
 	//We convert the list of updates to the right format for the bulk request.
 	var interfaces []interface{}
 	for _, v := range *entities {
+		entitiesById[v.GetIdString()] = v
+		changesPerEntity[v.GetIdString()] = *v.GetUpdates()
 		for _, u := range *v.GetUpdates() {
 			interfaces = append(interfaces, u)
 		}
+		v.ClearUpdates()
 	}
 	//We don't actually have a put bulk request, because it's always just a list of updates. So we just send a put request with the updates. This one just has updates for multiple entities, and reutrns errors for mulitple entities.
 	bulkReturn, err := d._client.Put(d.PutRoute, interfaces)
@@ -357,6 +428,12 @@ func (d *EntityDataAccessClient[TEntity, TInterface]) UpdateBulk(entities *[]TIn
 		var mapErrs map[string]int
 		log.Println("Failed to update entities: ", err)
 		return mapErrs, err
+	}
+	for id, err := range bulkReturn.Errors {
+		log.Println("Failed to update entity: ", id, " with Error Code: ", err, ". Re-adding Updates to entity.")
+		//We put the updates back in the entity, so they can be tried again.
+		tempUpdates := changesPerEntity[id]
+		entitiesById[id].SetUpdates(&tempUpdates)
 	}
 	return bulkReturn.Errors, nil
 }

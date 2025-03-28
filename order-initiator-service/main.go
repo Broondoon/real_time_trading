@@ -4,6 +4,7 @@ import (
 	OrderInitiatorService "OrderInitiatorService/handlers"
 	networkHttp "Shared/network/http"
 	networkQueue "Shared/network/queue"
+	"databaseAccessStock"
 	"databaseAccessTransaction"
 	"databaseAccessUserManagement"
 	"log"
@@ -18,7 +19,11 @@ func main() {
 	networkHttpManager := networkHttp.NewNetworkHttp()
 	networkQueueManager := networkQueue.NewNetworkQueue(nil, os.Getenv("ORDER_INITIATOR_HOST")+":"+os.Getenv("ORDER_INITIATOR_PORT"))
 
-	databaseAccess := databaseAccessTransaction.NewDatabaseAccess(&databaseAccessTransaction.NewDatabaseAccessParams{
+	databaseAccessTransaction := databaseAccessTransaction.NewDatabaseAccess(&databaseAccessTransaction.NewDatabaseAccessParams{
+		Network: networkHttpManager,
+	})
+
+	databaseAccessStock := databaseAccessStock.NewDatabaseAccess(&databaseAccessStock.NewDatabaseAccessParams{
 		Network: networkHttpManager,
 	})
 
@@ -26,7 +31,7 @@ func main() {
 		Network: networkHttpManager,
 	})
 
-	go OrderInitiatorService.InitalizeHandlers(networkHttpManager, networkQueueManager, databaseAccess, databaseAccessUserManagement)
+	go OrderInitiatorService.InitalizeHandlers(networkHttpManager, networkQueueManager, databaseAccessTransaction, databaseAccessUserManagement, databaseAccessStock)
 	log.Println("Matching Engine Service Started")
 
 	networkHttpManager.Listen()
