@@ -181,7 +181,7 @@ func (n *QueueResponseHandler) WriteHeader(statusCode int) {
 		case http.StatusBadRequest:
 			n.d.Nack(false, false)
 		case http.StatusInternalServerError:
-			n.d.Nack(false, true)
+			n.d.Nack(false, false)
 		default:
 			n.d.Nack(false, false)
 		}
