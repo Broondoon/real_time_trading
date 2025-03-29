@@ -421,7 +421,7 @@ services:
       POSTGRESQL_REPLICATION_MODE: master
       POSTGRESQL_USERNAME: ${TRANSACTION_POSTGRES_USER}
       POSTGRESQL_PASSWORD: ${TRANSACTION_POSTGRES_PASSWORD}
-      POSTGRESQL_REPLICATION_USERNAME: ${TRANSACTION_REPLICATION_USER}
+      POSTGRESQL_REPLICATION_USER: ${TRANSACTION_REPLICATION_USER}
       POSTGRESQL_REPLICATION_PASSWORD: ${TRANSACTION_REPLICATION_PASSWORD}
       POSTGRESQL_DATABASE: ${TRANSACTION_POSTGRES_DB}
       POSTGRESQL_POSTGRES_PASSWORD: ${TRANSACTION_POSTGRESROLE_PASSWORD}
@@ -429,8 +429,8 @@ services:
     volumes:
       # - transaction-db-data:/var/lib/postgresql/data
       # - transaction-db-data:/bitnami/postgresql # Mounts a specific docker volume for persistence
-      - ./db-replication-config/pg_hba.conf:/bitnami/postgresql/conf/pg_hba.conf # Mounts a config file so the container has access to it
-      - ./db-replication-config/postgresql.conf:/bitnami/postgresql/conf/postgresql.conf # Mounts a config file so the container has access to it
+      # - ./db-replication-config/pg_hba.conf:/bitnami/postgresql/conf/pg_hba.conf # Mounts a config file so the container has access to it
+      # - ./db-replication-config/postgresql.conf:/bitnami/postgresql/conf/postgresql.conf # Mounts a config file so the container has access to it
       - ./transaction-database/init.sql:/docker-entrypoint-initdb.d/init.sql # Mounts the init file so the container has access to it
     healthcheck:
       test:
@@ -462,12 +462,12 @@ services:
     depends_on:
       transaction-db:
         condition: service_healthy
-    volumes:
-      # - transaction-db-secondary-data:/bitnami/postgresql
-      - ./db-replication-config/pg_hba.conf:/bitnami/postgresql/conf/pg_hba.conf
-      - ./db-replication-config/postgresql.conf:/bitnami/postgresql/conf/postgresql.conf
-      # Replica does not need the initialization, since as a secondary, it auto gets the tables from primary
-      # - ./transaction-database/init.sql:/docker-entrypoint-initdb.d/init.sql
+    #volumes:
+    # - transaction-db-secondary-data:/bitnami/postgresql
+    # - ./db-replication-config/pg_hba.conf:/bitnami/postgresql/conf/pg_hba.conf
+    # - ./db-replication-config/postgresql.conf:/bitnami/postgresql/conf/postgresql.conf
+    # Replica does not need the initialization, since as a secondary, it auto gets the tables from primary
+    # - ./transaction-database/init.sql:/docker-entrypoint-initdb.d/init.sql
     healthcheck:
       test:
         [
