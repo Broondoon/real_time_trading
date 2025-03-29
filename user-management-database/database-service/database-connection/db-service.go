@@ -4,8 +4,6 @@ import (
 	databaseService "Shared/database/database-service"
 	userStock "Shared/entities/user-stock"
 	"Shared/entities/wallet"
-	"os"
-	"time"
 
 	"gorm.io/gorm"
 )
@@ -39,7 +37,7 @@ type NewDatabaseServiceParams struct {
 func NewDatabaseService(params *NewDatabaseServiceParams) DatabaseServiceInterface {
 	newDBConnection := databaseService.NewPostGresDatabase(&databaseService.NewPostGresDatabaseParams{})
 
-	cachedUserStock := databaseService.NewCachedEntityData[*userStock.UserStock, *gorm.DB](&databaseService.NewCachedEntityDataParams[*userStock.UserStock, *gorm.DB]{
+	/* cachedUserStock := databaseService.NewCachedEntityData[*userStock.UserStock, *gorm.DB](&databaseService.NewCachedEntityDataParams[*userStock.UserStock, *gorm.DB]{
 		RedisAddr:  os.Getenv("REDIS_USER_MANAGEMENT_ADDR"),
 		Password:   os.Getenv("REDIS_PASSWORD"),
 		DefaultTTL: 5 * time.Minute,
@@ -64,6 +62,15 @@ func NewDatabaseService(params *NewDatabaseServiceParams) DatabaseServiceInterfa
 	db := &DatabaseService{
 		UserStock:         cachedUserStock,
 		Wallet:            cachedWallet,
+		DatabaseInterface: newDBConnection,
+	} */
+	db := &DatabaseService{
+		UserStock: databaseService.NewPostGresEntityData[*userStock.UserStock](&databaseService.NewPostGresEntityDataParams{
+			Existing: newDBConnection,
+		}),
+		Wallet: databaseService.NewPostGresEntityData[*wallet.Wallet](&databaseService.NewPostGresEntityDataParams{
+			Existing: newDBConnection,
+		}),
 		DatabaseInterface: newDBConnection,
 	}
 

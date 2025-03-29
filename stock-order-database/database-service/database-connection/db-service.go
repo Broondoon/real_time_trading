@@ -3,8 +3,6 @@ package databaseServiceStockOrder
 import (
 	databaseService "Shared/database/database-service"
 	"Shared/entities/order"
-	"os"
-	"time"
 
 	"gorm.io/gorm"
 )
@@ -23,19 +21,22 @@ type NewDatabaseServiceParams struct {
 }
 
 func NewDatabaseService(params NewDatabaseServiceParams) DatabaseServiceInterface {
-	dbConnection := databaseService.NewPostGresDatabase(&databaseService.NewPostGresDatabaseParams{})
+	/* 	dbConnection := databaseService.NewPostGresDatabase(&databaseService.NewPostGresDatabaseParams{})
 
-	cachedStockOrder := databaseService.NewCachedEntityData[*order.StockOrder, *gorm.DB](&databaseService.NewCachedEntityDataParams[*order.StockOrder, *gorm.DB]{
-		RedisAddr:  os.Getenv("REDIS_STOCK_ORDER_ADDR"),
-		Password:   os.Getenv("REDIS_PASSWORD"),
-		DefaultTTL: 5 * time.Minute,
-		EntityData: databaseService.NewPostGresEntityData[*order.StockOrder](&databaseService.NewPostGresEntityDataParams{
-			Existing: dbConnection,
-		}),
-	})
+	   	cachedStockOrder := databaseService.NewCachedEntityData[*order.StockOrder, *gorm.DB](&databaseService.NewCachedEntityDataParams[*order.StockOrder, *gorm.DB]{
+	   		RedisAddr:  os.Getenv("REDIS_STOCK_ORDER_ADDR"),
+	   		Password:   os.Getenv("REDIS_PASSWORD"),
+	   		DefaultTTL: 5 * time.Minute,
+	   		EntityData: databaseService.NewPostGresEntityData[*order.StockOrder](&databaseService.NewPostGresEntityDataParams{
+	   			Existing: dbConnection,
+	   		}),
+	   	})
 
+	   	db := &DatabaseService{
+	   		EntityDataInterface: cachedStockOrder,
+	   	} */
 	db := &DatabaseService{
-		EntityDataInterface: cachedStockOrder,
+		EntityDataInterface: databaseService.NewPostGresEntityData[*order.StockOrder](&databaseService.NewPostGresEntityDataParams{}),
 	}
 
 	db.Connect()
