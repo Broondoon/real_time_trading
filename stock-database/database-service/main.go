@@ -4,7 +4,7 @@ import (
 	networkHttp "Shared/network/http"
 	databaseServiceStock "databaseServiceStock/database-connection"
 	stockDatabaseHandlers "databaseServiceStock/handlers"
-	"fmt"
+	"log"
 )
 
 //"Shared/network"
@@ -14,7 +14,7 @@ func main() {
 	_databaseManager := databaseServiceStock.NewDatabaseService(&databaseServiceStock.NewDatabaseServiceParams{})
 
 	go stockDatabaseHandlers.InitalizeHandlers(networkManager, _databaseManager)
-	fmt.Println("Stock Database Service Started")
+	log.Println("Stock Database Service Started")
 
 	networkManager.Listen()
 }

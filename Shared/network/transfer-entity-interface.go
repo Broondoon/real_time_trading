@@ -10,9 +10,8 @@ type MatchingEngineToExecutionJSON struct {
 	IsSellPartial bool    `json:"is_sell_partial"`
 	StockPrice    float64 `json:"stock_price"`
 	Quantity      int     `json:"quantity"`
+	Name          string  `json:"stock_name"`
 }
-
-
 
 type StockPrice struct {
 	StockID   string  `json:"stock_id"`
@@ -22,6 +21,7 @@ type StockPrice struct {
 
 type StockID struct {
 	StockID string `json:"stock_id"`
+	Name    string `json:"stock_name"`
 }
 
 type StockTransactionID struct {
@@ -42,8 +42,11 @@ type AddStock struct {
 // If the buy order failed, then the is_buy_failed field = true
 // If the sell order failed, then the is_sell_failed field =true
 type ExecutorToMatchingEngineJSON struct {
-	IsBuyFailure  bool `json:"is_buy_failed"`
-	IsSellFailure bool `json:"is_sell_failed"`
+	StockID            string `json:"stock_id"`
+	BuyerStockOrderId  string `json:"buyer_id"`
+	SellerStockOrderId string `json:"seller_id"`
+	IsBuyFailure       bool   `json:"is_buy_failed"`
+	IsSellFailure      bool   `json:"is_sell_failed"`
 }
 
 type ReturnJSON struct {
@@ -51,7 +54,7 @@ type ReturnJSON struct {
 	Data    any  `json:"data"`
 }
 
-/* 
+/*
 	// Create custom response structure
 	type StockPortfolioResponse struct {
 		StockID       string    `json:"stock_id"`

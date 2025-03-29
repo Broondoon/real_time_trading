@@ -5,6 +5,8 @@ import (
 	"Shared/entities/stock"
 	"Shared/network"
 	"os"
+
+	"github.com/google/uuid"
 )
 
 type EntityDataAccessInterface = databaseAccess.EntityDataAccessInterface[*stock.Stock, stock.StockInterface]
@@ -12,7 +14,8 @@ type EntityDataAccessInterface = databaseAccess.EntityDataAccessInterface[*stock
 type DatabaseAccessInterface interface {
 	databaseAccess.DatabaseAccessInterface
 	EntityDataAccessInterface
-	GetStockIDs() (*[]string, error)
+	GetStockIDs() (*[]*uuid.UUID, error)
+	AddNewStock(stock *stock.Stock) (stock.StockInterface, error)
 }
 
 type DatabaseAccess struct {
@@ -21,44 +24,57 @@ type DatabaseAccess struct {
 }
 
 type NewDatabaseAccessParams struct {
-	*databaseAccess.NewEntityDataAccessHTTPParams[*stock.Stock]
+	*databaseAccess.NewEntityDataAccessNetworkParams[*stock.Stock]
 	Network network.NetworkInterface
 }
 
 func NewDatabaseAccess(params *NewDatabaseAccessParams) DatabaseAccessInterface {
-	if params.NewEntityDataAccessHTTPParams == nil {
-		params.NewEntityDataAccessHTTPParams = &databaseAccess.NewEntityDataAccessHTTPParams[*stock.Stock]{}
+	if params.NewEntityDataAccessNetworkParams == nil {
+		params.NewEntityDataAccessNetworkParams = &databaseAccess.NewEntityDataAccessNetworkParams[*stock.Stock]{}
 	}
 
 	if params.Network == nil {
 		panic("No network provided")
 	}
-	if params.NewEntityDataAccessHTTPParams.Client == nil {
-		params.NewEntityDataAccessHTTPParams.Client = params.Network.Stocks()
+	if params.NewEntityDataAccessNetworkParams.Client == nil {
+		params.NewEntityDataAccessNetworkParams.Client = params.Network.Stocks()
 	}
-	if params.NewEntityDataAccessHTTPParams.DefaultRoute == "" {
-		params.NewEntityDataAccessHTTPParams.DefaultRoute = os.Getenv("STOCK_DATABASE_SERVICE_ROUTE")
+	if params.NewEntityDataAccessNetworkParams.DefaultRoute == "" {
+		params.NewEntityDataAccessNetworkParams.DefaultRoute = os.Getenv("STOCK_DATABASE_SERVICE_ROUTE")
 	}
-	if params.NewEntityDataAccessHTTPParams.Parser == nil {
-		params.NewEntityDataAccessHTTPParams.Parser = stock.Parse
+	if params.NewEntityDataAccessNetworkParams.Parser == nil {
+		params.NewEntityDataAccessNetworkParams.Parser = stock.Parse
 	}
-	if params.NewEntityDataAccessHTTPParams.ParserList == nil {
-		params.NewEntityDataAccessHTTPParams.ParserList = stock.ParseList
+	if params.NewEntityDataAccessNetworkParams.ParserList == nil {
+		params.NewEntityDataAccessNetworkParams.ParserList = stock.ParseList
 	}
 
 	dba := &DatabaseAccess{
-		EntityDataAccessInterface: databaseAccess.NewEntityDataAccessHTTP[*stock.Stock, stock.StockInterface](params.NewEntityDataAccessHTTPParams),
+		EntityDataAccessInterface: databaseAccess.NewEntityDataAccessNetwork[*stock.Stock, stock.StockInterface](params.NewEntityDataAccessNetworkParams),
 		_networkManager:           params.Network,
 	}
 	dba.Connect()
 	return dba
 }
 
-func (d *DatabaseAccess) GetStockIDs() (*[]string, error) {
+func (d *DatabaseAccess) GetStockIDs() (*[]*uuid.UUID, error) {
 	stocks, err := d.GetAll()
-	stockIDs := make([]string, len(*stocks))
+	stockIDs := make([]*uuid.UUID, len(*stocks))
 	for i, stock := range *stocks {
 		stockIDs[i] = stock.GetId()
 	}
 	return &stockIDs, err
+}
+
+func (d *DatabaseAccess) AddNewStock(stockVal *stock.Stock) (stock.StockInterface, error) {
+	json, err := d._networkManager.Stocks().Post("createStock", stockVal)
+	if err != nil {
+		return nil, err
+	}
+	stockVal, err = stock.Parse(json)
+	if err != nil {
+		return nil, err
+	}
+	return stockVal, nil
+
 }

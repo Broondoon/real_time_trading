@@ -5,30 +5,33 @@ import (
 	"databaseAccessTransaction"
 	"databaseAccessUserManagement"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"net/url"
 )
 
 var _databaseAccessTransact databaseAccessTransaction.DatabaseAccessInterface
 var _databaseAccessUser databaseAccessUserManagement.DatabaseAccessInterface
+var _matchingEngineClientManager network.ClientInterface
 
 func InitalizeExecutorHandlers(
 	networkManager network.NetworkInterface,
+	queueManager network.NetworkInterface,
 	databaseAccessTransact databaseAccessTransaction.DatabaseAccessInterface,
 	databaseAccessUser databaseAccessUserManagement.DatabaseAccessInterface) {
 
 	_databaseAccessTransact = databaseAccessTransact
 	_databaseAccessUser = databaseAccessUser
+	_matchingEngineClientManager = queueManager.MatchingEngine()
 
-	networkManager.AddHandleFuncUnprotected(network.HandlerParams{Pattern: "executor", Handler: executorHandler})
+	queueManager.AddHandleFuncUnprotected(network.HandlerParams{Pattern: "executor", Handler: executorHandler})
 
 	http.HandleFunc("/health", healthHandler)
+	queueManager.Listen()
 }
 
 func healthHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
-	fmt.Fprintln(w, "OK")
+	//log.Println(w, "OK")
 }
 
 func executorHandler(responseWriter network.ResponseWriter, data []byte, queryParams url.Values, requestType string) {
@@ -40,22 +43,23 @@ func executorHandler(responseWriter network.ResponseWriter, data []byte, queryPa
 	}
 
 	// Process the orderData (transferEntity) from the Matching Engine
-	buySuccess, sellSuccess, err := ProcessTrade(orderData, _databaseAccessTransact, _databaseAccessUser)
+	stockID, buyerStockOrderID, sellerStockOrderID, buySuccess, sellSuccess, err := ProcessTrade(orderData, _databaseAccessTransact, _databaseAccessUser, _matchingEngineClientManager)
 	if err != nil {
 		responseWriter.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	println(fmt.Sprintf("Done ProcessTrade - buySuccess: %t, sellSuccess: %t", buySuccess, sellSuccess))
 	// Independent failure flags //
 	// If the match was successful, both IsBuyFailure and IsSellFailure will be false
 	// If the match was unsuccessful, only one of IsBuyFailure and IsSellFailure will be true
 	// If there was an error, both IsBuyFailure and IsSellFailure will be true
 	responseEntity := network.ExecutorToMatchingEngineJSON{
-		IsBuyFailure:  !buySuccess,
-		IsSellFailure: !sellSuccess,
+		IsBuyFailure:       !buySuccess,
+		IsSellFailure:      !sellSuccess,
+		StockID:            stockID,
+		BuyerStockOrderId:  buyerStockOrderID,
+		SellerStockOrderId: sellerStockOrderID,
 	}
 
-	println(fmt.Sprintf("IsBuyFailure: %t, IsSellFailure: %t", responseEntity.IsBuyFailure, responseEntity.IsSellFailure))
 	jsonResponseToMatchingEngine, err := json.Marshal(responseEntity)
 	if err != nil {
 		responseWriter.WriteHeader(http.StatusInternalServerError)

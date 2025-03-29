@@ -11,7 +11,10 @@ import (
 	"net/http"
 	"net/url"
 	"sort"
+	"strings"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 type AddStock struct {
@@ -31,46 +34,8 @@ func InitializeUserStock(userStockAccess databaseAccessUserManagement.UserStocks
 	//testFuncInsertUserStock("6fd2fc6b-9142-4777-8b30-575ff6fa2460")
 }
 
-// TODO: delete this is for testing
-/*
-func testFuncInsertUserStock(userID string) {
-	stockID1 := uuid.New().String()
-	stockID2 := uuid.New().String()
-
-	createdUserStock1, err := _userStockAccess.Create(userStock.New(userStock.NewUserStockParams{
-		NewEntityParams: entity.NewEntityParams{
-			ID: uuid.New().String(),
-		},
-		UserID:    userID,
-		StockID:   stockID1,
-		Quantity:  100,
-		StockName: "AAPL",
-	}))
-	if err != nil {
-		log.Fatalf("Failed to create user stock 1: %v", err)
-	}
-	fmt.Printf("Created user stock for user %s with stockID %s and quantity %d\n",
-		createdUserStock1.GetUserID(), stockID1, createdUserStock1.GetQuantity())
-
-	createdUserStock2, err := _userStockAccess.Create(userStock.New(userStock.NewUserStockParams{
-		NewEntityParams: entity.NewEntityParams{
-			ID: uuid.New().String(),
-		},
-		UserID:    userID,
-		StockID:   stockID2,
-		Quantity:  100,
-		StockName: "GOOGL",
-	}))
-	if err != nil {
-		log.Fatalf("Failed to create user stock 2: %v", err)
-	}
-	fmt.Printf("Created user stock for user %s with stockID %s and quantity %d\n",
-		createdUserStock2.GetUserID(), stockID2, createdUserStock2.GetQuantity())
-}
-*/
-
 func getStockPortfolioHandler(responseWriter network.ResponseWriter, data []byte, queryParams url.Values, requestType string) {
-	log.Println("[DEBUG] getStockPortfolioHandler invoked")
+	//log.Println("[DEBUG] getStockPortfolioHandler invoked")
 
 	userID := queryParams.Get("userID")
 	if userID == "" {
@@ -78,7 +43,7 @@ func getStockPortfolioHandler(responseWriter network.ResponseWriter, data []byte
 		responseWriter.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	log.Printf("[DEBUG] Extracted userID: %s", userID)
+	//log.Printf("[DEBUG] Extracted userID: %s", userID)
 
 	stocks, err := _userStockAccess.GetUserStocks(userID)
 	if err != nil {
@@ -86,7 +51,7 @@ func getStockPortfolioHandler(responseWriter network.ResponseWriter, data []byte
 		responseWriter.WriteHeader(http.StatusNotFound)
 		return
 	}
-	log.Printf("[DEBUG] Retrieved %d stock records for userID %s", len(*stocks), userID)
+	//	log.Printf("[DEBUG] Retrieved %d stock records for userID %s", len(*stocks), userID)
 
 	// Create custom response structure
 	type StockPortfolioResponse struct {
@@ -99,23 +64,23 @@ func getStockPortfolioHandler(responseWriter network.ResponseWriter, data []byte
 	// Transform stocks into desired format
 	portfolioResponse := make([]StockPortfolioResponse, 0)
 	for _, stock := range *stocks {
-		log.Printf("[DEBUG] Processing stock: ID=%s, Name=%s, Quantity=%d", stock.GetStockID(), stock.GetStockName(), stock.GetQuantity())
+		//	log.Printf("[DEBUG] Processing stock: ID=%s, Name=%s, Quantity=%d", stock.GetStockID(), stock.GetStockName(), stock.GetQuantity())
 		if stock.GetQuantity() > 0 { // Only include stocks with quantity > 0
 			portfolioResponse = append(portfolioResponse, StockPortfolioResponse{
-				StockID:       stock.GetStockID(),
+				StockID:       stock.GetStockIDString(),
 				StockName:     stock.GetStockName(),
 				QuantityOwned: stock.GetQuantity(),
 				UpdatedAt:     stock.GetUpdatedAt(),
 			})
 		}
 	}
-	log.Printf("[DEBUG] Transformed portfolio has %d entries", len(portfolioResponse))
+	//log.Printf("[DEBUG] Transformed portfolio has %d entries", len(portfolioResponse))
 
 	// Sort by stock name (if still needed)
 	sort.SliceStable(portfolioResponse, func(i, j int) bool {
 		return portfolioResponse[i].StockName > portfolioResponse[j].StockName
 	})
-	log.Println("[DEBUG] Sorted portfolio response by stock name")
+	//log.Println("[DEBUG] Sorted portfolio response by stock name")
 
 	returnVal := network.ReturnJSON{
 		Success: true,
@@ -128,7 +93,7 @@ func getStockPortfolioHandler(responseWriter network.ResponseWriter, data []byte
 		responseWriter.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	log.Printf("[DEBUG] Marshalled JSON response: %s", string(stocksJSON))
+	//log.Printf("[DEBUG] Marshalled JSON response: %s", string(stocksJSON))
 
 	responseWriter.Header().Set("Content-Type", "application/json")
 	responseWriter.Write(stocksJSON)
@@ -136,7 +101,7 @@ func getStockPortfolioHandler(responseWriter network.ResponseWriter, data []byte
 }
 
 func addStockToUser(responseWriter network.ResponseWriter, data []byte, queryParams url.Values, requestType string) {
-	log.Printf("DEBUG: addStockToUser invoked. Request Type: %s, Query Params: %v, Request Body: %s", requestType, queryParams, string(data))
+	//log.Printf("DEBUG: addStockToUser invoked. Request Type: %s, Query Params: %v, Request Body: %s", requestType, queryParams, string(data))
 
 	userID := queryParams.Get("userID")
 	if userID == "" {
@@ -144,7 +109,7 @@ func addStockToUser(responseWriter network.ResponseWriter, data []byte, queryPar
 		responseWriter.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	log.Printf("DEBUG: Extracted userID: %s", userID)
+	//log.Printf("DEBUG: Extracted userID: %s", userID)
 
 	var stockRequest AddStock
 	err := json.Unmarshal(data, &stockRequest)
@@ -153,7 +118,7 @@ func addStockToUser(responseWriter network.ResponseWriter, data []byte, queryPar
 		responseWriter.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	log.Printf("DEBUG: Parsed AddStock request: %+v", stockRequest)
+	//log.Printf("DEBUG: Parsed AddStock request: %+v", stockRequest)
 
 	if stockRequest.StockID == "" || stockRequest.Quantity <= 0 {
 		log.Println("ERROR: Invalid stockRequest values in addStockToUser. StockID is empty or Quantity is non-positive.")
@@ -168,21 +133,34 @@ func addStockToUser(responseWriter network.ResponseWriter, data []byte, queryPar
 		stockName = "Unknown" // Fallback to "Unknown" if not found
 	}
 
+	userUuid, err := uuid.Parse(strings.TrimSpace(userID))
+	if err != nil {
+		log.Printf("ERROR: Failed to parse userID %s: %v", userID, err)
+		responseWriter.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	stockUuid, err := uuid.Parse(stockRequest.StockID)
+	if err != nil {
+		log.Printf("ERROR: Failed to parse stockID %s: %v", stockRequest.StockID, err)
+		responseWriter.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
 	newUserStock := userStock.New(userStock.NewUserStockParams{
-		UserID:    userID,
-		StockID:   stockRequest.StockID,
+		UserID:    &userUuid,
+		StockID:   &stockUuid,
 		Quantity:  stockRequest.Quantity,
 		StockName: stockName, // Use the retrieved stock name
 	})
-	log.Printf("DEBUG: Created newUserStock object: %+v", newUserStock)
+	//	log.Printf("DEBUG: Created newUserStock object: %+v", newUserStock)
 
-	createdUserStock, err := _userStockAccess.Create(newUserStock)
+	_, err = _userStockAccess.Create(newUserStock)
 	if err != nil {
 		log.Printf("ERROR: Failed to create user stock for userID %s: %v", userID, err)
 		responseWriter.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	log.Printf("DEBUG: Successfully created user stock: %+v", createdUserStock)
+	//	log.Printf("DEBUG: Successfully created user stock: %+v", createdUserStock)
 
 	returnVal := network.ReturnJSON{
 		Success: true,
@@ -194,7 +172,7 @@ func addStockToUser(responseWriter network.ResponseWriter, data []byte, queryPar
 		responseWriter.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	log.Printf("DEBUG: Marshalled response JSON: %s", string(responseJSON))
+	//	log.Printf("DEBUG: Marshalled response JSON: %s", string(responseJSON))
 
 	responseWriter.Header().Set("Content-Type", "application/json")
 	responseWriter.WriteHeader(http.StatusCreated)
@@ -202,11 +180,11 @@ func addStockToUser(responseWriter network.ResponseWriter, data []byte, queryPar
 	if err != nil {
 		log.Printf("ERROR: Failed to write response for userID %s: %v", userID, err)
 	}
-	log.Println("DEBUG: addStockToUser completed successfully.")
+	//	log.Println("DEBUG: addStockToUser completed successfully.")
 }
 
 func getStockName(stockID string) (string, error) {
-	log.Printf("[getStockName Debug] Looking up stock with ID: %s", stockID)
+	//	log.Printf("[getStockName Debug] Looking up stock with ID: %s", stockID)
 	stocks, err := _stockDatabaseAccess.GetAll()
 	if err != nil {
 		log.Printf("[getStockName Debug] Error getting stocks: %v", err)
@@ -214,13 +192,10 @@ func getStockName(stockID string) (string, error) {
 	}
 	stockIDToName := make(map[string]string)
 	for _, stock := range *stocks {
-		id := stock.GetId()
-		name := stock.GetName()
-		stockIDToName[id] = name
-		log.Printf("[getStockName Debug] Stock found: ID=%s, Name=%s", id, name)
+		stockIDToName[stock.GetIdString()] = stock.GetName()
 	}
 	if name, exists := stockIDToName[stockID]; exists {
-		log.Printf("[getStockName Debug] Found stock name for ID %s: %s", stockID, name)
+		//	log.Printf("[getStockName Debug] Found stock name for ID %s: %s", stockID, name)
 		return name, nil
 	}
 	log.Printf("[getStockName Debug] Stock not found with ID: %s", stockID)

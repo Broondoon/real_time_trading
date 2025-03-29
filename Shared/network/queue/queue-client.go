@@ -4,6 +4,7 @@ import (
 	"Shared/network"
 	"context"
 	"encoding/json"
+	"log"
 	"os"
 	"strings"
 	"time"
@@ -39,7 +40,7 @@ func NewQueueClient(exchangeRoute string, params *NewQueueClientParams) QueueCli
 	if exchangeRoute == "" {
 		panic("Exchange route cannot be empty")
 	} else {
-		println("Exchange route for new client: ", exchangeRoute)
+		log.Println("Exchange route for new client: ", exchangeRoute)
 	}
 	return &QueueClient{
 		QueueConnectionInterface: NewNetworkQueueConnection(params.NewNetworkQueueConnectionParams),
@@ -55,20 +56,25 @@ type SendParams struct {
 }
 
 func DefaultPublishParams() SendParams {
+	timeOutEnv, err := time.ParseDuration(os.Getenv("HTTP_TIMEOUT"))
+	if err != nil {
+		log.Println("TIMEOUT env variable not set, defaulting to 20s")
+		timeOutEnv = 20000 * time.Millisecond
+	}
 	return SendParams{
 		Mandatory: false,
 		Immediate: false,
-		Timeout:   5 * time.Second,
+		Timeout:   timeOutEnv,
 	}
 }
 
 func (n *QueueClient) SendWithReturn(route string, message []byte, params SendParams, onReturn func([]byte) ([]byte, error)) ([]byte, error) {
-	println("######")
-	println("Sending with return")
-	println("Route: ", route)
-	println("ExchangeRoute: ", n.ExchangeRoute)
-	println("Message: ", string(message))
-	println("######")
+	log.Println("######")
+	log.Println("Sending with return")
+	log.Println("Route: ", route)
+	log.Println("ExchangeRoute: ", n.ExchangeRoute)
+	log.Println("Message: ", string(message))
+	log.Println("######")
 
 	exchangeParams := ExchangeParams{
 		Name:    n.ExchangeRoute,
@@ -76,7 +82,12 @@ func (n *QueueClient) SendWithReturn(route string, message []byte, params SendPa
 	}
 	ch := n.SpawnChannel(exchangeParams)
 	if params.Timeout == 0 {
-		params.Timeout = 5 * time.Second
+		timeOutEnv, err := time.ParseDuration(os.Getenv("HTTP_TIMEOUT"))
+		if err != nil {
+			log.Println("TIMEOUT env variable not set, defaulting to 20s")
+			timeOutEnv = 20000 * time.Millisecond
+		}
+		params.Timeout = timeOutEnv
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), params.Timeout)
 	defer cancel()
@@ -90,7 +101,7 @@ func (n *QueueClient) SendWithReturn(route string, message []byte, params SendPa
 		nil,
 	)
 	failOnError(err, "Failed to declare a return queue")
-	println("Return queue declared")
+	log.Println("Return queue declared")
 	msg, err := ch.Consume(
 		returnQueue.Name,
 		"",
@@ -101,7 +112,7 @@ func (n *QueueClient) SendWithReturn(route string, message []byte, params SendPa
 		nil,
 	)
 	failOnError(err, "Failed to register a consumer")
-	println("Consumer registered")
+	log.Println("Consumer registered")
 	corrID := generateRandomID()
 	err = ch.PublishWithContext(
 		ctx,
@@ -116,14 +127,14 @@ func (n *QueueClient) SendWithReturn(route string, message []byte, params SendPa
 			Body:          message,
 		})
 	failOnError(err, "Failed to publish a message")
-	println("Message published")
+	log.Println("Message published")
 	for d := range msg {
 		if corrID == d.CorrelationId {
-			println("Response received")
+			log.Println("Response received")
 			return onReturn(d.Body)
 		}
 	}
-	println("No response received")
+	log.Println("No response received")
 	return nil, nil
 }
 
@@ -149,8 +160,34 @@ func (n *QueueClient) Get(route string, headers map[string]string) ([]byte, erro
 	})
 }
 
-func (n *QueueClient) PostBulk(route string, payload []interface{}) ([]byte, error) {
-	headers := map[string]string{"isBulk": "true"}
+func (n *QueueClient) GetBulk(route string, ids []string, headers map[string]string) (network.BulkReturn, error) {
+	headers["Isbulk"] = "true"
+	headers["Ids"] = strings.Join(ids, ",")
+	data := QueueJSONData{
+		Headers:     headers,
+		MessageType: "GET",
+		Payload:     nil,
+	}
+	jsonData, err := json.Marshal(data)
+	if err != nil {
+		return network.BulkReturn{}, err
+	}
+	response, err := n.SendWithReturn(route, jsonData, DefaultPublishParams(), func(response []byte) ([]byte, error) {
+		return response, nil
+	})
+	if err != nil {
+		return network.BulkReturn{}, err
+	}
+	var bulkReturn network.BulkReturn
+	err = json.Unmarshal(response, &bulkReturn)
+	if err != nil {
+		return network.BulkReturn{}, err
+	}
+	return bulkReturn, nil
+}
+
+func (n *QueueClient) PostBulk(route string, payload []interface{}) (network.BulkReturn, error) {
+	headers := map[string]string{"Isbulk": "true"}
 	data := QueueJSONData{
 		Headers:     headers,
 		MessageType: "POST",
@@ -158,16 +195,24 @@ func (n *QueueClient) PostBulk(route string, payload []interface{}) ([]byte, err
 	}
 	jsonData, err := json.Marshal(data)
 	if err != nil {
-		println("Error marshalling payload")
-		return nil, err
+		return network.BulkReturn{}, err
 	}
-	return n.SendWithReturn(route, jsonData, DefaultPublishParams(), func(response []byte) ([]byte, error) {
+	response, err := n.SendWithReturn(route, jsonData, DefaultPublishParams(), func(response []byte) ([]byte, error) {
 		return response, nil
 	})
+	if err != nil {
+		return network.BulkReturn{}, err
+	}
+	var bulkReturn network.BulkReturn
+	err = json.Unmarshal(response, &bulkReturn)
+	if err != nil {
+		return network.BulkReturn{}, err
+	}
+	return bulkReturn, nil
 }
 
 func (n *QueueClient) Post(route string, payload interface{}) ([]byte, error) {
-	headers := map[string]string{"isBulk": "false"}
+	headers := map[string]string{"Isbulk": ""}
 	data := QueueJSONData{
 		Headers:     headers,
 		MessageType: "POST",
@@ -175,7 +220,7 @@ func (n *QueueClient) Post(route string, payload interface{}) ([]byte, error) {
 	}
 	jsonData, err := json.Marshal(data)
 	if err != nil {
-		println("Error marshalling payload")
+		log.Println("Error marshalling payload")
 		return nil, err
 	}
 	return n.SendWithReturn(route, jsonData, DefaultPublishParams(), func(response []byte) ([]byte, error) {
@@ -183,20 +228,83 @@ func (n *QueueClient) Post(route string, payload interface{}) ([]byte, error) {
 	})
 }
 
-func (n *QueueClient) Put(route string, payload interface{}) ([]byte, error) {
+// func (n *QueueClient) Put(route string, payload interface{}) ([]byte, error) {
+// 	data := QueueJSONData{
+// 		Headers:     nil,
+// 		MessageType: "PUT",
+// 		Payload:     payload,
+// 	}
+// 	jsonData, err := json.Marshal(data)
+// 	if err != nil {
+// 		log.Println("Error marshalling payload")
+// 		return nil, err
+// 	}
+// 	return n.SendWithReturn(route, jsonData, DefaultPublishParams(), func(response []byte) ([]byte, error) {
+// 		return response, nil
+// 	})
+// }
+
+func (n *QueueClient) Put(route string, payload []interface{}) (network.BulkReturn, error) {
+	headers := map[string]string{"Isbulk": "true"}
 	data := QueueJSONData{
-		Headers:     nil,
+		Headers:     headers,
 		MessageType: "PUT",
 		Payload:     payload,
 	}
 	jsonData, err := json.Marshal(data)
 	if err != nil {
-		println("Error marshalling payload")
-		return nil, err
+		return network.BulkReturn{}, err
 	}
-	return n.SendWithReturn(route, jsonData, DefaultPublishParams(), func(response []byte) ([]byte, error) {
+	response, err := n.SendWithReturn(route, jsonData, DefaultPublishParams(), func(response []byte) ([]byte, error) {
 		return response, nil
 	})
+	if err != nil {
+		return network.BulkReturn{}, err
+	}
+	var bulkReturn network.BulkReturn
+	err = json.Unmarshal(response, &bulkReturn)
+	if err != nil {
+		return network.BulkReturn{}, err
+	}
+	return bulkReturn, nil
+}
+
+func (n *QueueClient) Patch(route string, id string) error {
+	headers := map[string]string{"id": id}
+	data := QueueJSONData{
+		Headers:     headers,
+		MessageType: "PATCH",
+		Payload:     nil,
+	}
+	jsonData, err := json.Marshal(data)
+	if err != nil {
+		return err
+	}
+	_, err = n.SendWithReturn(route, jsonData, DefaultPublishParams(), func(response []byte) ([]byte, error) {
+		return response, nil
+	})
+	return err
+}
+
+func (n *QueueClient) PatchBulk(route string, ids []string) (network.BulkReturn, error) {
+	headers := map[string]string{"ids": strings.Join(ids, ",")}
+	data := QueueJSONData{
+		Headers:     headers,
+		MessageType: "PATCH",
+		Payload:     nil,
+	}
+	jsonData, err := json.Marshal(data)
+	if err != nil {
+		return network.BulkReturn{}, err
+	}
+	_, err = n.SendWithReturn(route, jsonData, DefaultPublishParams(), func(response []byte) ([]byte, error) {
+		return response, nil
+	})
+	if err != nil {
+		return network.BulkReturn{}, err
+	}
+	return network.BulkReturn{}, nil
+
 }
 
 func (n *QueueClient) Delete(route string) ([]byte, error) {
@@ -212,12 +320,36 @@ func (n *QueueClient) Delete(route string) ([]byte, error) {
 	}
 	jsonData, err := json.Marshal(data)
 	if err != nil {
-		println("Error marshalling payload")
 		return nil, err
 	}
 	return n.SendWithReturn(route, jsonData, DefaultPublishParams(), func(response []byte) ([]byte, error) {
 		return response, nil
 	})
+}
+
+func (n *QueueClient) DeleteBulk(route string, payload []string) (network.BulkReturn, error) {
+	headers := map[string]string{"ids": strings.Join(payload, ",")}
+	data := QueueJSONData{
+		Headers:     headers,
+		MessageType: "DELETE",
+		Payload:     nil,
+	}
+	jsonData, err := json.Marshal(data)
+	if err != nil {
+		return network.BulkReturn{}, err
+	}
+	response, err := n.SendWithReturn(route, jsonData, DefaultPublishParams(), func(response []byte) ([]byte, error) {
+		return response, nil
+	})
+	if err != nil {
+		return network.BulkReturn{}, err
+	}
+	var bulkReturn network.BulkReturn
+	err = json.Unmarshal(response, &bulkReturn)
+	if err != nil {
+		return network.BulkReturn{}, err
+	}
+	return bulkReturn, nil
 }
 
 func generateRandomID() string {

@@ -4,6 +4,8 @@ import (
 	databaseAccess "Shared/database/database-access"
 	"Shared/entities/order"
 	databaseServiceStockOrder "databaseServiceStockOrder/database-connection"
+
+	"gorm.io/gorm"
 )
 
 type EntityDataAccessInterface = databaseAccess.EntityDataAccessInterface[*order.StockOrder, order.StockOrderInterface]
@@ -12,6 +14,7 @@ type DatabaseAccessInterface interface {
 	databaseAccess.DatabaseAccessInterface
 	EntityDataAccessInterface
 	GetInitialStockOrdersForStock(stockID string) *[]order.StockOrderInterface
+	CreateBulk(entities *[]order.StockOrderInterface) (*[]order.StockOrderInterface, map[string]int, error)
 }
 
 type DatabaseAccess struct {
@@ -20,12 +23,12 @@ type DatabaseAccess struct {
 }
 
 type NewDatabaseAccessParams struct {
-	*databaseAccess.NewEntityDataAccessParams[*order.StockOrder]
+	*databaseAccess.NewEntityDataAccessParams[*order.StockOrder, *gorm.DB]
 }
 
 func NewDatabaseAccess(params *NewDatabaseAccessParams) DatabaseAccessInterface {
 	if params.NewEntityDataAccessParams == nil {
-		params.NewEntityDataAccessParams = &databaseAccess.NewEntityDataAccessParams[*order.StockOrder]{
+		params.NewEntityDataAccessParams = &databaseAccess.NewEntityDataAccessParams[*order.StockOrder, *gorm.DB]{
 			NewDatabaseAccessParams: &databaseAccess.NewDatabaseAccessParams{},
 		}
 	}
@@ -54,7 +57,27 @@ func (d *DatabaseAccess) GetInitialStockOrdersForStock(stockID string) *[]order.
 	}
 	convertedStockOrders := make([]order.StockOrderInterface, len(*stockOrders))
 	for i, o := range *stockOrders {
-		convertedStockOrders[i] = &o
+		convertedStockOrders[i] = o
 	}
 	return &convertedStockOrders
+}
+
+func (d *DatabaseAccess) CreateBulk(entities *[]order.StockOrderInterface) (*[]order.StockOrderInterface, map[string]int, error) {
+	errorList := make(map[string]int)
+	tempEntities := make([]*order.StockOrder, len(*entities))
+	for i, e := range *entities {
+		tempEntities[i] = e.(*order.StockOrder)
+	}
+	errMap := d.TEMPCONNECTION.CreateBulk(&tempEntities)
+	if _, ok := errMap["transaction"]; ok {
+		return nil, nil, errMap["transaction"]
+	}
+	for k := range errMap {
+		errorList[k] = 500
+	}
+	converted := make([]order.StockOrderInterface, len(tempEntities))
+	for i, e := range tempEntities {
+		converted[i] = e
+	}
+	return &converted, errorList, nil
 }

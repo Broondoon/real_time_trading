@@ -58,7 +58,7 @@ func (q *Queue) PopNext() order.StockOrderInterface {
 
 func (q *Queue) Remove(params *RemoveParams) order.StockOrderInterface {
 	for e := q.data.Front(); e != nil; e = e.Next() {
-		if e.Value.(order.StockOrderInterface).GetId() == params.OrderID {
+		if e.Value.(order.StockOrderInterface).GetIdString() == params.OrderID {
 			q.data.Remove(e)
 			return e.Value.(order.StockOrderInterface)
 		}

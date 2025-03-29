@@ -7,7 +7,8 @@ import (
 	"databaseAccessTransaction"
 	"databaseAccessUserManagement"
 	"fmt"
-	"time"
+
+	"github.com/google/uuid"
 )
 
 // Calculates the total cost of a transaction given the quantity and stock price.
@@ -17,85 +18,72 @@ func calculateTotalTransactionCost(quantity int, stockPrice float64) float64 {
 
 // Finds and validates user stock portfolios
 func findUserStockPortfolios(
-	buyerID string,
-	sellerID string,
+	buyerID *uuid.UUID,
+	sellerID *uuid.UUID,
 	databaseAccessUser databaseAccessUserManagement.DatabaseAccessInterface,
-) (*[]userStock.UserStockInterface, *[]userStock.UserStockInterface, error) {
+) (*[]userStock.UserStockInterface, error) {
 
 	// Get buyer's current stock holdings
-	buyerStockPortfolio, err := databaseAccessUser.UserStock().GetUserStocks(buyerID)
+	buyerStockPortfolio, err := databaseAccessUser.UserStock().GetUserStocks(buyerID.String())
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to get buyer stocks: %v", err)
+		return nil, fmt.Errorf("failed to get buyer stocks: %v", err)
 	}
-	println(fmt.Sprintf("Retrieved buyer portfolio with %d stocks", len(*buyerStockPortfolio)))
+	//log.Printf("Retrieved buyer portfolio with %d stocks", len(*buyerStockPortfolio))
 
-	// Get seller's current stock holdings
-	sellerStockPortfolio, err := databaseAccessUser.UserStock().GetUserStocks(sellerID)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to get seller stocks: %v", err)
-	}
-	println(fmt.Sprintf("Retrieved seller portfolio with %d stocks", len(*sellerStockPortfolio)))
+	// // Get seller's current stock holdings
+	// sellerStockPortfolio, err := databaseAccessUser.UserStock().GetUserStocks(sellerID.String())
+	// if err != nil {
+	// 	return nil, nil, fmt.Errorf("failed to get seller stocks: %v", err)
+	// }
+	// //log.Printf("%s", fmt.Sprintf("Retrieved seller portfolio with %d stocks", len(*sellerStockPortfolio)))
 
-	return buyerStockPortfolio, sellerStockPortfolio, nil
+	return buyerStockPortfolio, nil
 }
 
 // Finds and validates seller's stock holding
 func handleSellerStock(
 	sellerStockPortfolio *[]userStock.UserStockInterface,
-	stockID string,
+	stockID *uuid.UUID,
 	quantity int,
 ) (userStock.UserStockInterface, error) {
 
 	var sellerStock userStock.UserStockInterface
-
-	var count int
 	for _, stock := range *sellerStockPortfolio {
-		//(stock.ToParams().StockID)
-		//println(stock.ToParams().StockName)
-		//println(stock.ToParams().Quantity)
-		//count++
-		println(fmt.Sprintf("Portfolio Stock: %s, Portfolio Stock Quantity: %d", stock.GetStockID(), stock.GetQuantity()))
-		if stock.GetStockID() == stockID {
+		if stock.GetStockIDString() == stockID.String() {
 			sellerStock = stock
 			break
 		}
 	}
-	println(count)
 
-	//println(fmt.Sprintf("Final -> Seller  has %d shares of StockID: %s", sellerStock.GetQuantity(), sellerStock.GetStockID()))
-
-	sellerQuantity := sellerStock.GetQuantity()
-
-	println(fmt.Sprintf("Initially Seller has %d shares of StockID: %s", sellerQuantity, sellerStock.GetStockID()))
 	return sellerStock, nil
+	//println(fmt.Sprintf("Final -> Seller  has %d shares of StockID: %s", sellerStock.GetQuantity(), sellerStock.GetStockID()))
 }
 
 // Creates or retrieves buyer's stock holding
 func handleBuyerStock(
 	buyerStockPortfolio *[]userStock.UserStockInterface,
-	buyerID string,
-	stockID string,
+	buyerID *uuid.UUID,
+	stockID *uuid.UUID,
 	//quantity int,
-	sellerStock userStock.UserStockInterface,
+	stockName string,
 	databaseAccessUser databaseAccessUserManagement.DatabaseAccessInterface,
 ) (userStock.UserStockInterface, error) {
 
 	var buyerStock userStock.UserStockInterface
 	for _, stock := range *buyerStockPortfolio {
-		if stock.GetStockID() == stockID {
+		if stock.GetStockIDString() == stockID.String() {
 			buyerStock = stock
 			break
 		}
 	}
-	//println(fmt.Sprintf("Initially Buyer has %d shares of StockID: %s", buyerStock.GetQuantity(), buyerStock.GetStockID()))
-
 	// If the buyer doesn't have any of the stock, a new stock holding is created
 	// The quantity is originally set to zero and is updated after (otherwise there's an error where the quantity is double what it should be)
+
 	if buyerStock == nil {
 		buyerStock = userStock.New(userStock.NewUserStockParams{
 			UserID:    buyerID,
 			StockID:   stockID,
-			StockName: sellerStock.GetStockName(),
+			StockName: stockName,
 			Quantity:  0,
 		})
 		createdStock, err := databaseAccessUser.UserStock().Create(buyerStock)
@@ -111,85 +99,98 @@ func handleBuyerStock(
 // Updates the user's stock quantities in the database
 func updateUserStockQuantities(
 	buyerStock userStock.UserStockInterface,
-	sellerStock userStock.UserStockInterface,
 	quantity int,
 	databaseAccessUser databaseAccessUserManagement.DatabaseAccessInterface,
 ) error {
 
-	//sellerStock.SetQuantity(sellerStock.GetQuantity() - quantity)
-	buyerStock.SetQuantity(buyerStock.GetQuantity() + quantity)
-
-	if err := databaseAccessUser.UserStock().Update(sellerStock); err != nil {
-		return fmt.Errorf("failed to update seller stock: %v", err)
-	}
-	//println(fmt.Sprintf("Final -> Seller  has %d shares of StockID: %s", sellerStock.GetQuantity(), sellerStock.GetStockID()))
+	buyerStock.UpdateQuantity(quantity)
 
 	if err := databaseAccessUser.UserStock().Update(buyerStock); err != nil {
 		return fmt.Errorf("failed to update buyer stock: %v", err)
 	}
-	//println(fmt.Sprintf("Final -> Buyer  has %d shares of StockID: %s", buyerStock.GetQuantity(), buyerStock.GetStockID()))
+	//log.Println(fmt.Sprintf("Final -> Buyer  has %d shares of StockID: %s", buyerStock.GetQuantity(), buyerStock.GetStockID()))
 
-	println("Final Buyer Quantity of StockID = %s is %d, Final Seller Quantity of StockID = %s is %d", buyerStock.GetStockID(), buyerStock.GetQuantity(), sellerStock.GetStockID(), sellerStock.GetQuantity())
+	//log.Printf("Final Buyer Quantity of StockID = %s is %d, Final Seller Quantity of StockID = %s is %d", buyerStock.GetStockID(), buyerStock.GetQuantity(), sellerStock.GetStockID(), sellerStock.GetQuantity())
 
 	return nil
 }
 
 // Updates transaction status and creates filled transaction if needed
 func updateTransactionStatus(
-	stockTx transaction.StockTransactionInterface,
+	buyerStockTx transaction.StockTransactionInterface,
+	buyerWalletTx transaction.WalletTransactionInterface,
+	sellerStockTx transaction.StockTransactionInterface,
+	sellerWalletTx transaction.WalletTransactionInterface,
 	isBuyPartial bool,
 	isSellPartial bool,
 	stockPrice float64,
 	databaseAccessTransact databaseAccessTransaction.DatabaseAccessInterface,
+	quantity int,
 ) error {
 
-	println(fmt.Sprintf("BEFORE Update Status: %s", stockTx.GetOrderStatus()))
-
-	// Set the stock price in the transaction
-
+	buyerStockTx.UpdateStockPrice(stockPrice)
 	// Handle partial matching for both buy and sell orders
-	if stockTx.GetIsBuy() {
-		stockTx.SetStockPrice(stockPrice + stockTx.GetStockPrice())
-		if isBuyPartial {
-			stockTx.SetOrderStatus("PARTIALLY_COMPLETE")
-		} else {
-			stockTx.SetOrderStatus("COMPLETED")
-		}
-
-	} else {
-		// For sell orders
-		if isSellPartial {
-			stockTx.SetOrderStatus("PARTIALLY_COMPLETE")
-		} else {
-			stockTx.SetOrderStatus("COMPLETED")
-		}
-	}
+	updateTransaction(buyerStockTx, isBuyPartial, stockPrice, databaseAccessTransact, quantity, buyerWalletTx)
+	updateTransaction(sellerStockTx, isSellPartial, stockPrice, databaseAccessTransact, quantity, sellerWalletTx)
 
 	// Update in database
+
+	return nil
+}
+
+func updateTransaction(
+	stockTx transaction.StockTransactionInterface,
+	isPartial bool,
+	stockPrice float64,
+	databaseAccessTransact databaseAccessTransaction.DatabaseAccessInterface,
+	quantity int,
+	walletTx transaction.WalletTransactionInterface,
+) error {
+	if stockTx.GetOrderStatus() == "PARTIALLY_COMPLETE" {
+		partials, err := _databaseAccessTransact.StockTransaction().GetByForeignID("ParentStockTransactionID", stockTx.GetIdString())
+		if err != nil {
+			return fmt.Errorf("failed to get partial transactions: %v", err)
+		}
+		quantityTransfered := 0
+		for _, partial := range *partials {
+			quantityTransfered += partial.GetQuantity()
+		}
+		if quantityTransfered+quantity == stockTx.GetQuantity() {
+			stockTx.SetOrderStatus("COMPLETED")
+		}
+	} else if isPartial {
+		stockTx.SetOrderStatus("PARTIALLY_COMPLETE")
+	} else {
+		stockTx.SetOrderStatus("COMPLETED")
+		stockTx.SetWalletTransactionID(walletTx.GetId())
+	}
+
 	if err := databaseAccessTransact.StockTransaction().Update(stockTx); err != nil {
 		return fmt.Errorf("failed to update transaction status: %v", err)
 	}
-	println(fmt.Sprintf("AFTER Update Status: %s", stockTx.GetOrderStatus()))
+	//log.Printf("%s", fmt.Sprintf("AFTER Update Status: %s", stockTx.GetOrderStatus()))
 
 	// Create filled transaction for partial orders
-	if isBuyPartial || isSellPartial {
-		filledTx := transaction.NewStockTransaction(transaction.NewStockTransactionParams{
+	if isPartial {
+		var filledTx transaction.StockTransactionInterface = transaction.NewStockTransaction(transaction.NewStockTransactionParams{
 			ParentStockTransaction: stockTx,
-			//OrderStatus:            "COMPLETED", // Child transaction is always COMPLETED
-			//TimeStamp:              time.Now(),
 		})
 
 		// Set the stock price in the filled transaction
-		//filledTx.SetStockPrice(stockPrice)
-
+		filledTx.UpdateStockPrice(stockPrice)
 		filledTx.SetOrderStatus("COMPLETED")
-		filledTx.SetStockPrice(stockPrice)
-		filledTx.SetTimestamp(time.Now())
-		if _, err := databaseAccessTransact.StockTransaction().Create(filledTx); err != nil {
+		filledTx.SetWalletTransactionID(walletTx.GetId())
+		filledTx, err := databaseAccessTransact.StockTransaction().Create(filledTx)
+		if err != nil {
 			return fmt.Errorf("failed to create filled stock transaction: %v", err)
 		}
 
-		println(fmt.Sprintf("Created Filled Transaction with ID: %s", filledTx.GetId()))
+		walletTx.SetStockTransactionID(filledTx.GetId())
+		if err := databaseAccessTransact.WalletTransaction().Update(walletTx); err != nil {
+			return fmt.Errorf("failed to update wallet transaction: %v", err)
+		}
+
+		//	log.Printf("%s", fmt.Sprintf("Created Filled Transaction with ID: %s", filledTx.GetId()))
 	}
 
 	return nil
