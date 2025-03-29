@@ -32,12 +32,11 @@ func NewDatabaseService(params *NewDatabaseServiceParams) DatabaseServiceInterfa
 	//Create the database service, wrapped in a redis cache. Leave the creation of the actual service to the cache constructor.
 	db := &DatabaseService{
 		EntityDataInterface: databaseService.NewCachedEntityData[*user.User, *gorm.DB](&databaseService.NewCachedEntityDataParams[*user.User, *gorm.DB]{
-			RedisAddr:  os.Getenv("REDIS_ADDR"),
+			RedisAddr:  os.Getenv("REDIS_AUTH_ADDR"),
 			Password:   os.Getenv("REDIS_PASSWORD"),
 			DefaultTTL: 5 * time.Minute,
 			EntityData: entityDataInterface,
 		}),
-		//EntityDataInterface: databaseService.NewEntityData[*user.User](params.NewEntityDataParams),
 	}
 	//Connect and ensure the schemea in the DB matches the User Entity
 	db.Connect()

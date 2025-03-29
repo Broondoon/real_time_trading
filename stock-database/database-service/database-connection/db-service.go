@@ -20,19 +20,18 @@ type NewDatabaseServiceParams struct {
 }
 
 func NewDatabaseService(params *NewDatabaseServiceParams) DatabaseServiceInterface {
-
-	//CACHE IMPLEMENTATION
-	/* cachedStock := databaseService.NewCachedEntityData[*stock.Stock](&databaseService.NewCachedEntityDataParams{
-		NewEntityDataParams: params.NewEntityDataParams,
-		RedisAddr:           os.Getenv("REDIS_ADDR"),
-		Password:            os.Getenv("REDIS_PASSWORD"),
-		DefaultTTL:          5 * time.Minute,
+	/* cachedStock := databaseService.NewCachedEntityData[*stock.Stock, *gorm.DB](&databaseService.NewCachedEntityDataParams[*stock.Stock, *gorm.DB]{
+		RedisAddr:  os.Getenv("REDIS_STOCK_ADDR"),
+		Password:   os.Getenv("REDIS_PASSWORD"),
+		DefaultTTL: 5 * time.Minute,
+		EntityData: databaseService.NewPostGresEntityData[*stock.Stock](&databaseService.NewPostGresEntityDataParams{
+			Existing: dbConnection,
+		}),
 	})
 
 	db := &DatabaseService{
 		EntityDataInterface: cachedStock,
 	} */
-
 	db := &DatabaseService{
 		EntityDataInterface: databaseService.NewPostGresEntityData[*stock.Stock](&databaseService.NewPostGresEntityDataParams{}),
 	}

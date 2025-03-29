@@ -50,7 +50,7 @@ services:
     environment:
       DATABASE_URL: ${USER_MANAGEMENT_DATABASE_URL}
       PORT: ${USER_MANAGEMENT_PORT}
-      REDIS_URL: redis://redis:6379
+      REDIS_URL: redis://redis:6382
     networks:
       - go-network
     depends_on:
@@ -75,10 +75,11 @@ services:
         condition: on-failure
 
   # ---------------------- Redis Service ----------------------
-  redis:
+  redis-auth:
     image: redis:latest
+    container_name: redis-auth
     ports:
-      - "6379:6379"
+      - "6380:6379"  # Optional for external access
     networks:
       - go-network
     healthcheck:
@@ -86,6 +87,55 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
+
+  redis-transaction:
+    image: redis:latest
+    container_name: redis-transaction
+    ports:
+      - "6381:6379"
+    networks:
+      - go-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+  redis-usermanagement:
+    image: redis:latest
+    container_name: redis-usermanagement
+    ports:
+      - "6382:6379"  # Optional for external access
+    networks:
+      - go-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+  redis-stock:
+    image: redis:latest
+    container_name: redis-stock
+    ports:
+      - "6383:6379"
+    networks:
+      - go-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3 
+  redis-stockorder:
+    image: redis:latest
+    container_name: redis-stockorder
+    ports:
+      - "6384:6379"
+    networks:
+      - go-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3 
 
   # ---------------------- Existing Services ----------------------
   # microservice-template:
@@ -126,7 +176,9 @@ services:
       stock-database-service:
         condition: service_healthy
       # order-executor-service:
-      #   condition: service_healthy
+      #  condition: service_healthy
+      redis-stockorder:
+         condition: service_healthy
       rabbitmq:
         condition: service_healthy
       user-management-database-service:
@@ -264,10 +316,14 @@ services:
     environment:
       DATABASE_URL: ${STOCK_DATABASE_URL}
       PORT: ${STOCK_DATABASE_SERVICE_PORT}
+      REDIS_STOCK_ADDR: ${REDIS_STOCK_ADDR}
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
     networks:
       - go-network
     depends_on:
       stock-db:
+        condition: service_healthy
+      redis-stock:
         condition: service_healthy
     healthcheck:
       test:
@@ -292,10 +348,14 @@ services:
     environment:
       DATABASE_URL: ${USER_MANAGEMENT_DATABASE_URL}
       PORT: ${USER_MANAGEMENT_DATABASE_SERVICE_PORT}
+      REDIS_AUTH_ADDR: ${REDIS_USER_MANAGEMENT_ADDR}
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
     networks:
       - go-network
     depends_on:
       user-management-db:
+        condition: service_healthy
+      redis-usermanagement:
         condition: service_healthy
     healthcheck:
       test:
@@ -320,12 +380,14 @@ services:
     environment:
       DATABASE_URL: ${AUTH_DATABASE_URL}
       PORT: ${AUTH_DATABASE_SERVICE_PORT}
+      REDIS_AUTH_ADDR: ${REDIS_AUTH_ADDR}
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
     networks:
       - go-network
     depends_on:
       auth-db:
         condition: service_healthy
-      redis:
+      redis-auth:
         condition: service_healthy
     healthcheck:
       test:
