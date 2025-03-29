@@ -505,7 +505,7 @@ services:
     networks:
       - go-network
 
-user-management-db-replica:
+  user-management-db-replica:
     image: "bitnami/postgresql:latest"
     container_name: user-management-db-replica-1
     env_file:
