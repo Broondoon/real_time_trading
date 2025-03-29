@@ -92,7 +92,6 @@ func AddNewStockHandler(responseWriter network.ResponseWriter, data []byte, quer
 }
 
 func AddNewStock(stockID string, stockName string) {
-	log.Println("Adding new stock: ", stockID, " / ", stockName)
 	_, ok := _matchingEngineMap[stockID]
 	//if we don't have a matching engine for this stock, create one
 	if !ok {
@@ -168,7 +167,6 @@ func PlaceStockOrder(data *[]*StockOrderBulk, TransferParams any) error {
 		log.Println("No stock orders to place")
 		return nil
 	}
-	log.Println("Stock Order List len: ", len(stockOrderList))
 	go func() {
 		var errorList map[string]int
 		stockOrders, errorList, err := _databaseManagerStockOrder.CreateBulk(&stockOrderList)
@@ -241,10 +239,10 @@ func DeleteStockOrder(orderID *uuid.UUID) error {
 
 func GetStockPricesHandler(responseWriter network.ResponseWriter, data []byte, queryParams url.Values, requestType string) {
 	stockPrices := make([]network.StockPrice, len(stockPriceIndex))
-	log.Println("Stock Price Index length: ", len(stockPriceIndex))
+	// log.Println("Stock Price Index length: ", len(stockPriceIndex))
 	for i, stockID := range stockPriceIndex {
-		val := _matchingEngineMap[stockID].GetPrice()
-		log.Println(i, ". Appending stock: "+val.StockName, " with price: ", val.Price)
+		// val := _matchingEngineMap[stockID].GetPrice()
+		// log.Println(i, ". Appending stock: "+val.StockName, " with price: ", val.Price)
 		stockPrices[i] = _matchingEngineMap[stockID].GetPrice()
 	}
 	returnVal := network.ReturnJSON{
@@ -281,16 +279,16 @@ func SendToOrderExection(buyOrder order.StockOrderInterface, sellOrder order.Sto
 
 	data, err := _databaseAccessUser.ExecuteOrder(buyOrder.GetIdString(), sellOrder.GetIdString(), buyOrder.GetUserIDString(), sellOrder.GetUserIDString(), buyOrder.GetStockIDString(), stockIdToName[buyOrder.GetStockIDString()], sellOrder.GetPrice(), quantity)
 
-	if err != nil {
-		log.Println("Error: ", err.Error())
-		return network.ExecutorToMatchingEngineJSON{
-			StockID:            buyOrder.GetStockIDString(),
-			BuyerStockOrderId:  buyOrder.GetIdString(),
-			SellerStockOrderId: sellOrder.GetIdString(),
-			IsBuyFailure:       true,
-			IsSellFailure:      true,
-		}, err
-	}
+	// if err != nil {
+	// 	log.Println("Error: ", err.Error())
+	// 	return network.ExecutorToMatchingEngineJSON{
+	// 		StockID:            buyOrder.GetStockIDString(),
+	// 		BuyerStockOrderId:  buyOrder.GetIdString(),
+	// 		SellerStockOrderId: sellOrder.GetIdString(),
+	// 		IsBuyFailure:       true,
+	// 		IsSellFailure:      true,
+	// 	}, err
+	// }
 	//var matchedData network.ExecutorToMatchingEngineJSON
 	//err = json.Unmarshal(data, &matchedData)
 	// if err != nil {
@@ -303,7 +301,7 @@ func SendToOrderExection(buyOrder order.StockOrderInterface, sellOrder order.Sto
 	// 		IsSellFailure:      true,
 	// 	}, err
 	// }
-	return data, nil
+	return data, err
 }
 
 func CompletePairedOrderHandler(responseWriter network.ResponseWriter, data []byte, queryParams url.Values, requestType string) {

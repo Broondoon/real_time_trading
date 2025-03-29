@@ -1,4 +1,4 @@
--- SET log_min_messages = NOTICE;
+SET log_min_messages = ERROR;
 
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 DROP TABLE IF EXISTS wallet_transactions CASCADE;
@@ -21,7 +21,7 @@ CREATE TABLE user_stocks (
     user_id UUID NOT NULL,
     stock_id UUID NOT NULL,
     stock_name TEXT NOT NULL,
-    quantity INT NOT NULL,
+    quantity BIGINT NOT NULL,
     date_created TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     date_modified TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (user_id, stock_id)
@@ -39,7 +39,7 @@ CREATE TABLE stock_transactions (
     is_buy BOOLEAN NOT NULL,
     order_type TEXT NOT NULL,
     stock_price DECIMAL NOT NULL,
-    quantity INT NOT NULL,
+    quantity BIGINT NOT NULL,
     user_id UUID NOT NULL,
     timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (parent_stock_transaction_id) REFERENCES stock_transactions(id)
@@ -70,7 +70,7 @@ CREATE OR REPLACE FUNCTION process_trade(
     v_user_id            UUID,
     v_stock_id                UUID,
     v_unit_stock_price        DECIMAL,
-    v_trade_quantity          INT,
+    v_trade_quantity          BIGINT,
     v_total_amount            DECIMAL(18,2),
     v_is_buy                  BOOLEAN DEFAULT TRUE
 )
@@ -82,8 +82,8 @@ DECLARE
     v_wallet_tx_id       UUID;
     v_new_stock_tx_id        UUID;
     v_new_balance        DECIMAL(18,2);
-    v_required_quantity  INT;          -- For partial-fill logic
-    v_existing_quantity  INT;          -- For partial-fill logic
+    v_required_quantity  BIGINT;          -- For partial-fill logic
+    v_existing_quantity  BIGINT;          -- For partial-fill logic
     v_order_type         TEXT;          -- For order type
     v_order_status       TEXT;          -- For order status
 BEGIN
@@ -237,7 +237,7 @@ CREATE OR REPLACE FUNCTION process_stock_trade(
     v_seller_user_id     UUID,
     v_stock_id           UUID,
     v_unit_stock_price   DECIMAL,
-    v_trade_quantity     INT,
+    v_trade_quantity     BIGINT,
     v_stock_name         TEXT
 )
 RETURNS VOID

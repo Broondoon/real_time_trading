@@ -214,6 +214,15 @@ func (d *DatabaseService) Disconnect() {
 
 func (d *DatabaseService) ExecuteOrder(buyerStockID string, sellerStockID string, buyerID string, sellerID string, stockID string, stockName string, stockPrice float64, quantity int) (network.ExecutorToMatchingEngineJSON, error) {
 	log.Println("Service: ExecuteOrder")
+	log.Println("Buyer Stock ID: ", buyerStockID)
+	log.Println("Seller Stock ID: ", sellerStockID)
+	log.Println("Buyer ID: ", buyerID)
+	log.Println("Seller ID: ", sellerID)
+	log.Println("Stock ID: ", stockID)
+	log.Println("Stock Name: ", stockName)
+	log.Println("Stock Price: ", stockPrice)
+	log.Println("Quantity: ", quantity)
+
 	returnStuct := network.ExecutorToMatchingEngineJSON{
 		StockID:            stockID,
 		BuyerStockOrderId:  buyerStockID,

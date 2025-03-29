@@ -291,5 +291,6 @@ func (d *DatabaseAccess) ExecuteOrder(buyerStockID string, sellerStockID string,
 		return returnData, err
 	}
 	err = json.Unmarshal(returnJson, &returnData)
+	log.Println("Returned executed order")
 	return returnData, err
 }

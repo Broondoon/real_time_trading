@@ -145,6 +145,7 @@ func (me *MatchingEngine) RunMatchingEngineOrders() {
 				sellIsChild = true
 				sellOrder = sellOrder.CreateChildOrder(sellOrder, buyOrder)
 				if sellOrder.GetQuantity() == parentOrder.GetQuantity() {
+					log.Println("Sell Order is nil, Returning buy order")
 					close(me.orderChannel)
 					close(me.updateChannel)
 				}
@@ -169,9 +170,13 @@ func (me *MatchingEngine) RunMatchingEngineOrders() {
 				buyOrder = parentOrder
 			}
 			if err != nil {
-				close(me.orderChannel)
-				close(me.updateChannel)
-				panic("Error in order execution")
+				log.Println("Error in order execution: ", err)
+				if result.IsBuyFailure {
+					buyOrder = nil
+				}
+				if result.IsSellFailure {
+					sellOrder = nil
+				}
 			} else {
 				if result.IsBuyFailure {
 					buyOrder = nil

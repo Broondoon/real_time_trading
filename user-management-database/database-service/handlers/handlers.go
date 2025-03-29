@@ -328,12 +328,11 @@ func executeOrderHandler(responseWriter network.ResponseWriter, data []byte, que
 		return
 	}
 	returnVal, err := _databaseManager.ExecuteOrder(params.BuyOrderID, params.SellOrderID, params.BuyerID, params.SellerID, params.StockID, params.Name, params.StockPrice, params.Quantity)
-	if err != nil {
-		if returnVal.IsBuyFailure && returnVal.IsSellFailure {
-			responseWriter.WriteHeader(http.StatusBadRequest)
-			return
-		}
-	}
+	// if err != nil {
+	// 	if returnVal.IsBuyFailure && returnVal.IsSellFailure {
+	// 		responseWriter.WriteHeader(http.StatusBadRequest)
+	// 	}
+	// }
 	returnJson, err := json.Marshal(returnVal)
 	if err != nil {
 		log.Println("Failed to marshal return JSON, error: ", err.Error())

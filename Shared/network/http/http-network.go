@@ -95,7 +95,7 @@ func handleFunc(params network.HandlerParams, w http.ResponseWriter, r *http.Req
 	timer := time.NewTimer(timeout)
 	select {
 	case <-responseWriterWrapper.finished:
-		log.Println("Request Finished: ", r.URL.String())
+		//log.Println("Request Finished: ", r.URL.String())
 		close(responseWriterWrapper.finished)
 		responseWriterWrapper.channelHasClosed = true
 		if !timer.Stop() {

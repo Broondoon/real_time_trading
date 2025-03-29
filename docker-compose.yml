@@ -411,10 +411,10 @@ services:
   user-management-db:
     image: postgres:latest
     restart: always
-    # command: >
-    #   -c log_min_messages=notice
-    #   -c log_min_error_statement=notice
-    #   -c log_statement=all
+    command: >
+      -c log_min_messages=error
+      -c log_min_error_statement=error
+      -c log_statement=none
     env_file:
       - .env
     environment:

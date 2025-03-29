@@ -89,11 +89,11 @@ func (n *QueueCluster) SpawnQueue() {
 	exchangeParams := ExchangeParamsDefaults()
 	exchangeParams.Name = n.ExchangeKey
 	ch := n.SpawnChannel(exchangeParams)
-	log.Println("#######")
-	log.Println("Spawning Queue")
-	log.Println("ExchangeKey: ", n.ExchangeKey)
-	log.Println("QueueCluster: ", n.HandlerParams.Pattern)
-	log.Println("#######")
+	// log.Println("#######")
+	// log.Println("Spawning Queue")
+	// log.Println("ExchangeKey: ", n.ExchangeKey)
+	// log.Println("QueueCluster: ", n.HandlerParams.Pattern)
+	// log.Println("#######")
 	defer n.CloseChannel(ch)
 	q, err := ch.QueueDeclare(
 		n.QueueName+"_Queue", // name. We set this to make sure that any services sharing this queue all use the same queue, rather than declaring their own, which causes duplication issues.
@@ -104,7 +104,7 @@ func (n *QueueCluster) SpawnQueue() {
 		n.Args,               // arguments
 	)
 	failOnError(err, "Failed to declare a queue")
-	log.Println("Queue: ", q.Name)
+	//log.Println("Queue: ", q.Name)
 	err = ch.QueueBind(
 		q.Name,                  // queue name
 		n.HandlerParams.Pattern, // routing key
@@ -113,7 +113,7 @@ func (n *QueueCluster) SpawnQueue() {
 		nil,
 	)
 	failOnError(err, "Failed to bind a queue")
-	log.Println("Queue Bound: ", q.Name)
+	// log.Println("Queue Bound: ", q.Name)
 
 	msg, err := ch.Consume(
 		q.Name, // queue
@@ -125,11 +125,11 @@ func (n *QueueCluster) SpawnQueue() {
 		n.ConsumeArgs,
 	)
 	failOnError(err, "Failed to register a consumer")
-	log.Println("Consumer registered: ", q.Name)
+	//log.Println("Consumer registered: ", q.Name)
 	go func() {
 		for d := range msg {
-			log.Println("Received message")
-			log.Println("Message: ", string(d.Body))
+			// log.Println("Received message")
+			// log.Println("Message: ", string(d.Body))
 			responseHandler := NewQueueResponseHandler(d, ch)
 			data := QueueJSONData{}
 			if json.Unmarshal(d.Body, &data) != nil {
@@ -170,19 +170,23 @@ func NewQueueResponseHandler(d amqp091.Delivery, ch *amqp.Channel) network.Respo
 func (n *QueueResponseHandler) WriteHeader(statusCode int) {
 	if !n.CheckCompleted() {
 		n.statusCode = statusCode
-		log.Println("Writing header: ", statusCode)
+		//log.Println("Writing header: ", statusCode)
 		switch statusCode {
 		case http.StatusOK:
 			// log.Println("Acking")
 			// n.d.Ack(false)
 			n.Write([]byte("OK")) //Bad situation here, since we need to make a few adjustments to the response. We have to send back a body right now
 		case http.StatusNotFound:
+			log.Println("Not found on: ", n.d.ReplyTo)
 			n.d.Nack(false, false)
 		case http.StatusBadRequest:
+			log.Println("Bad Request on: ", n.d.ReplyTo)
 			n.d.Nack(false, false)
 		case http.StatusInternalServerError:
+			log.Println("Internal Service error on: ", n.d.ReplyTo)
 			n.d.Nack(false, false)
 		default:
+			log.Println("Unknown on: ", n.d.ReplyTo)
 			n.d.Nack(false, false)
 		}
 		n.Completed = true
@@ -193,7 +197,7 @@ func (n *QueueResponseHandler) Write(body []byte) (int, error) {
 	if !n.CheckCompleted() {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
-		log.Println("Writing body: ", string(body))
+		// log.Println("Writing body: ", string(body))
 		err := n.ch.PublishWithContext(
 			ctx,
 			"",
@@ -212,7 +216,7 @@ func (n *QueueResponseHandler) Write(body []byte) (int, error) {
 			n.statusCode = http.StatusInternalServerError
 			return http.StatusInternalServerError, err
 		}
-		log.Println("Response published")
+		// log.Println("Response published")
 		defer n.d.Ack(false)
 		n.Completed = true
 		n.statusCode = http.StatusOK
