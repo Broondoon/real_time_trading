@@ -56,30 +56,10 @@ func NewDatabaseService(params *NewDatabaseServiceParams) DatabaseServiceInterfa
 	// 	params.WalletTransactionParams.Existing = newDBConnection
 	// }
 
-	//CACHE IMPLEMENTATION
-	/* cachedStockTransaction := databaseService.NewCachedEntityData[*transaction.StockTransaction](&databaseService.NewCachedEntityDataParams{
-		NewEntityDataParams: params.StockTransactionParams,
-		RedisAddr:           os.Getenv("REDIS_ADDR"),
-		Password:            os.Getenv("REDIS_PASSWORD"),
-		DefaultTTL:          5 * time.Minute,
-	})
-
-	cachedWalletTransaction := databaseService.NewCachedEntityData[*transaction.WalletTransaction](&databaseService.NewCachedEntityDataParams{
-		NewEntityDataParams: params.WalletTransactionParams,
-		RedisAddr:           os.Getenv("REDIS_ADDR"),
-		Password:            os.Getenv("REDIS_PASSWORD"),
-		DefaultTTL:          5 * time.Minute,
-	})
-
-	db := &DatabaseService{
-		StockTransaction:  cachedStockTransaction,
-		WalletTransaction: cachedWalletTransaction,
-		DatabaseInterface: newDBConnection,
-	} */
-
+	//Cache implementation here
 	db := &DatabaseService{
 		StockTransaction: databaseService.NewCachedEntityData[*transaction.StockTransaction, *gorm.DB](&databaseService.NewCachedEntityDataParams[*transaction.StockTransaction, *gorm.DB]{
-			RedisAddr:  os.Getenv("REDIS_ADDR"),
+			RedisAddr:  os.Getenv("REDIS_TRANSACTION_ADDR"),
 			Password:   os.Getenv("REDIS_PASSWORD"),
 			DefaultTTL: 5 * time.Minute,
 			EntityData: databaseService.NewPostGresEntityData[*transaction.StockTransaction](
@@ -89,7 +69,7 @@ func NewDatabaseService(params *NewDatabaseServiceParams) DatabaseServiceInterfa
 			),
 		}),
 		WalletTransaction: databaseService.NewCachedEntityData[*transaction.WalletTransaction, *gorm.DB](&databaseService.NewCachedEntityDataParams[*transaction.WalletTransaction, *gorm.DB]{
-			RedisAddr:  os.Getenv("REDIS_ADDR"),
+			RedisAddr:  os.Getenv("REDIS_TRANSACTION_ADDR"),
 			Password:   os.Getenv("REDIS_PASSWORD"),
 			DefaultTTL: 5 * time.Minute,
 			EntityData: databaseService.NewPostGresEntityData[*transaction.WalletTransaction](

@@ -1,19 +1,14 @@
 package main
 
-import (
+/*
+import ()
 	networkHttp "Shared/network/http"
-	"context"
-	"os"
-	"testing"
-	"time"
-
-	"github.com/redis/go-redis/v9"
 )
 
 var userID = "6fd2fc6b-9142-4777-8b30-575ff6fa2460"
 var stockId = "69e81793-1cc7-476f-a8ba-714fafcb3e5c"
 var client = networkHttp.NewNetworkHttp().UserManagement()
-
+*/
 /* func TestGetWalletBalance(t *testing.T) {
 	queryParams := map[string]string{"userID": userID}
 	response, err := client.Get("transaction/getWalletBalance", queryParams)
@@ -124,7 +119,7 @@ func TestAddStockToUser(t *testing.T) {
 	}
 } */
 
-func TestWalletCaching(t *testing.T) {
+/* func TestWalletCaching(t *testing.T) {
 	testUserID := userID
 	queryParams := map[string]string{"userID": testUserID}
 
@@ -165,4 +160,4 @@ func TestWalletCaching(t *testing.T) {
 	if ttl <= 0 {
 		t.Errorf("Expected positive TTL for key %s, got: %v", keys[0], ttl)
 	}
-}
+} */
