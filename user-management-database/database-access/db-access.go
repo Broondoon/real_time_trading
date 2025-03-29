@@ -2,13 +2,27 @@ package databaseAccessUserManagement
 
 import (
 	databaseAccess "Shared/database/database-access"
+	"Shared/entities/transaction"
 	userStock "Shared/entities/user-stock"
 	"Shared/entities/wallet"
 	"Shared/network"
+	"encoding/json"
 	"errors"
 	"log"
 	"os"
 )
+
+type WalletTransactionDataAccessInterface = databaseAccess.EntityDataAccessInterface[*transaction.WalletTransaction, transaction.WalletTransactionInterface]
+
+type WalletTransactionDataAccess struct {
+	WalletTransactionDataAccessInterface
+}
+
+type StockTransactionDataAccessInterface = databaseAccess.EntityDataAccessInterface[*transaction.StockTransaction, transaction.StockTransactionInterface]
+
+type StockTransactionDataAccess struct {
+	StockTransactionDataAccessInterface
+}
 
 type UserStocksDataAccessInterface interface {
 	databaseAccess.EntityDataAccessInterface[*userStock.UserStock, userStock.UserStockInterface]
@@ -34,18 +48,25 @@ type DatabaseAccessInterface interface {
 	databaseAccess.DatabaseAccessInterface
 	UserStock() UserStocksDataAccessInterface
 	Wallet() WalletDataAccessInterface
+	StockTransaction() StockTransactionDataAccessInterface
+	WalletTransaction() WalletTransactionDataAccessInterface
+	ExecuteOrder(buyerStockID string, sellerStockID string, buyerID string, sellerID string, stockID string, stockName string, stockPrice float64, quantity int) (network.ExecutorToMatchingEngineJSON, error)
 }
 
 type DatabaseAccess struct {
 	UserStocksDataAccessInterface
 	WalletDataAccessInterface
+	StockTransactionDataAccessInterface
+	WalletTransactionDataAccessInterface
 	_networkManager network.NetworkInterface
 }
 
 type NewDatabaseAccessParams struct {
-	UserStockParams *databaseAccess.NewEntityDataAccessNetworkParams[*userStock.UserStock]
-	WalletParams    *databaseAccess.NewEntityDataAccessNetworkParams[*wallet.Wallet]
-	Network         network.NetworkInterface
+	UserStockParams         *databaseAccess.NewEntityDataAccessNetworkParams[*userStock.UserStock]
+	WalletParams            *databaseAccess.NewEntityDataAccessNetworkParams[*wallet.Wallet]
+	StockTransactionParams  *databaseAccess.NewEntityDataAccessNetworkParams[*transaction.StockTransaction]
+	WalletTransactionParams *databaseAccess.NewEntityDataAccessNetworkParams[*transaction.WalletTransaction]
+	Network                 network.NetworkInterface
 }
 
 func NewDatabaseAccess(params *NewDatabaseAccessParams) DatabaseAccessInterface {
@@ -55,6 +76,14 @@ func NewDatabaseAccess(params *NewDatabaseAccessParams) DatabaseAccessInterface 
 
 	if params.WalletParams == nil {
 		params.WalletParams = &databaseAccess.NewEntityDataAccessNetworkParams[*wallet.Wallet]{}
+	}
+
+	if params.StockTransactionParams == nil {
+		params.StockTransactionParams = &databaseAccess.NewEntityDataAccessNetworkParams[*transaction.StockTransaction]{}
+	}
+
+	if params.WalletTransactionParams == nil {
+		params.WalletTransactionParams = &databaseAccess.NewEntityDataAccessNetworkParams[*transaction.WalletTransaction]{}
 	}
 
 	if params.Network == nil {
@@ -87,12 +116,44 @@ func NewDatabaseAccess(params *NewDatabaseAccessParams) DatabaseAccessInterface 
 		params.WalletParams.ParserList = wallet.ParseList
 	}
 
+	if params.StockTransactionParams.Client == nil {
+		params.StockTransactionParams.Client = params.Network.UserManagementDatabase()
+	}
+	if params.StockTransactionParams.DefaultRoute == "" {
+		params.StockTransactionParams.DefaultRoute = os.Getenv("TRANSACTION_DATABASE_SERVICE_STOCK_ROUTE")
+	}
+	if params.WalletTransactionParams.Client == nil {
+		params.WalletTransactionParams.Client = params.Network.UserManagementDatabase()
+	}
+	if params.WalletTransactionParams.DefaultRoute == "" {
+		params.WalletTransactionParams.DefaultRoute = os.Getenv("TRANSACTION_DATABASE_SERVICE_WALLET_ROUTE")
+	}
+
+	if params.StockTransactionParams.Parser == nil {
+		params.StockTransactionParams.Parser = transaction.ParseStockTransaction
+	}
+	if params.WalletTransactionParams.Parser == nil {
+		params.WalletTransactionParams.Parser = transaction.ParseWalletTransaction
+	}
+	if params.StockTransactionParams.ParserList == nil {
+		params.StockTransactionParams.ParserList = transaction.ParseStockTransactionList
+	}
+	if params.WalletTransactionParams.ParserList == nil {
+		params.WalletTransactionParams.ParserList = transaction.ParseWalletTransactionList
+	}
+
 	dba := &DatabaseAccess{
 		UserStocksDataAccessInterface: &UserStocksDataAccess{
 			EntityDataAccessInterface: databaseAccess.NewEntityDataAccessNetwork[*userStock.UserStock, userStock.UserStockInterface](params.UserStockParams),
 		},
 		WalletDataAccessInterface: &WalletDataAccess{
 			EntityDataAccessInterface: databaseAccess.NewEntityDataAccessNetwork[*wallet.Wallet, wallet.WalletInterface](params.WalletParams),
+		},
+		StockTransactionDataAccessInterface: &StockTransactionDataAccess{
+			StockTransactionDataAccessInterface: databaseAccess.NewEntityDataAccessNetwork[*transaction.StockTransaction, transaction.StockTransactionInterface](params.StockTransactionParams),
+		},
+		WalletTransactionDataAccessInterface: &WalletTransactionDataAccess{
+			WalletTransactionDataAccessInterface: databaseAccess.NewEntityDataAccessNetwork[*transaction.WalletTransaction, transaction.WalletTransactionInterface](params.WalletTransactionParams),
 		},
 		_networkManager: params.Network,
 	}
@@ -113,6 +174,14 @@ func (d *DatabaseAccess) UserStock() UserStocksDataAccessInterface {
 
 func (d *DatabaseAccess) Wallet() WalletDataAccessInterface {
 	return d.WalletDataAccessInterface
+}
+
+func (d *DatabaseAccess) StockTransaction() StockTransactionDataAccessInterface {
+	return d.StockTransactionDataAccessInterface
+}
+
+func (d *DatabaseAccess) WalletTransaction() WalletTransactionDataAccessInterface {
+	return d.WalletTransactionDataAccessInterface
 }
 
 func (d *UserStocksDataAccess) GetUserStocks(userID string) (*[]userStock.UserStockInterface, error) {
@@ -202,4 +271,25 @@ func (d *WalletDataAccess) GetWalletBalance(userID string) (float64, error) {
 	}
 	wallet := (*walletList)[0]
 	return wallet.GetBalance(), nil
+}
+
+func (d *DatabaseAccess) ExecuteOrder(buyerStockID string, sellerStockID string, buyerID string, sellerID string, stockID string, stockName string, stockPrice float64, quantity int) (network.ExecutorToMatchingEngineJSON, error) {
+	log.Println("Access: Executing order")
+	returnJson, err := d._networkManager.UserManagementDatabase().Post("execute-order", network.MatchingEngineToExecutionJSON{
+		BuyerID:     buyerID,
+		SellerID:    sellerID,
+		StockID:     stockID,
+		BuyOrderID:  buyerStockID,
+		SellOrderID: sellerStockID,
+		StockPrice:  stockPrice,
+		Quantity:    quantity,
+		Name:        stockName,
+	})
+	var returnData network.ExecutorToMatchingEngineJSON
+	if err != nil {
+		log.Printf("Error executing order: %v\n", err)
+		return returnData, err
+	}
+	err = json.Unmarshal(returnJson, &returnData)
+	return returnData, err
 }

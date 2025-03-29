@@ -280,7 +280,7 @@ func (n *QueueClient) Patch(route string, id string) error {
 	if err != nil {
 		return err
 	}
-	_, err = n.SendWithReturn(route, jsonData, DefaultPublishParams(), func(response []byte) ([]byte, error) {
+	_, err = n.SendWithReturn(route+"/", jsonData, DefaultPublishParams(), func(response []byte) ([]byte, error) {
 		return response, nil
 	})
 	return err

@@ -22,6 +22,7 @@ func InitializeHandlers(
 	network.CreateNetworkEntityHandlers(_networkManager, os.Getenv("AUTH_SERVICE_USER_ROUTE"), _databaseManager, user.Parse, user.ParseList)
 	//Health check function for the service
 	http.HandleFunc("/health", healthHandler)
+	_networkManager.Listen()
 }
 
 func healthHandler(w http.ResponseWriter, r *http.Request) {

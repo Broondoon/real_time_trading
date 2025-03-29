@@ -7,6 +7,7 @@ import (
 	networkQueue "Shared/network/queue"
 	"databaseAccessStock"
 	"databaseAccessStockOrder"
+	"databaseAccessUserManagement"
 	"log"
 	"os"
 )
@@ -18,9 +19,12 @@ func main() {
 
 	networkHttpManager := networkHttp.NewNetworkHttp()
 	networkQueueManager := networkQueue.NewNetworkQueue(nil, os.Getenv("MATCHING_ENGINE_HOST")+":"+os.Getenv("MATCHING_ENGINE_PORT"))
-	_databaseManager := databaseAccessStockOrder.NewDatabaseAccess(&databaseAccessStockOrder.NewDatabaseAccessParams{})
+	_databaseManagerStockOrder := databaseAccessStockOrder.NewDatabaseAccess(&databaseAccessStockOrder.NewDatabaseAccessParams{})
 	_databaseAccessStock := databaseAccessStock.NewDatabaseAccess(&databaseAccessStock.NewDatabaseAccessParams{
-		Network: networkHttpManager,
+		Network: networkQueueManager,
+	})
+	_databaseAccessUserManagement := databaseAccessUserManagement.NewDatabaseAccess(&databaseAccessUserManagement.NewDatabaseAccessParams{
+		Network: networkQueueManager,
 	})
 	stockList, err := _databaseAccessStock.GetAll()
 	if err != nil {
@@ -34,8 +38,9 @@ func main() {
 		})
 	}
 
-	go matchingEngine.InitalizeHandlers(&stockList2, networkHttpManager, networkQueueManager, _databaseManager, _databaseAccessStock)
+	go matchingEngine.InitalizeHandlers(&stockList2, networkHttpManager, networkQueueManager, _databaseManagerStockOrder, _databaseAccessUserManagement)
 	log.Println("Matching Engine Service Started")
 
 	networkHttpManager.Listen()
+	<-make(chan struct{})
 }

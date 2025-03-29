@@ -24,20 +24,20 @@ type BaseNetworkInterface interface {
 	OrderInitiator() ClientInterface
 	OrderExecutor() ClientInterface
 	Stocks() ClientInterface
-	Transactions() ClientInterface
+	// Transactions() ClientInterface
 	UserManagementDatabase() ClientInterface
 	AuthDatabase() ClientInterface
 }
 
 type Network struct {
-	MatchingEngineService         ClientInterface
-	MicroserviceTemplateService   ClientInterface
-	UserManagementService         ClientInterface
-	AuthenticationService         ClientInterface
-	OrderInitiatorService         ClientInterface
-	OrderExecutorService          ClientInterface
-	StocksService                 ClientInterface
-	TransactionsService           ClientInterface
+	MatchingEngineService       ClientInterface
+	MicroserviceTemplateService ClientInterface
+	UserManagementService       ClientInterface
+	AuthenticationService       ClientInterface
+	OrderInitiatorService       ClientInterface
+	OrderExecutorService        ClientInterface
+	StocksService               ClientInterface
+	// TransactionsService           ClientInterface
 	UserManagementDatabaseService ClientInterface
 	AuthDatabaseService           ClientInterface
 	serviceBuilder                func(serviceString string) ClientInterface
@@ -92,12 +92,12 @@ func (n *Network) Stocks() ClientInterface {
 	return n.StocksService
 }
 
-func (n *Network) Transactions() ClientInterface {
-	if n.TransactionsService == nil {
-		n.TransactionsService = n.serviceBuilder(os.Getenv("TRANSACTION_DATABASE_SERVICE_HOST") + ":" + os.Getenv("TRANSACTION_DATABASE_SERVICE_PORT"))
-	}
-	return n.TransactionsService
-}
+// func (n *Network) Transactions() ClientInterface {
+// 	if n.TransactionsService == nil {
+// 		n.TransactionsService = n.serviceBuilder(os.Getenv("TRANSACTION_DATABASE_SERVICE_HOST") + ":" + os.Getenv("TRANSACTION_DATABASE_SERVICE_PORT"))
+// 	}
+// 	return n.TransactionsService
+// }
 
 func (n *Network) UserManagementDatabase() ClientInterface {
 	if n.UserManagementDatabaseService == nil {

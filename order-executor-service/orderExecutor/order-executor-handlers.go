@@ -2,24 +2,20 @@ package orderExecutorService
 
 import (
 	"Shared/network"
-	"databaseAccessTransaction"
 	"databaseAccessUserManagement"
 	"encoding/json"
 	"net/http"
 	"net/url"
 )
 
-var _databaseAccessTransact databaseAccessTransaction.DatabaseAccessInterface
 var _databaseAccessUser databaseAccessUserManagement.DatabaseAccessInterface
 var _matchingEngineClientManager network.ClientInterface
 
 func InitalizeExecutorHandlers(
 	networkManager network.NetworkInterface,
 	queueManager network.NetworkInterface,
-	databaseAccessTransact databaseAccessTransaction.DatabaseAccessInterface,
 	databaseAccessUser databaseAccessUserManagement.DatabaseAccessInterface) {
 
-	_databaseAccessTransact = databaseAccessTransact
 	_databaseAccessUser = databaseAccessUser
 	_matchingEngineClientManager = queueManager.MatchingEngine()
 
@@ -43,7 +39,7 @@ func executorHandler(responseWriter network.ResponseWriter, data []byte, queryPa
 	}
 
 	// Process the orderData (transferEntity) from the Matching Engine
-	stockID, buyerStockOrderID, sellerStockOrderID, buySuccess, sellSuccess, err := ProcessTrade(orderData, _databaseAccessTransact, _databaseAccessUser, _matchingEngineClientManager)
+	stockID, buyerStockOrderID, sellerStockOrderID, buySuccess, sellSuccess, err := ProcessTrade(orderData, _databaseAccessUser, _matchingEngineClientManager)
 	if err != nil {
 		responseWriter.WriteHeader(http.StatusInternalServerError)
 		return

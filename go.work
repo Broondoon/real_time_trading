@@ -13,8 +13,6 @@ use (
 	./stock-database/database-service
 	./stock-order-database/database-access
 	./stock-order-database/database-service
-	./transaction-database/database-access
-	./transaction-database/database-service
 	./user-management-database/database-access
 	./user-management-database/database-service
 	./user-management-service

@@ -169,31 +169,27 @@ func (me *MatchingEngine) RunMatchingEngineOrders() {
 				buyOrder = parentOrder
 			}
 			if err != nil {
-				//rollback
-				me.BuyOrderBook.ReturnOrder(buyOrder)
-				me.SellOrderBook.AddOrder(sellOrder)
 				close(me.orderChannel)
 				close(me.updateChannel)
 				panic("Error in order execution")
-			} else if result.IsBuyFailure {
-				buyOrder = nil
-			} else if result.IsSellFailure {
-				sellOrder = nil
 			} else {
-				sellOrder.UpdateQuantity(-quantity)
-				buyOrder.UpdateQuantity(-quantity)
-				PairedOrders := PairedOrders{
-					Buyer:    buyOrder,
-					Seller:   sellOrder,
-					Quantity: quantity,
+				if result.IsBuyFailure {
+					buyOrder = nil
 				}
-				me.PairedOrders[PairedOrders.GetKey()] = PairedOrders
-				if sellOrder.GetQuantity() == 0 {
+				if result.IsSellFailure {
 					sellOrder = nil
 				}
-
-				if buyOrder.GetQuantity() == 0 {
-					buyOrder = nil
+				if !result.IsBuyFailure && !result.IsSellFailure {
+					sellOrder.UpdateQuantity(-quantity)
+					buyOrder.UpdateQuantity(-quantity)
+					me.UpdateBulkRoutine.Insert(sellOrder)
+					me.UpdateBulkRoutine.Insert(buyOrder)
+					if sellOrder.GetQuantity() == 0 {
+						sellOrder = nil
+					}
+					if buyOrder.GetQuantity() == 0 {
+						buyOrder = nil
+					}
 				}
 			}
 		} else {
@@ -278,7 +274,6 @@ func (me *MatchingEngine) CompletePairedOrder(params network.ExecutorToMatchingE
 			me.UpdateBulkRoutine.Insert(buyOrder)
 		}
 		if len(*sellOrder.GetUpdates()) > 0 {
-			me.UpdateBulkRoutine.Insert(sellOrder)
 		}
 		delete(me.PairedOrders, PairedOrder.GetKey())
 		return nil

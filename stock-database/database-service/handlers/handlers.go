@@ -13,18 +13,22 @@ import (
 
 var _databaseManager databaseServiceStock.DatabaseServiceInterface
 var _networkManager network.NetworkInterface
+var _networkQueueManager network.NetworkInterface
 
 func InitalizeHandlers(
-	networkManager network.NetworkInterface, databaseManager databaseServiceStock.DatabaseServiceInterface) {
+	networkManager network.NetworkInterface,
+	networkQueueManager network.NetworkInterface,
+	databaseManager databaseServiceStock.DatabaseServiceInterface) {
 	_databaseManager = databaseManager
 	_networkManager = networkManager
+	_networkQueueManager = networkQueueManager
 
 	//Add handlers
 	_networkManager.AddHandleFuncProtected(network.HandlerParams{Pattern: os.Getenv("setup_route") + "/createStock", Handler: AddNewStockHandler})
-	_networkManager.AddHandleFuncUnprotected(network.HandlerParams{Pattern: "getStockIDs", Handler: GetStockIDsHandler})
-	network.CreateNetworkEntityHandlers[*stock.Stock](_networkManager, os.Getenv("STOCK_DATABASE_SERVICE_ROUTE"), _databaseManager, stock.Parse, stock.ParseList)
+	_networkQueueManager.AddHandleFuncUnprotected(network.HandlerParams{Pattern: "getStockIDs", Handler: GetStockIDsHandler})
+	network.CreateNetworkEntityHandlers[*stock.Stock](_networkQueueManager, os.Getenv("STOCK_DATABASE_SERVICE_ROUTE"), _databaseManager, stock.Parse, stock.ParseList)
 	http.HandleFunc("/health", healthHandler)
-
+	_networkQueueManager.Listen()
 }
 
 func healthHandler(w http.ResponseWriter, r *http.Request) {
@@ -70,7 +74,7 @@ func AddNewStockHandler(responseWriter network.ResponseWriter, data []byte, quer
 		return
 	}
 	stockIdObject := network.StockID{StockID: newStock.GetIdString(), Name: newStock.GetName()}
-	_, err = _networkManager.MatchingEngine().Post("createStock", stockIdObject)
+	_, err = _networkQueueManager.MatchingEngine().Post("createStock", stockIdObject)
 	if err != nil {
 		log.Println("Error: ", err.Error())
 		responseWriter.WriteHeader(http.StatusInternalServerError)

@@ -2,6 +2,7 @@ package main
 
 import (
 	networkHttp "Shared/network/http"
+	networkQueue "Shared/network/queue"
 	"auth-service/handlers"
 	databaseAccessAuth "databaseAccessAuth"
 	"databaseAccessUserManagement"
@@ -12,13 +13,14 @@ import (
 func main() {
 	// Initialize the shared network manager.
 	networkManager := networkHttp.NewNetworkHttp()
+	networkManagerQueue := networkQueue.NewNetworkQueue(nil, os.Getenv("AUTH_HOST")+":"+os.Getenv("AUTH_PORT"))
 
 	// Create the auth-database access dependency.
 	databaseAccess := databaseAccessAuth.NewDatabaseAccess(&databaseAccessAuth.NewDatabaseAccessParams{
-		Network: networkManager,
+		Network: networkManagerQueue,
 	})
 	databaseAccessWallet := databaseAccessUserManagement.NewDatabaseAccess(&databaseAccessUserManagement.NewDatabaseAccessParams{
-		Network: networkManager,
+		Network: networkManagerQueue,
 	}).Wallet()
 
 	// Inject it into the HTTP handlers.

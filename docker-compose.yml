@@ -125,9 +125,11 @@ services:
         condition: service_healthy
       stock-database-service:
         condition: service_healthy
-      order-executor-service:
-        condition: service_healthy
+      # order-executor-service:
+      #   condition: service_healthy
       rabbitmq:
+        condition: service_healthy
+      user-management-database-service:
         condition: service_healthy
 
     networks:
@@ -157,8 +159,6 @@ services:
     networks:
       - go-network
     depends_on:
-      transaction-database-service:
-        condition: service_healthy
       matching-engine-service:
         condition: service_healthy
       user-management-database-service:
@@ -179,38 +179,36 @@ services:
       restart_policy:
         condition: on-failure
 
-  order-executor-service:
-    build:
-      context: .
-      dockerfile: ./${ORDER_EXECUTOR_HOST}/Dockerfile
-    ports:
-      - "${ORDER_EXECUTOR_PORT}"
-    env_file:
-      - .env
-    environment:
-      PORT: ${ORDER_EXECUTOR_PORT}
-    networks:
-      - go-network
-    depends_on:
-      transaction-database-service:
-        condition: service_healthy
-      user-management-database-service:
-        condition: service_healthy
-    healthcheck:
-      test:
-        [
-          "CMD",
-          "curl",
-          "-f",
-          "http://localhost:${ORDER_EXECUTOR_PORT}/health",
-        ]
-      interval: ${HEALTHCHECK_INTERVAL}
-      timeout: ${HEALTHCHECK_TIMEOUT}
-      retries: ${HEALTHCHECK_RETRIES}
-    deploy:
-      replicas: ${REPLICATIONS}
-      restart_policy:
-        condition: on-failure
+  # order-executor-service:
+  #   build:
+  #     context: .
+  #     dockerfile: ./${ORDER_EXECUTOR_HOST}/Dockerfile
+  #   ports:
+  #     - "${ORDER_EXECUTOR_PORT}"
+  #   env_file:
+  #     - .env
+  #   environment:
+  #     PORT: ${ORDER_EXECUTOR_PORT}
+  #   networks:
+  #     - go-network
+  #   depends_on:
+  #     user-management-database-service:
+  #       condition: service_healthy
+  #   healthcheck:
+  #     test:
+  #       [
+  #         "CMD",
+  #         "curl",
+  #         "-f",
+  #         "http://localhost:${ORDER_EXECUTOR_PORT}/health",
+  #       ]
+  #     interval: ${HEALTHCHECK_INTERVAL}
+  #     timeout: ${HEALTHCHECK_TIMEOUT}
+  #     retries: ${HEALTHCHECK_RETRIES}
+  #   deploy:
+  #     replicas: ${REPLICATIONS}
+  #     restart_policy:
+  #       condition: on-failure
 
   auth-service:
     build:
@@ -278,34 +276,6 @@ services:
           "curl",
           "-f",
           "http://stock-database-service:${STOCK_DATABASE_SERVICE_PORT}/health",
-        ]
-      interval: ${HEALTHCHECK_INTERVAL}
-      timeout: ${HEALTHCHECK_TIMEOUT}
-      retries: ${HEALTHCHECK_RETRIES}
-
-  transaction-database-service:
-    build:
-      context: .
-      dockerfile: ./transaction-database/database-service/Dockerfile
-    ports:
-      - "${TRANSACTION_DATABASE_SERVICE_PORT}:${TRANSACTION_DATABASE_SERVICE_PORT}"
-    env_file:
-      - .env
-    environment:
-      DATABASE_URL: ${TRANSACTION_DATABASE_URL}
-      PORT: ${TRANSACTION_DATABASE_SERVICE_PORT}
-    networks:
-      - go-network
-    depends_on:
-      transaction-db:
-        condition: service_healthy
-    healthcheck:
-      test:
-        [
-          "CMD",
-          "curl",
-          "-f",
-          "http://transaction-database-service:${TRANSACTION_DATABASE_SERVICE_PORT}/health",
         ]
       interval: ${HEALTHCHECK_INTERVAL}
       timeout: ${HEALTHCHECK_TIMEOUT}
@@ -414,30 +384,6 @@ services:
     networks:
       - go-network
 
-  transaction-db:
-    image: postgres:latest
-    restart: always
-    env_file:
-      - .env
-    environment:
-      POSTGRES_USER: ${TRANSACTION_POSTGRES_USER}
-      POSTGRES_PASSWORD: ${TRANSACTION_POSTGRES_PASSWORD}
-      POSTGRES_DB: ${TRANSACTION_POSTGRES_DB}
-    volumes:
-      - transaction-db-data:/var/lib/postgresql/data
-      - ./transaction-database/init.sql:/docker-entrypoint-initdb.d/init.sql
-    healthcheck:
-      test:
-        [
-          "CMD-SHELL",
-          "pg_isready -U $TRANSACTION_POSTGRES_USER -d $TRANSACTION_POSTGRES_DB",
-        ]
-      interval: ${HEALTHCHECK_INTERVAL}
-      timeout: ${HEALTHCHECK_TIMEOUT}
-      retries: ${HEALTHCHECK_RETRIES}
-    networks:
-      - go-network
-
   stock-db:
     image: postgres:latest
     restart: always
@@ -465,6 +411,10 @@ services:
   user-management-db:
     image: postgres:latest
     restart: always
+    # command: >
+    #   -c log_min_messages=notice
+    #   -c log_min_error_statement=notice
+    #   -c log_statement=all
     env_file:
       - .env
     environment:
@@ -515,8 +465,6 @@ services:
         condition: service_healthy
       stock-db:
         condition: service_healthy
-      transaction-db:
-        condition: service_healthy
   
   pgadmin:
     image: dpage/pgadmin4
@@ -533,7 +481,6 @@ volumes:
   stock-db-data:
   auth-db-data:
   stock-order-db-data:
-  transaction-db-data:
   rabbitmq_data:
 
 # ---------------------- Networks ----------------------
