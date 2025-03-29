@@ -74,7 +74,7 @@ services:
       restart_policy:
         condition: on-failure
 
-  # ---------------------- Redis Service ----------------------
+# ---------------------- Redis Service ----------------------
   redis-auth:
     image: redis:latest
     container_name: redis-auth
@@ -137,7 +137,7 @@ services:
       timeout: 10s
       retries: 3 
 
-  # ---------------------- Existing Services ----------------------
+# ---------------------- Existing Services ----------------------
   # microservice-template:
   #   build:
   #     context: .
@@ -470,8 +470,11 @@ services:
     networks:
       - go-network
 
+# ---------------------- User Management Database ----------------------
+
   user-management-db:
-    image: postgres:latest
+    image: "bitnami/postgresql:latest"
+    container_name: user-management-db
     restart: always
     command: >
       -c log_min_messages=error
@@ -480,9 +483,13 @@ services:
     env_file:
       - .env
     environment:
-      POSTGRES_USER: ${USER_MANAGEMENT_POSTGRES_USER}
-      POSTGRES_PASSWORD: ${USER_MANAGEMENT_POSTGRES_PASSWORD}
-      POSTGRES_DB: ${USER_MANAGEMENT_POSTGRES_DB}
+      POSTGRESQL_REPLICATION_MODE: master
+      POSTGRESQL_USERNAME: ${USER_MANAGEMENT_POSTGRES_USER}
+      POSTGRESQL_PASSWORD: ${USER_MANAGEMENT_POSTGRES_PASSWORD}
+      POSTGRESQL_REPLICATION_USER: ${TRANSACTION_REPLICATION_USER}
+      POSTGRESQL_REPLICATION_PASSWORD: ${TRANSACTION_REPLICATION_PASSWORD}
+      POSTGRESQL_DATABASE: ${USER_MANAGEMENT_POSTGRES_DB}
+      # POSTGRESQL_POSTGRES_PASSWORD: ${USER_MANAGEMENT_POSTGRESROLE_PASSWORD}
     volumes:
       - user-management-db-data:/var/lib/postgresql/data
       - ./user-management-database/init.sql:/docker-entrypoint-initdb.d/init.sql
@@ -497,6 +504,120 @@ services:
       retries: ${HEALTHCHECK_RETRIES}
     networks:
       - go-network
+
+user-management-db-replica:
+    image: "bitnami/postgresql:latest"
+    container_name: user-management-db-replica-1
+    env_file:
+      - .env
+    environment:
+      POSTGRESQL_REPLICATION_MODE: slave
+      POSTGRESQL_MASTER_HOST: user-management-db
+      POSTGRESQL_MASTER_PORT_NUMBER: 5432 # postgre default
+      POSTGRESQL_REPLICATION_USER: ${USER_MANAGEMENT_REPLICATION_USER}
+      POSTGRESQL_REPLICATION_PASSWORD: ${USER_MANAGEMENT_REPLICATION_PASSWORD}
+      POSTGRESQL_PASSWORD: ${USER_MANAGEMENT_POSTGRES_PASSWORD} # But we still like a password.
+      ALLOW_EMPTY_PASSWORD: yes
+    depends_on:
+      user-management-db:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U $TRANSACTION_POSTGRES_USER -d $TRANSACTION_POSTGRES_DB",
+        ]
+      interval: ${HEALTHCHECK_INTERVAL}
+      timeout: ${HEALTHCHECK_TIMEOUT}
+      retries: ${HEALTHCHECK_RETRIES}
+    networks:
+      - go-network
+
+  # transaction-db:
+  #   image: "bitnami/postgresql:latest"
+  #   container_name: transaction-db
+  #   ports:
+  #     - 5432
+  #   env_file:
+  #     - .env
+  #   environment:
+  #     # NOTE - Bitnami uses the prefix "POSTGRESQL_", which differs from the other database images.
+  #     POSTGRESQL_REPLICATION_MODE: master
+  #     POSTGRESQL_USERNAME: ${TRANSACTION_POSTGRES_USER}
+  #     POSTGRESQL_PASSWORD: ${TRANSACTION_POSTGRES_PASSWORD}
+  #     POSTGRESQL_REPLICATION_USER: ${TRANSACTION_REPLICATION_USER}
+  #     POSTGRESQL_REPLICATION_PASSWORD: ${TRANSACTION_REPLICATION_PASSWORD}
+  #     POSTGRESQL_DATABASE: ${TRANSACTION_POSTGRES_DB}
+  #     POSTGRESQL_POSTGRES_PASSWORD: ${TRANSACTION_POSTGRESROLE_PASSWORD}
+  #     ALLOW_EMPTY_PASSWORD: yes
+  #   volumes:
+  #     - ./transaction-database/init.sql:/docker-entrypoint-initdb.d/init.sql # Mounts the init file so the container has access to it
+  #   healthcheck:
+  #     test:
+  #       [
+  #         "CMD-SHELL",
+  #         "pg_isready -U $TRANSACTION_POSTGRES_USER -d $TRANSACTION_POSTGRES_DB",
+  #       ]
+  #     interval: ${HEALTHCHECK_INTERVAL}
+  #     timeout: ${HEALTHCHECK_TIMEOUT}
+  #     retries: ${HEALTHCHECK_RETRIES}
+  #   networks:
+  #     - go-network
+
+  # transaction-db-replica:
+  #   image: "bitnami/postgresql:latest"
+  #   container_name: transaction-db-replica
+  #   env_file:
+  #     - .env
+  #   environment:
+  #     POSTGRESQL_REPLICATION_MODE: slave
+  #     POSTGRESQL_MASTER_HOST: transaction-db
+  #     POSTGRESQL_MASTER_PORT_NUMBER: 5432 # postgre default
+  #     POSTGRESQL_REPLICATION_USER: ${TRANSACTION_REPLICATION_USER}
+  #     POSTGRESQL_REPLICATION_PASSWORD: ${TRANSACTION_REPLICATION_PASSWORD}
+  #     POSTGRESQL_PASSWORD: ${TRANSACTION_POSTGRES_PASSWORD} # But we still like a password.
+  #     ALLOW_EMPTY_PASSWORD: yes
+  #   depends_on:
+  #     transaction-db:
+  #       condition: service_healthy
+  #   healthcheck:
+  #     test:
+  #       [
+  #         "CMD-SHELL",
+  #         "pg_isready -U $TRANSACTION_POSTGRES_USER -d $TRANSACTION_POSTGRES_DB",
+  #       ]
+  #     interval: ${HEALTHCHECK_INTERVAL}
+  #     timeout: ${HEALTHCHECK_TIMEOUT}
+  #     retries: ${HEALTHCHECK_RETRIES}
+  #   networks:
+  #     - go-network
+
+  # transaction-pgpool:
+  #   image: bitnami/pgpool:latest
+  #   container_name: transaction-pgpool
+  #   ports:
+  #     - "6432:6432"
+  #     # NOTE: postgre default port: 5432
+  #   environment:
+  #     PGPOOL_PORT_NUMBER: 6432 # Apparently specifying the ports wasn't enough; you gotta do it here too.
+  #     PGPOOL_BACKEND_NODES: 0:transaction-db:5432,1:transaction-db-replica:5432
+  #     PGPOOL_SR_CHECK_USER: ${TRANSACTION_POSTGRES_USER}
+  #     PGPOOL_SR_CHECK_PASSWORD: ${TRANSACTION_POSTGRES_PASSWORD}
+  #     PGPOOL_ENABLE_LOAD_BALANCING: yes
+  #     PGPOOL_ADMIN_USERNAME: ${TRANSACTION_POSTGRES_USER} # Required for pgpool
+  #     PGPOOL_ADMIN_PASSWORD: ${TRANSACTION_POSTGRES_PASSWORD} # Required for pgpool
+  #     PGPOOL_POSTGRES_USERNAME: ${TRANSACTION_POSTGRES_USER}
+  #     PGPOOL_POSTGRES_PASSWORD: ${TRANSACTION_POSTGRES_PASSWORD}
+  #     ALLOW_EMPTY_PASSWORD: yes
+  #   depends_on:
+  #     transaction-db-replica:
+  #       condition: service_healthy
+  #     transaction-db:
+  #       condition: service_healthy
+  #   networks:
+  #     - go-network
+
+# ---------------------- RabbitMQ ----------------------
 
   rabbitmq:
     image: rabbitmq:3-management
