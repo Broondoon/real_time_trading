@@ -8,7 +8,6 @@ import (
 	"Shared/objects"
 	subfunctions "Shared/subfunctions/Multithreading"
 	"databaseAccessStock"
-	"databaseAccessTransaction"
 	"databaseAccessUserManagement"
 	"encoding/json"
 	"fmt"
@@ -24,7 +23,6 @@ import (
 
 const TIMEOUT = 2 * time.Second
 
-var _databaseAccess databaseAccessTransaction.DatabaseAccessInterface
 var _databaseAccessUser databaseAccessUserManagement.DatabaseAccessInterface
 var _databaseAccessStock databaseAccessStock.DatabaseAccessInterface
 var _networkHttpManager network.NetworkInterface
@@ -42,8 +40,7 @@ type StockOrderBulk struct {
 }
 
 func InitalizeHandlers(
-	networkHttpManager network.NetworkInterface, networkQueueManager network.NetworkInterface, databaseAccess databaseAccessTransaction.DatabaseAccessInterface, databaseAccessUser databaseAccessUserManagement.DatabaseAccessInterface, databaseAccessStock databaseAccessStock.DatabaseAccessInterface) {
-	_databaseAccess = databaseAccess
+	networkHttpManager network.NetworkInterface, networkQueueManager network.NetworkInterface, databaseAccessUser databaseAccessUserManagement.DatabaseAccessInterface, databaseAccessStock databaseAccessStock.DatabaseAccessInterface) {
 	_databaseAccessUser = databaseAccessUser
 	_databaseAccessStock = databaseAccessStock
 	_networkHttpManager = networkHttpManager
@@ -288,7 +285,7 @@ func placeStockOrderResponse(data *[]*StockOrderBulk, TransferParams any) error 
 			i++
 		}
 	}
-	createdTransactions, errList, err := _databaseAccess.StockTransaction().CreateBulk(&bulkTransactions)
+	createdTransactions, errList, err := _databaseAccessUser.StockTransaction().CreateBulk(&bulkTransactions)
 	if err != nil {
 		for _, stockOrderCarry := range *data {
 			//only way this could be registered as completed is if updating the user stocks ran into an error.
@@ -311,7 +308,7 @@ func placeStockOrderResponse(data *[]*StockOrderBulk, TransferParams any) error 
 
 	for _, stockOrderCarry := range *data {
 		if stockOrderCarry.ResponseWriter.CheckCompleted() {
-			err := _networkHttpManager.Transactions().Patch("cancelStockTransaction", stockOrderCarry.StockOrder.GetIdString())
+			err := _networkQueueManager.UserManagementDatabase().Patch("cancelStockTransaction", stockOrderCarry.StockOrder.GetIdString())
 			if err != nil {
 				log.Println("Error: ", err.Error())
 				// panic(err)
@@ -389,7 +386,7 @@ func cancelStockTransactionHandler(responseWriter network.ResponseWriter, data [
 	}
 
 	err = cancelStockTransaction(stockTxID.StockTransactionID)
-  
+
 	if err != nil {
 		log.Println("Error: ", err.Error())
 		if err.Error() == "404 Not Found" {
@@ -415,13 +412,13 @@ func cancelStockTransactionHandler(responseWriter network.ResponseWriter, data [
 // initiator passes to matching
 func cancelStockTransaction(id string) error {
 	//pass to matching engine
-	err := _networkHttpManager.Transactions().Patch("cancelStockTransaction", id)
+	err := _networkQueueManager.UserManagementDatabase().Patch("cancelStockTransaction", id)
 	if err != nil {
 		log.Println("Error: ", err.Error())
 		return err
 	}
 
-	_, err = _networkHttpManager.MatchingEngine().Delete("deleteOrder/" + id)
+	_, err = _networkQueueManager.MatchingEngine().Delete("deleteOrder/" + id)
 	if err != nil {
 		log.Println("Error: ", err.Error())
 		return err

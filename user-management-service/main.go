@@ -2,6 +2,7 @@ package main
 
 import (
 	networkHttp "Shared/network/http"
+	networkQueue "Shared/network/queue"
 	"databaseAccessStock"
 	"databaseAccessUserManagement"
 	"log"
@@ -13,11 +14,13 @@ import (
 func main() {
 
 	networkManager := networkHttp.NewNetworkHttp()
+	networkManagerQueue := networkQueue.NewNetworkQueue(nil, os.Getenv("USER_MANAGEMENT_HOST")+":"+os.Getenv("USER_MANAGEMENT_PORT"))
+
 	databaseAccess := databaseAccessUserManagement.NewDatabaseAccess(&databaseAccessUserManagement.NewDatabaseAccessParams{
-		Network: networkManager,
+		Network: networkManagerQueue,
 	})
 	stockDatabaseAccess := databaseAccessStock.NewDatabaseAccess(&databaseAccessStock.NewDatabaseAccessParams{
-		Network: networkManager,
+		Network: networkManagerQueue,
 	})
 
 	walletAccess := databaseAccess.Wallet()
@@ -30,4 +33,5 @@ func main() {
 	log.Println("User Management Service started on port", os.Getenv("USER_MANAGEMENT_PORT"))
 
 	networkManager.Listen()
+	<-make(chan struct{})
 }

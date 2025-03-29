@@ -6,16 +6,15 @@ COPY matching-engine-service/ ./matching-engine-service
 COPY Shared/ ./Shared
 COPY stock-order-database/database-access ./databaseAccessStockOrder
 COPY stock-database/database-access ./databaseAccessStock
-COPY transaction-database/database-access ./databaseAccessTransaction
-#Below is only present for dev. In prod, we will use a separate container for the database connection.
 COPY stock-order-database/database-service ./databaseServiceStockOrder
+COPY user-management-database/database-access ./databaseAccessUserManagement
 
 RUN go work init ./matching-engine-service
 RUN go work use ./Shared
 RUN go work use ./databaseAccessStockOrder
 RUN go work use ./databaseServiceStockOrder
 RUN go work use ./databaseAccessStock
-RUN go work use ./databaseAccessTransaction
+RUN go work use ./databaseAccessUserManagement
 
 WORKDIR /app/matching-engine-service
 

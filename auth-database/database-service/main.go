@@ -2,15 +2,18 @@ package main
 
 import (
 	networkHttp "Shared/network/http"
+	networkQueue "Shared/network/queue"
 	databaseServiceAuth "databaseServiceAuth/database-connection"
 	authDatabaseHandlers "databaseServiceAuth/handlers"
 	"log"
+	"os"
 )
 
 func main() {
 	// Establish the database connection.
 	// databaseServiceAuth.ConnectDatabase()
 	_networkManager := networkHttp.NewNetworkHttp()
+	networkManagerQueue := networkQueue.NewNetworkQueue(nil, os.Getenv("AUTH_DATABASE_SERVICE_HOST")+":"+os.Getenv("AUTH_DATABASE_SERVICE_PORT"))
 	_databaseManager := databaseServiceAuth.NewDatabaseService(&databaseServiceAuth.NewDatabaseServiceParams{})
 
 	// Register the /users endpoint.
@@ -20,9 +23,10 @@ func main() {
 
 	//userAccess := databaseAccess.User()
 
-	go authDatabaseHandlers.InitializeHandlers(_networkManager, _databaseManager)
+	go authDatabaseHandlers.InitializeHandlers(networkManagerQueue, _databaseManager)
 
 	log.Println("Auth Database Service Started")
 
 	_networkManager.Listen()
+	<-make(chan struct{})
 }

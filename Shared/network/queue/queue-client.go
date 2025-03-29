@@ -69,12 +69,12 @@ func DefaultPublishParams() SendParams {
 }
 
 func (n *QueueClient) SendWithReturn(route string, message []byte, params SendParams, onReturn func([]byte) ([]byte, error)) ([]byte, error) {
-	log.Println("######")
-	log.Println("Sending with return")
-	log.Println("Route: ", route)
-	log.Println("ExchangeRoute: ", n.ExchangeRoute)
-	log.Println("Message: ", string(message))
-	log.Println("######")
+	// log.Println("######")
+	// log.Println("Sending with return")
+	// log.Println("Route: ", route)
+	// log.Println("ExchangeRoute: ", n.ExchangeRoute)
+	// log.Println("Message: ", string(message))
+	// log.Println("######")
 
 	exchangeParams := ExchangeParams{
 		Name:    n.ExchangeRoute,
@@ -101,7 +101,7 @@ func (n *QueueClient) SendWithReturn(route string, message []byte, params SendPa
 		nil,
 	)
 	failOnError(err, "Failed to declare a return queue")
-	log.Println("Return queue declared")
+	//log.Println("Return queue declared")
 	msg, err := ch.Consume(
 		returnQueue.Name,
 		"",
@@ -112,7 +112,7 @@ func (n *QueueClient) SendWithReturn(route string, message []byte, params SendPa
 		nil,
 	)
 	failOnError(err, "Failed to register a consumer")
-	log.Println("Consumer registered")
+	//log.Println("Consumer registered")
 	corrID := generateRandomID()
 	err = ch.PublishWithContext(
 		ctx,
@@ -127,10 +127,10 @@ func (n *QueueClient) SendWithReturn(route string, message []byte, params SendPa
 			Body:          message,
 		})
 	failOnError(err, "Failed to publish a message")
-	log.Println("Message published")
+	//log.Println("Message published")
 	for d := range msg {
 		if corrID == d.CorrelationId {
-			log.Println("Response received")
+			//log.Println("Response received")
 			return onReturn(d.Body)
 		}
 	}
@@ -280,7 +280,7 @@ func (n *QueueClient) Patch(route string, id string) error {
 	if err != nil {
 		return err
 	}
-	_, err = n.SendWithReturn(route, jsonData, DefaultPublishParams(), func(response []byte) ([]byte, error) {
+	_, err = n.SendWithReturn(route+"/", jsonData, DefaultPublishParams(), func(response []byte) ([]byte, error) {
 		return response, nil
 	})
 	return err

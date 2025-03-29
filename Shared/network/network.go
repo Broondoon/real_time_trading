@@ -24,20 +24,20 @@ type BaseNetworkInterface interface {
 	OrderInitiator() ClientInterface
 	OrderExecutor() ClientInterface
 	Stocks() ClientInterface
-	Transactions() ClientInterface
+	// Transactions() ClientInterface
 	UserManagementDatabase() ClientInterface
 	AuthDatabase() ClientInterface
 }
 
 type Network struct {
-	MatchingEngineService         ClientInterface
-	MicroserviceTemplateService   ClientInterface
-	UserManagementService         ClientInterface
-	AuthenticationService         ClientInterface
-	OrderInitiatorService         ClientInterface
-	OrderExecutorService          ClientInterface
-	StocksService                 ClientInterface
-	TransactionsService           ClientInterface
+	MatchingEngineService       ClientInterface
+	MicroserviceTemplateService ClientInterface
+	UserManagementService       ClientInterface
+	AuthenticationService       ClientInterface
+	OrderInitiatorService       ClientInterface
+	OrderExecutorService        ClientInterface
+	StocksService               ClientInterface
+	// TransactionsService           ClientInterface
 	UserManagementDatabaseService ClientInterface
 	AuthDatabaseService           ClientInterface
 	serviceBuilder                func(serviceString string) ClientInterface
@@ -92,12 +92,12 @@ func (n *Network) Stocks() ClientInterface {
 	return n.StocksService
 }
 
-func (n *Network) Transactions() ClientInterface {
-	if n.TransactionsService == nil {
-		n.TransactionsService = n.serviceBuilder(os.Getenv("TRANSACTION_DATABASE_SERVICE_HOST") + ":" + os.Getenv("TRANSACTION_DATABASE_SERVICE_PORT"))
-	}
-	return n.TransactionsService
-}
+// func (n *Network) Transactions() ClientInterface {
+// 	if n.TransactionsService == nil {
+// 		n.TransactionsService = n.serviceBuilder(os.Getenv("TRANSACTION_DATABASE_SERVICE_HOST") + ":" + os.Getenv("TRANSACTION_DATABASE_SERVICE_PORT"))
+// 	}
+// 	return n.TransactionsService
+// }
 
 func (n *Network) UserManagementDatabase() ClientInterface {
 	if n.UserManagementDatabaseService == nil {
@@ -141,14 +141,14 @@ type HandlerParams struct {
 
 func CreateNetworkEntityHandlers[T entity.EntityInterface, TDatabase any](network NetworkInterface, entityName string, databaseManager databaseService.EntityDataInterface[T, TDatabase], Parse func(jsonBytes []byte) (T, error), ParseList func(jsonBytes []byte) (*[]T, error)) {
 	defaults := func(responseWriter ResponseWriter, data []byte, queryParams url.Values, requestType string) {
-		log.Println("-----------------\nRequest:")
-		log.Println("entityName: ", entityName)
-		if requestType == "POST" || requestType == "PUT" {
-			log.Println("data: ", string(data))
-		}
-		log.Println("queryParams: ", queryParams.Encode())
-		log.Println("requestType: ", requestType)
-		log.Println("-----------------")
+		// log.Println("-----------------\nRequest:")
+		// log.Println("entityName: ", entityName)
+		// if requestType == "POST" || requestType == "PUT" {
+		// 	log.Println("data: ", string(data))
+		// }
+		// log.Println("queryParams: ", queryParams.Encode())
+		// log.Println("requestType: ", requestType)
+		// log.Println("-----------------")
 		bulkRequest := queryParams.Get("Isbulk") != ""
 		useEntities := false
 		noReturns := false
