@@ -413,7 +413,7 @@ services:
     container_name: transaction-db
     ports:
       - 5432
-    restart: always
+    # restart: always
     env_file:
       - .env
     environment:
@@ -447,7 +447,7 @@ services:
   transaction-db-replica:
     image: "bitnami/postgresql:latest"
     container_name: transaction-db-replica
-    restart: always
+    # restart: always
     env_file:
       - .env
     environment:
