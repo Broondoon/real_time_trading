@@ -7,7 +7,6 @@ import (
 	"Shared/entities/wallet"
 	"Shared/network"
 	"log"
-	"os"
 	"time"
 
 	"github.com/google/uuid"
@@ -71,7 +70,6 @@ func NewDatabaseService(params *NewDatabaseServiceParams) DatabaseServiceInterfa
 	// 		NewPostGresDatabaseParams: &databaseService.NewPostGresDatabaseParams{},
 	// 	}
 	// }
-	newDBConnection := databaseService.NewPostGresDatabase(&databaseService.NewPostGresDatabaseParams{})
 
 	// var newDBConnection databaseService.PostGresDatabaseInterface
 	// if params.UserStockParams.Existing != nil {
@@ -144,6 +142,8 @@ func NewDatabaseService(params *NewDatabaseServiceParams) DatabaseServiceInterfa
 		DatabaseInterface: newDBConnection,
 	} */
 
+	newDBConnection := databaseService.NewPostGresDatabase(&databaseService.NewPostGresDatabaseParams{})
+
 	db := &DatabaseService{
 		UserStock: databaseService.NewPostGresEntityData[*userStock.UserStock](&databaseService.NewPostGresEntityDataParams{
 			Existing: newDBConnection,
@@ -151,34 +151,22 @@ func NewDatabaseService(params *NewDatabaseServiceParams) DatabaseServiceInterfa
 		Wallet: databaseService.NewPostGresEntityData[*wallet.Wallet](&databaseService.NewPostGresEntityDataParams{
 			Existing: newDBConnection,
 		}),
-		StockTransaction: databaseService.NewCachedEntityData[*transaction.StockTransaction, *gorm.DB](&databaseService.NewCachedEntityDataParams[*transaction.StockTransaction, *gorm.DB]{
-			RedisAddr:  os.Getenv("REDIS_ADDR"),
-			Password:   os.Getenv("REDIS_PASSWORD"),
-			DefaultTTL: 5 * time.Minute,
-			EntityData: databaseService.NewPostGresEntityData[*transaction.StockTransaction](
-				&databaseService.NewPostGresEntityDataParams{
-					Existing: newDBConnection,
-				},
-			),
+		StockTransaction: databaseService.NewPostGresEntityData[*transaction.StockTransaction](&databaseService.NewPostGresEntityDataParams{
+			Existing: newDBConnection,
 		}),
-		WalletTransaction: databaseService.NewCachedEntityData[*transaction.WalletTransaction, *gorm.DB](&databaseService.NewCachedEntityDataParams[*transaction.WalletTransaction, *gorm.DB]{
-			RedisAddr:  os.Getenv("REDIS_ADDR"),
-			Password:   os.Getenv("REDIS_PASSWORD"),
-			DefaultTTL: 5 * time.Minute,
-			EntityData: databaseService.NewPostGresEntityData[*transaction.WalletTransaction](
-				&databaseService.NewPostGresEntityDataParams{
-					Existing: newDBConnection,
-				},
-			),
+		WalletTransaction: databaseService.NewPostGresEntityData[*transaction.WalletTransaction](&databaseService.NewPostGresEntityDataParams{
+			Existing: newDBConnection,
 		}),
 		DatabaseInterface: newDBConnection,
 	}
 
 	db.Connect()
+
 	db.UserStocks().GetDatabaseSession().AutoMigrate(&userStock.UserStock{})
 	db.Wallets().GetDatabaseSession().AutoMigrate(&wallet.Wallet{})
 	db.StockTransactions().GetDatabaseSession().AutoMigrate(&transaction.StockTransaction{})
 	db.WalletTransactions().GetDatabaseSession().AutoMigrate(&transaction.WalletTransaction{})
+
 	return db
 }
 
