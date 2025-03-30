@@ -519,15 +519,13 @@ services:
       - "6432:6432"
       # postgre default port: 5432
     volumes:
-      - .pgpool-config/pgpool.conf:/opt/bitnami/pgpool/conf/pgpool.conf:ro
+      - ./pgpool-config/pgpool.conf:/opt/bitnami/pgpool/conf/pgpool.conf:ro
     environment:
       PGPOOL_PORT_NUMBER: 6432 # Apparently specifying the ports wasn't enough; you gotta do it here too.
       PGPOOL_BACKEND_NODES: 0:user-management-db:5432,1:user-management-db-replica-1:5432
       PGPOOL_SR_CHECK_USER: ${USER_MANAGEMENT_POSTGRES_USER}
       PGPOOL_SR_CHECK_PASSWORD: ${USER_MANAGEMENT_POSTGRES_PASSWORD}
-      PGPOOL_ENABLE_LOAD_BALANCING: "yes"
-      # PGPOOL_REPLICATION_MODE: off # verify the existance of this var
-      # it might be set in a .conf file instead
+      PGPOOL_ENABLE_LOAD_BALANCING: "yes" # ChatGPT says use quotes
       PGPOOL_ADMIN_USERNAME: ${USER_MANAGEMENT_POSTGRES_USER} # Required for pgpool
       PGPOOL_ADMIN_PASSWORD: ${USER_MANAGEMENT_POSTGRES_PASSWORD} # Required for pgpool
       PGPOOL_POSTGRES_USERNAME: ${USER_MANAGEMENT_POSTGRES_USER}
