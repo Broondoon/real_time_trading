@@ -525,7 +525,7 @@ services:
       PGPOOL_BACKEND_NODES: 0:user-management-db:5432,1:user-management-db-replica-1:5432
       PGPOOL_SR_CHECK_USER: ${USER_MANAGEMENT_POSTGRES_USER}
       PGPOOL_SR_CHECK_PASSWORD: ${USER_MANAGEMENT_POSTGRES_PASSWORD}
-      PGPOOL_ENABLE_LOAD_BALANCING: "yes" # ChatGPT says use quotes
+      PGPOOL_ENABLE_LOAD_BALANCING: yes
       PGPOOL_ADMIN_USERNAME: ${USER_MANAGEMENT_POSTGRES_USER} # Required for pgpool
       PGPOOL_ADMIN_PASSWORD: ${USER_MANAGEMENT_POSTGRES_PASSWORD} # Required for pgpool
       PGPOOL_POSTGRES_USERNAME: ${USER_MANAGEMENT_POSTGRES_USER}
@@ -622,7 +622,6 @@ services:
   #       condition: service_healthy
   #   networks:
   #     - go-network
-
   # ---------------------- RabbitMQ ----------------------
 
   rabbitmq:
