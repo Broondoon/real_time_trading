@@ -116,8 +116,17 @@ func addMoneyToWalletHandler(responseWriter network.ResponseWriter, data []byte,
 
 	if request.Amount <= 0 {
 		log.Println("DEBUG: Request amount is invalid (<= 0), returning 400 Bad Request")
+		errorResponse := network.ReturnJSON{
+			Success: false,
+			Data:    "Amount must be greater than zero.",
+		}
+		returnErr, err := json.Marshal(errorResponse)
+		if err != nil {
+			responseWriter.WriteHeader(http.StatusInternalServerError)
+			return
+		}
 		responseWriter.WriteHeader(http.StatusBadRequest)
-		responseWriter.Write([]byte("Amount must be greater than zero"))
+		responseWriter.Write(returnErr)
 		return
 	}
 

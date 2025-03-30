@@ -1,4 +1,4 @@
-services:  
+services:
   nginx:
     image: nginx:latest
     container_name: nginx_lb
@@ -17,9 +17,9 @@ services:
     networks:
       - go-network
 
-# ---------------------- User Management Tests ----------------------
-#  user-management-tests:
- #    build:
+  # ---------------------- User Management Tests ----------------------
+  #  user-management-tests:
+  #    build:
   #     context: .
   #      dockerfile: ./user-management-tests/Dockerfile
   #   env_file:
@@ -30,15 +30,15 @@ services:
   #     user-management-service:
   #      condition: service_healthy
   # ---------------------- User Management Service ------------------
-   #    dockerfile: ./user-management-tests/Dockerfile
-    # env_file:
-     #   - .env
-     #networks:
-     #- go-network
-     #depends_on:
-     #  user-management-service:
-     #   condition: service_healthy
-# ---------------------- User Management Service ----------------------
+  #    dockerfile: ./user-management-tests/Dockerfile
+  # env_file:
+  #   - .env
+  #networks:
+  #- go-network
+  #depends_on:
+  #  user-management-service:
+  #   condition: service_healthy
+  # ---------------------- User Management Service ----------------------
   user-management-service:
     build:
       context: .
@@ -60,12 +60,7 @@ services:
         condition: service_healthy
     healthcheck:
       test:
-        [
-          "CMD",
-          "curl",
-          "-f",
-          "http://localhost:${USER_MANAGEMENT_PORT}/health",
-        ]
+        ["CMD", "curl", "-f", "http://localhost:${USER_MANAGEMENT_PORT}/health"]
       interval: ${HEALTHCHECK_INTERVAL}
       timeout: ${HEALTHCHECK_TIMEOUT}
       retries: ${HEALTHCHECK_RETRIES}
@@ -74,12 +69,12 @@ services:
       restart_policy:
         condition: on-failure
 
-# ---------------------- Redis Service ----------------------
+  # ---------------------- Redis Service ----------------------
   redis-auth:
     image: redis:latest
     container_name: redis-auth
     ports:
-      - "6380:6379"  # Optional for external access
+      - "6380:6379" # Optional for external access
     networks:
       - go-network
     healthcheck:
@@ -104,7 +99,7 @@ services:
     image: redis:latest
     container_name: redis-usermanagement
     ports:
-      - "6382:6379"  # Optional for external access
+      - "6382:6379" # Optional for external access
     networks:
       - go-network
     healthcheck:
@@ -123,7 +118,7 @@ services:
       test: ["CMD", "redis-cli", "ping"]
       interval: 30s
       timeout: 10s
-      retries: 3 
+      retries: 3
   redis-stockorder:
     image: redis:latest
     container_name: redis-stockorder
@@ -135,9 +130,9 @@ services:
       test: ["CMD", "redis-cli", "ping"]
       interval: 30s
       timeout: 10s
-      retries: 3 
+      retries: 3
 
-# ---------------------- Existing Services ----------------------
+  # ---------------------- Existing Services ----------------------
   # microservice-template:
   #   build:
   #     context: .
@@ -178,7 +173,7 @@ services:
       # order-executor-service:
       #  condition: service_healthy
       redis-stockorder:
-         condition: service_healthy
+        condition: service_healthy
       rabbitmq:
         condition: service_healthy
       user-management-database-service:
@@ -188,12 +183,7 @@ services:
       - go-network
     healthcheck:
       test:
-        [
-          "CMD",
-          "curl",
-          "-f",
-          "http://localhost:${MATCHING_ENGINE_PORT}/health",
-        ]
+        ["CMD", "curl", "-f", "http://localhost:${MATCHING_ENGINE_PORT}/health"]
       interval: ${HEALTHCHECK_INTERVAL}
       timeout: ${HEALTHCHECK_TIMEOUT}
       retries: ${HEALTHCHECK_RETRIES}
@@ -217,12 +207,7 @@ services:
         condition: service_healthy
     healthcheck:
       test:
-        [
-          "CMD",
-          "curl",
-          "-f",
-          "http://localhost:${ORDER_INITIATOR_PORT}/health",
-        ]
+        ["CMD", "curl", "-f", "http://localhost:${ORDER_INITIATOR_PORT}/health"]
       interval: ${HEALTHCHECK_INTERVAL}
       timeout: ${HEALTHCHECK_TIMEOUT}
       retries: ${HEALTHCHECK_RETRIES}
@@ -286,13 +271,7 @@ services:
     networks:
       - go-network
     healthcheck:
-      test:
-        [
-          "CMD",
-          "curl",
-          "-f",
-          "http://${AUTH_HOST}:${AUTH_PORT}/health",
-        ]
+      test: ["CMD", "curl", "-f", "http://${AUTH_HOST}:${AUTH_PORT}/health"]
       interval: ${HEALTHCHECK_INTERVAL}
       timeout: ${HEALTHCHECK_TIMEOUT}
       retries: ${HEALTHCHECK_RETRIES}
@@ -470,16 +449,16 @@ services:
     networks:
       - go-network
 
-# ---------------------- User Management Database ----------------------
+  # ---------------------- User Management Database ----------------------
 
   user-management-db:
     image: "bitnami/postgresql:latest"
     container_name: user-management-db
     restart: always
-    command: >
-      -c log_min_messages=error
-      -c log_min_error_statement=error
-      -c log_statement=none
+    # command: >
+    #   -c log_min_messages=error
+    #   -c log_min_error_statement=error
+    #   -c log_statement=none
     env_file:
       - .env
     environment:
@@ -530,6 +509,35 @@ services:
       interval: ${HEALTHCHECK_INTERVAL}
       timeout: ${HEALTHCHECK_TIMEOUT}
       retries: ${HEALTHCHECK_RETRIES}
+    networks:
+      - go-network
+
+  user-management-pgpool:
+    image: bitnami/pgpool:latest
+    container_name: user-management-pgpool
+    ports:
+      - "6432:6432"
+      # postgre default port: 5432
+    volumes:
+      - .pgpool-config/pgpool.conf:/opt/bitnami/pgpool/conf/pgpool.conf:ro
+    environment:
+      PGPOOL_PORT_NUMBER: 6432 # Apparently specifying the ports wasn't enough; you gotta do it here too.
+      PGPOOL_BACKEND_NODES: 0:user-management-db:5432,1:user-management-db-replica-1:5432
+      PGPOOL_SR_CHECK_USER: ${USER_MANAGEMENT_POSTGRES_USER}
+      PGPOOL_SR_CHECK_PASSWORD: ${USER_MANAGEMENT_POSTGRES_PASSWORD}
+      PGPOOL_ENABLE_LOAD_BALANCING: "yes"
+      # PGPOOL_REPLICATION_MODE: off # verify the existance of this var
+      # it might be set in a .conf file instead
+      PGPOOL_ADMIN_USERNAME: ${USER_MANAGEMENT_POSTGRES_USER} # Required for pgpool
+      PGPOOL_ADMIN_PASSWORD: ${USER_MANAGEMENT_POSTGRES_PASSWORD} # Required for pgpool
+      PGPOOL_POSTGRES_USERNAME: ${USER_MANAGEMENT_POSTGRES_USER}
+      PGPOOL_POSTGRES_PASSWORD: ${USER_MANAGEMENT_POSTGRES_PASSWORD}
+      ALLOW_EMPTY_PASSWORD: yes
+    depends_on:
+      user-management-db-replica:
+        condition: service_healthy
+      user-management-db:
+        condition: service_healthy
     networks:
       - go-network
 
@@ -617,7 +625,7 @@ services:
   #   networks:
   #     - go-network
 
-# ---------------------- RabbitMQ ----------------------
+  # ---------------------- RabbitMQ ----------------------
 
   rabbitmq:
     image: rabbitmq:3-management
@@ -648,7 +656,7 @@ services:
         condition: service_healthy
       stock-db:
         condition: service_healthy
-  
+
   pgadmin:
     image: dpage/pgadmin4
     environment:
@@ -670,5 +678,3 @@ volumes:
 networks:
   go-network:
     driver: bridge
-
-
