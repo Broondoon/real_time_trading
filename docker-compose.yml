@@ -342,7 +342,7 @@ services:
       context: .
       dockerfile: ./user-management-database/database-service/Dockerfile
     ports:
-      - "${USER_MANAGEMENT_DATABASE_SERVICE_PORT}:${USER_MANAGEMENT_DATABASE_SERVICE_PORT}"
+      - "${USER_MANAGEMENT_DATABASE_SERVICE_PORT}"
     env_file:
       - .env
     environment:
@@ -368,6 +368,10 @@ services:
       interval: ${HEALTHCHECK_INTERVAL}
       timeout: ${HEALTHCHECK_TIMEOUT}
       retries: ${HEALTHCHECK_RETRIES}
+    deploy:
+      replicas: 2
+      restart_policy:
+        condition: on-failure
 
   auth-database-service:
     build:
