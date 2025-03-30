@@ -449,7 +449,7 @@ services:
     networks:
       - go-network
 
-  # ---------------------- User Management Database ----------------------
+# ---------------------- User Management Database ----------------------
 
   user-management-db:
     image: "bitnami/postgresql:latest"
@@ -515,6 +515,8 @@ services:
   user-management-pgpool:
     image: bitnami/pgpool:latest
     container_name: user-management-pgpool
+    env_file:
+      - .env
     ports:
       - "6432:6432"
       # postgre default port: 5432
