@@ -57,12 +57,12 @@ func InitalizeHandlers(
 	//Add handlers
 	networkManager.AddHandleFuncProtected(network.HandlerParams{Pattern: os.Getenv("transaction_route") + "/getStockTransactions", Handler: GetStockTransactions})
 	networkManager.AddHandleFuncProtected(network.HandlerParams{Pattern: os.Getenv("transaction_route") + "/getWalletTransactions", Handler: getWalletTransactions})
-	_networkManagerQueue.AddHandleFuncUnprotected(network.HandlerParams{Pattern: "cancelStockTransaction/", Handler: cancelStockTransactionHandler})
-	_networkManagerQueue.AddHandleFuncUnprotected(network.HandlerParams{Pattern: "execute-order", Handler: executeOrderHandler})
-	network.CreateNetworkEntityHandlers(_networkManagerQueue, os.Getenv("TRANSACTION_DATABASE_SERVICE_STOCK_ROUTE"), _databaseManager.StockTransactions(), transaction.ParseStockTransaction, transaction.ParseStockTransactionList)
-	network.CreateNetworkEntityHandlers(_networkManagerQueue, os.Getenv("TRANSACTION_DATABASE_SERVICE_WALLET_ROUTE"), _databaseManager.WalletTransactions(), transaction.ParseWalletTransaction, transaction.ParseWalletTransactionList)
-	network.CreateNetworkEntityHandlers(_networkManagerQueue, os.Getenv("USER_MANAGEMENT_SERVICE_USER_STOCK_ROUTE"), _databaseManager.UserStocks(), userStock.Parse, userStock.ParseList)
-	network.CreateNetworkEntityHandlers(_networkManagerQueue, os.Getenv("USER_MANAGEMENT_SERVICE_WALLET_ROUTE"), _databaseManager.Wallets(), wallet.Parse, wallet.ParseList)
+	networkManager.AddHandleFuncUnprotected(network.HandlerParams{Pattern: "cancelStockTransaction/", Handler: cancelStockTransactionHandler})
+	networkManager.AddHandleFuncUnprotected(network.HandlerParams{Pattern: "execute-order", Handler: executeOrderHandler})
+	network.CreateNetworkEntityHandlers(networkManager, os.Getenv("TRANSACTION_DATABASE_SERVICE_STOCK_ROUTE"), _databaseManager.StockTransactions(), transaction.ParseStockTransaction, transaction.ParseStockTransactionList)
+	network.CreateNetworkEntityHandlers(networkManager, os.Getenv("TRANSACTION_DATABASE_SERVICE_WALLET_ROUTE"), _databaseManager.WalletTransactions(), transaction.ParseWalletTransaction, transaction.ParseWalletTransactionList)
+	network.CreateNetworkEntityHandlers(networkManager, os.Getenv("USER_MANAGEMENT_SERVICE_USER_STOCK_ROUTE"), _databaseManager.UserStocks(), userStock.Parse, userStock.ParseList)
+	network.CreateNetworkEntityHandlers(networkManager, os.Getenv("USER_MANAGEMENT_SERVICE_WALLET_ROUTE"), _databaseManager.Wallets(), wallet.Parse, wallet.ParseList)
 	http.HandleFunc("/health", healthHandler)
 	_networkManagerQueue.Listen()
 }

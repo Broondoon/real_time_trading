@@ -100,7 +100,6 @@ func InitializeUser(db databaseAccessAuth.DatabaseAccessInterface, networkManage
 	_networkManager.AddHandleFuncUnprotected(network.HandlerParams{Pattern: "authentication/register", Handler: Register})
 	_networkManager.AddHandleFuncUnprotected(network.HandlerParams{Pattern: "authentication/login", Handler: Login})
 	http.HandleFunc("/health", healthHandler)
-
 }
 
 // ---------- HTTP Handlers ----------

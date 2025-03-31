@@ -42,11 +42,11 @@ type AddStock struct {
 // If the buy order failed, then the is_buy_failed field = true
 // If the sell order failed, then the is_sell_failed field =true
 type ExecutorToMatchingEngineJSON struct {
-	StockID            string `json:"stock_id"`
-	BuyerStockOrderId  string `json:"buyer_id"`
-	SellerStockOrderId string `json:"seller_id"`
-	IsBuyFailure       bool   `json:"is_buy_failed"`
-	IsSellFailure      bool   `json:"is_sell_failed"`
+	// StockID            string `json:"stock_id"`
+	// BuyerStockOrderId  string `json:"buyer_id"`
+	// SellerStockOrderId string `json:"seller_id"`
+	IsBuyFailure  bool `json:"is_buy_failed"`
+	IsSellFailure bool `json:"is_sell_failed"`
 }
 
 type ReturnJSON struct {

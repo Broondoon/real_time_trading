@@ -2,9 +2,9 @@ package networkQueue
 
 import (
 	"log"
-	"math/rand"
 	"os"
 	"strconv"
+	"sync"
 
 	amqp "github.com/rabbitmq/amqp091-go"
 )
@@ -17,14 +17,15 @@ type QueueConnectionInterface interface {
 	SetDialAddress(address string)
 	SpawnChannel(params ExchangeParams) *amqp.Channel
 	CloseChannel(channel *amqp.Channel)
-	UpdateChannelQos(params QosParams)
+	//UpdateChannelQos(params QosParams)
 }
 
 type NetworkQueueConnection struct {
 	DialAddress string
 	connected   bool
 	connection  *amqp.Connection
-	Channels    []*amqp.Channel
+	channels    chan *amqp.Channel // buffered channel of channels
+	mutex       sync.Mutex
 }
 
 type NewNetworkQueueConnectionParams struct {
@@ -43,12 +44,29 @@ func NewNetworkQueueConnection(params *NewNetworkQueueConnectionParams) QueueCon
 		maxChannels = 0
 	}
 
-	return &NetworkQueueConnection{
+	n := &NetworkQueueConnection{
 		connected:   false,
 		DialAddress: params.DialAddress,
 		connection:  params.Connection,
-		Channels:    make([]*amqp.Channel, 0, maxChannels),
+		channels:    make(chan *amqp.Channel, maxChannels),
 	}
+	n.Connect()
+	for i := 0; i < cap(n.channels); i++ {
+		ch, err := n.connection.Channel()
+		if err == nil {
+			ch.Qos(50, 0, false) // set a larger prefetch
+			n.channels <- ch
+		} else {
+			// handle error if channel creation fails
+		}
+	}
+	return n
+}
+
+// Acquire a channel
+func (n *NetworkQueueConnection) GetChannel() *amqp.Channel {
+	ch := <-n.channels
+	return ch
 }
 
 func (b *NetworkQueueConnection) GetConnection() *amqp.Connection {
@@ -110,21 +128,14 @@ func (n *NetworkQueueConnection) SpawnChannel(params ExchangeParams) *amqp.Chann
 	if !n.connected {
 		n.Connect()
 	}
-	if len(n.Channels) == cap(n.Channels) {
-		log.Printf("Max channels reached, not spawning new channel")
-		//provide random number to select a channel to return to caller
-		index := rand.Intn(len(n.Channels))
-		return n.Channels[index]
-	}
+	// if len(n.Channels) == cap(n.Channels) {
+	// 	log.Printf("Max channels reached, not spawning new channel")
+	// 	//provide random number to select a channel to return to caller
+	// 	index := rand.Intn(len(n.Channels))
+	// 	return n.Channels[index]
+	// }
 
-	ch, err := n.connection.Channel()
-	failOnError(err, "Failed to open a channel")
-	err = ch.Qos(
-		1,     // prefetch count
-		0,     // prefetch size
-		false, // global)
-	)
-	failOnError(err, "Failed to set QoS")
+	ch := <-n.channels
 
 	if params.Name == "" {
 		panic("Not implemented correctly")
@@ -133,7 +144,7 @@ func (n *NetworkQueueConnection) SpawnChannel(params ExchangeParams) *amqp.Chann
 		params.Type = "topic"
 	}
 
-	err = ch.ExchangeDeclare(
+	err := ch.ExchangeDeclare(
 		params.Name,
 		params.Type,
 		params.Durable,
@@ -148,8 +159,9 @@ func (n *NetworkQueueConnection) SpawnChannel(params ExchangeParams) *amqp.Chann
 }
 
 func (n *NetworkQueueConnection) CloseChannel(channel *amqp.Channel) {
-	err := channel.Close()
-	failOnError(err, "Failed to close a channel")
+	// err := channel.Close()
+	// failOnError(err, "Failed to close a channel")
+	n.channels <- channel
 }
 
 func failOnError(err error, msg string) {
@@ -165,20 +177,20 @@ type QosParams struct {
 	Global        bool
 }
 
-func (n *NetworkQueueConnection) UpdateChannelQos(params QosParams) {
-	if len(n.Channels) == 0 {
-		return
-	}
-	if params.PrefetchCount == 0 {
-		params.PrefetchCount = 1
-	}
+// func (n *NetworkQueueConnection) UpdateChannelQos(params QosParams) {
+// 	// if len(n.Channels) == 0 {
+// 	// 	return
+// 	// }
+// 	if params.PrefetchCount == 0 {
+// 		params.PrefetchCount = 1
+// 	}
 
-	for _, ch := range n.Channels {
-		err := ch.Qos(
-			params.PrefetchCount, // prefetch count
-			params.PrefetchSize,  // prefetch size
-			params.Global,        // global)
-		)
-		failOnError(err, "Failed to set QoS")
-	}
-}
+// 	for _, ch := range n.Channels {
+// 		err := ch.Qos(
+// 			params.PrefetchCount, // prefetch count
+// 			params.PrefetchSize,  // prefetch size
+// 			params.Global,        // global)
+// 		)
+// 		failOnError(err, "Failed to set QoS")
+// 	}
+// }

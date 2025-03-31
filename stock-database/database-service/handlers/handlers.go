@@ -25,8 +25,8 @@ func InitalizeHandlers(
 
 	//Add handlers
 	_networkManager.AddHandleFuncProtected(network.HandlerParams{Pattern: os.Getenv("setup_route") + "/createStock", Handler: AddNewStockHandler})
-	_networkQueueManager.AddHandleFuncUnprotected(network.HandlerParams{Pattern: "getStockIDs", Handler: GetStockIDsHandler})
-	network.CreateNetworkEntityHandlers[*stock.Stock](_networkQueueManager, os.Getenv("STOCK_DATABASE_SERVICE_ROUTE"), _databaseManager, stock.Parse, stock.ParseList)
+	_networkManager.AddHandleFuncUnprotected(network.HandlerParams{Pattern: "getStockIDs", Handler: GetStockIDsHandler})
+	network.CreateNetworkEntityHandlers[*stock.Stock](_networkManager, os.Getenv("STOCK_DATABASE_SERVICE_ROUTE"), _databaseManager, stock.Parse, stock.ParseList)
 	http.HandleFunc("/health", healthHandler)
 	_networkQueueManager.Listen()
 }
@@ -74,7 +74,7 @@ func AddNewStockHandler(responseWriter network.ResponseWriter, data []byte, quer
 		return
 	}
 	stockIdObject := network.StockID{StockID: newStock.GetIdString(), Name: newStock.GetName()}
-	_, err = _networkQueueManager.MatchingEngine().Post("createStock", stockIdObject)
+	_, err = _networkManager.MatchingEngine().Post("createStock", stockIdObject)
 	if err != nil {
 		log.Println("Error: ", err.Error())
 		responseWriter.WriteHeader(http.StatusInternalServerError)

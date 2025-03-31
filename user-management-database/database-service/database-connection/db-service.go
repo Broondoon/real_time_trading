@@ -212,11 +212,11 @@ func (d *DatabaseService) ExecuteOrder(buyerStockID string, sellerStockID string
 	log.Println("Quantity: ", quantity)
 
 	returnStuct := network.ExecutorToMatchingEngineJSON{
-		StockID:            stockID,
-		BuyerStockOrderId:  buyerStockID,
-		SellerStockOrderId: sellerStockID,
-		IsBuyFailure:       false,
-		IsSellFailure:      false,
+		// StockID:            stockID,
+		// BuyerStockOrderId:  buyerStockID,
+		// SellerStockOrderId: sellerStockID,
+		IsBuyFailure:  false,
+		IsSellFailure: false,
 	}
 
 	buyerStockUUID, err := uuid.Parse(buyerStockID)

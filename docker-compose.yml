@@ -88,54 +88,54 @@ services:
       timeout: 10s
       retries: 3
 
-  redis-transaction:
-    image: redis:latest
-    container_name: redis-transaction
-    ports:
-      - "6381:6379"
-    networks:
-      - go-network
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-  redis-usermanagement:
-    image: redis:latest
-    container_name: redis-usermanagement
-    ports:
-      - "6382:6379"  # Optional for external access
-    networks:
-      - go-network
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-  redis-stock:
-    image: redis:latest
-    container_name: redis-stock
-    ports:
-      - "6383:6379"
-    networks:
-      - go-network
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 30s
-      timeout: 10s
-      retries: 3 
-  redis-stockorder:
-    image: redis:latest
-    container_name: redis-stockorder
-    ports:
-      - "6384:6379"
-    networks:
-      - go-network
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 30s
-      timeout: 10s
-      retries: 3 
+  # redis-transaction:
+  #   image: redis:latest
+  #   container_name: redis-transaction
+  #   ports:
+  #     - "6381:6379"
+  #   networks:
+  #     - go-network
+  #   healthcheck:
+  #     test: ["CMD", "redis-cli", "ping"]
+  #     interval: 30s
+  #     timeout: 10s
+  #     retries: 3
+  # redis-usermanagement:
+  #   image: redis:latest
+  #   container_name: redis-usermanagement
+  #   ports:
+  #     - "6382:6379"  # Optional for external access
+  #   networks:
+  #     - go-network
+  #   healthcheck:
+  #     test: ["CMD", "redis-cli", "ping"]
+  #     interval: 30s
+  #     timeout: 10s
+  #     retries: 3
+  # redis-stock:
+  #   image: redis:latest
+  #   container_name: redis-stock
+  #   ports:
+  #     - "6383:6379"
+  #   networks:
+  #     - go-network
+  #   healthcheck:
+  #     test: ["CMD", "redis-cli", "ping"]
+  #     interval: 30s
+  #     timeout: 10s
+  #     retries: 3 
+  # redis-stockorder:
+  #   image: redis:latest
+  #   container_name: redis-stockorder
+  #   ports:
+  #     - "6384:6379"
+  #   networks:
+  #     - go-network
+  #   healthcheck:
+  #     test: ["CMD", "redis-cli", "ping"]
+  #     interval: 30s
+  #     timeout: 10s
+  #     retries: 3 
 
   # ---------------------- Existing Services ----------------------
   # microservice-template:
@@ -177,8 +177,8 @@ services:
         condition: service_healthy
       # order-executor-service:
       #  condition: service_healthy
-      redis-stockorder:
-         condition: service_healthy
+      # redis-stockorder:
+      #    condition: service_healthy
       rabbitmq:
         condition: service_healthy
       user-management-database-service:
@@ -323,8 +323,8 @@ services:
     depends_on:
       stock-db:
         condition: service_healthy
-      redis-stock:
-        condition: service_healthy
+      # redis-stock:
+      #   condition: service_healthy
     healthcheck:
       test:
         [
@@ -355,8 +355,8 @@ services:
     depends_on:
       user-management-db:
         condition: service_healthy
-      redis-usermanagement:
-        condition: service_healthy
+      # redis-usermanagement:
+      #   condition: service_healthy
     healthcheck:
       test:
         [
@@ -369,7 +369,7 @@ services:
       timeout: ${HEALTHCHECK_TIMEOUT}
       retries: ${HEALTHCHECK_RETRIES}
     deploy:
-      replicas: 2
+      replicas: 5
       restart_policy:
         condition: on-failure
 
