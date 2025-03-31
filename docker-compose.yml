@@ -329,13 +329,28 @@ services:
       PORT: ${USER_MANAGEMENT_DATABASE_SERVICE_PORT}
       REDIS_AUTH_ADDR: ${REDIS_USER_MANAGEMENT_ADDR}
       REDIS_PASSWORD: ${REDIS_PASSWORD}
+      ENABLE_SHARDING: ${ENABLE_SHARDING} # Should act as a flag to enable/disable sharding in the .env
+      USER_MANAGEMENT_DB_SHARD_COUNT: ${USER_MANAGEMENT_DB_SHARD_COUNT}
+      USER_MANAGEMENT_DB_SHARD_KEY: ${USER_MANAGEMENT_DB_SHARD_KEY}
+      USER_MANAGEMENT_DB_SHARDING_ALGORITHM: ${USER_MANAGEMENT_DB_SHARDING_ALGORITHM}
+      USER_MANAGEMENT_DATABASE_URL_SHARD1: ${USER_MANAGEMENT_DATABASE_URL_SHARD1}
+      USER_MANAGEMENT_DATABASE_URL_SHARD2: ${USER_MANAGEMENT_DATABASE_URL_SHARD2}
+      USER_MANAGEMENT_DATABASE_URL_SHARD3: ${USER_MANAGEMENT_DATABASE_URL_SHARD3}
     networks:
       - go-network
     depends_on:
-      user-management-pgpool:
+      # Not 100% sure how pgpool interacts with the sharding setup, so I left this in for now.
+      #user-management-pgpool:
+      user-management-db:
         condition: service_healthy
-      # redis-usermanagement:
-      #   condition: service_healthy
+      user-management-shard-1:
+        condition: service_healthy
+      user-management-shard-2:
+        condition: service_healthy
+      user-management-shard-3:
+        condition: service_healthy
+      redis-usermanagement:
+        condition: service_healthy
     healthcheck:
       test:
         [
@@ -365,10 +380,23 @@ services:
       PORT: ${AUTH_DATABASE_SERVICE_PORT}
       REDIS_AUTH_ADDR: ${REDIS_AUTH_ADDR}
       REDIS_PASSWORD: ${REDIS_PASSWORD}
+      ENABLE_SHARDING: ${ENABLE_SHARDING} # Should act as a flag to enable/disable sharding in the .env
+      AUTH_DB_SHARD_COUNT: ${AUTH_DB_SHARD_COUNT}
+      AUTH_DB_SHARD_KEY: ${AUTH_DB_SHARD_KEY}
+      AUTH_DB_SHARDING_ALGORITHM: ${AUTH_DB_SHARDING_ALGORITHM}
+      AUTH_DATABASE_URL_SHARD1: ${AUTH_DATABASE_URL_SHARD1}
+      AUTH_DATABASE_URL_SHARD2: ${AUTH_DATABASE_URL_SHARD2}
+      AUTH_DATABASE_URL_SHARD3: ${AUTH_DATABASE_URL_SHARD3}
     networks:
       - go-network
     depends_on:
       auth-db:
+        condition: service_healthy
+      auth-shard-1:
+        condition: service_healthy
+      auth-shard-2:
+        condition: service_healthy
+      auth-shard-3:
         condition: service_healthy
       redis-auth:
         condition: service_healthy
@@ -781,12 +809,154 @@ services:
     networks:
       - go-network
 
+#### Sharding Configuration ####
+
+# NOTE: May need to update this as I'm not 100% sure how it interacts with pgpool/replication
+
+# Auth Database Shards (I arbitrarily chose 2) #
+# Add these sections for Auth DB sharding
+
+
+# Add these sections for Auth DB sharding
+
+auth-shard-1:
+  image: postgres:latest
+  restart: always
+  env_file:
+    - .env
+  environment:
+    POSTGRES_USER: ${AUTH_POSTGRES_USER}
+    POSTGRES_PASSWORD: ${AUTH_POSTGRES_PASSWORD}
+    POSTGRES_DB: ${AUTH_POSTGRES_DB}_shard1
+  volumes:
+    - auth-shard-1-data:/var/lib/postgresql/data
+    - ./auth-database/init.sql:/docker-entrypoint-initdb.d/init.sql
+  healthcheck:
+    test: ["CMD-SHELL", "pg_isready -U $AUTH_POSTGRES_USER -d ${AUTH_POSTGRES_DB}_shard1"]
+    interval: ${HEALTHCHECK_INTERVAL}
+    timeout: ${HEALTHCHECK_TIMEOUT}
+    retries: ${HEALTHCHECK_RETRIES}
+  networks:
+    - go-network
+
+auth-shard-2:
+  image: postgres:latest
+  restart: always
+  env_file:
+    - .env
+  environment:
+    POSTGRES_USER: ${AUTH_POSTGRES_USER}
+    POSTGRES_PASSWORD: ${AUTH_POSTGRES_PASSWORD}
+    POSTGRES_DB: ${AUTH_POSTGRES_DB}_shard2
+  volumes:
+    - auth-shard-2-data:/var/lib/postgresql/data
+    - ./auth-database/init.sql:/docker-entrypoint-initdb.d/init.sql
+  healthcheck:
+    test: ["CMD-SHELL", "pg_isready -U $AUTH_POSTGRES_USER -d ${AUTH_POSTGRES_DB}_shard2"]
+    interval: ${HEALTHCHECK_INTERVAL}
+    timeout: ${HEALTHCHECK_TIMEOUT}
+    retries: ${HEALTHCHECK_RETRIES}
+  networks:
+    - go-network
+
+auth-shard-3:
+  image: postgres:latest
+  restart: always
+  env_file:
+    - .env
+  environment:
+    POSTGRES_USER: ${AUTH_POSTGRES_USER}
+    POSTGRES_PASSWORD: ${AUTH_POSTGRES_PASSWORD}
+    POSTGRES_DB: ${AUTH_POSTGRES_DB}_shard3
+  volumes:
+    - auth-shard-3-data:/var/lib/postgresql/data
+    - ./auth-database/init.sql:/docker-entrypoint-initdb.d/init.sql
+  healthcheck:
+    test: ["CMD-SHELL", "pg_isready -U $AUTH_POSTGRES_USER -d ${AUTH_POSTGRES_DB}_shard3"]
+    interval: ${HEALTHCHECK_INTERVAL}
+    timeout: ${HEALTHCHECK_TIMEOUT}
+    retries: ${HEALTHCHECK_RETRIES}
+  networks:
+    - go-network
+
+# User Management DB Shards
+user-management-shard-1:
+  image: "bitnami/postgresql:latest"
+  container_name: user-management-shard-1
+  restart: always
+  env_file:
+    - .env
+  environment:
+    POSTGRESQL_USERNAME: ${USER_MANAGEMENT_POSTGRES_USER}
+    POSTGRESQL_PASSWORD: ${USER_MANAGEMENT_POSTGRES_PASSWORD}
+    POSTGRESQL_DATABASE: ${USER_MANAGEMENT_POSTGRES_DB}_shard1
+  volumes:
+    - user-management-shard-1-data:/var/lib/postgresql/data
+    - ./user-management-database/init.sql:/docker-entrypoint-initdb.d/init.sql
+  healthcheck:
+    test: ["CMD-SHELL", "pg_isready -U $USER_MANAGEMENT_POSTGRES_USER -d ${USER_MANAGEMENT_POSTGRES_DB}_shard1"]
+    interval: ${HEALTHCHECK_INTERVAL}
+    timeout: ${HEALTHCHECK_TIMEOUT}
+    retries: ${HEALTHCHECK_RETRIES}
+  networks:
+    - go-network
+
+user-management-shard-2:
+  image: "bitnami/postgresql:latest"
+  container_name: user-management-shard-2
+  restart: always
+  env_file:
+    - .env
+  environment:
+    POSTGRESQL_USERNAME: ${USER_MANAGEMENT_POSTGRES_USER}
+    POSTGRESQL_PASSWORD: ${USER_MANAGEMENT_POSTGRES_PASSWORD}
+    POSTGRESQL_DATABASE: ${USER_MANAGEMENT_POSTGRES_DB}_shard2
+  volumes:
+    - user-management-shard-2-data:/var/lib/postgresql/data
+    - ./user-management-database/init.sql:/docker-entrypoint-initdb.d/init.sql
+  healthcheck:
+    test: ["CMD-SHELL", "pg_isready -U $USER_MANAGEMENT_POSTGRES_USER -d ${USER_MANAGEMENT_POSTGRES_DB}_shard2"]
+    interval: ${HEALTHCHECK_INTERVAL}
+    timeout: ${HEALTHCHECK_TIMEOUT}
+    retries: ${HEALTHCHECK_RETRIES}
+  networks:
+    - go-network
+
+user-management-shard-3:
+  image: "bitnami/postgresql:latest"
+  container_name: user-management-shard-3
+  restart: always
+  env_file:
+    - .env
+  environment:
+    POSTGRESQL_USERNAME: ${USER_MANAGEMENT_POSTGRES_USER}
+    POSTGRESQL_PASSWORD: ${USER_MANAGEMENT_POSTGRES_PASSWORD}
+    POSTGRESQL_DATABASE: ${USER_MANAGEMENT_POSTGRES_DB}_shard3
+  volumes:
+    - user-management-shard-3-data:/var/lib/postgresql/data
+    - ./user-management-database/init.sql:/docker-entrypoint-initdb.d/init.sql
+  healthcheck:
+    test: ["CMD-SHELL", "pg_isready -U $USER_MANAGEMENT_POSTGRES_USER -d ${USER_MANAGEMENT_POSTGRES_DB}_shard3"]
+    interval: ${HEALTHCHECK_INTERVAL}
+    timeout: ${HEALTHCHECK_TIMEOUT}
+    retries: ${HEALTHCHECK_RETRIES}
+  networks:
+    - go-network
+
+
 volumes:
   user-management-db-data:
   stock-db-data:
   auth-db-data:
   stock-order-db-data:
   rabbitmq_data:
+  auth-shard-1-data:
+  auth-shard-2-data:
+  auth-shard-3-data:
+  user-management-shard-1-data:
+  user-management-shard-2-data:
+  user-management-shard-3-data:
+
 
 # ---------------------- Networks ----------------------
 networks:
