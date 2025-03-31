@@ -529,7 +529,7 @@ services:
       - "6432:6432"
     environment:
       PGPOOL_PORT_NUMBER: 6432
-      PGPOOL_BACKEND_NODES: 0:user-management-db:5432,1:user-management-db-replica-1:5432
+      PGPOOL_BACKEND_NODES: 0:user-management-db:5432,1:user-management-db-replica-1:5432,2:user-management-db-replica-2:5432
       PGPOOL_SR_CHECK_USER: ${USER_MANAGEMENT_POSTGRES_USER}
       PGPOOL_SR_CHECK_PASSWORD: ${USER_MANAGEMENT_POSTGRES_PASSWORD}
       PGPOOL_ENABLE_LOAD_BALANCING: "yes"
