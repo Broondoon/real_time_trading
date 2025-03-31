@@ -40,6 +40,7 @@ type Entity struct {
 
 type EntityUpdateData struct {
 	ID         *uuid.UUID
+	ShardKey   string // Shard key to use for the update; set as nil to not update.
 	Field      string
 	NewValue   *string // New value to set the field; set as nil to not update.
 	AlterValue *string // Value to add to the existing value NOT the new value; set as nil to not update.
@@ -91,11 +92,11 @@ func (e *Entity) GetDateModified() time.Time {
 
 func (e *Entity) SetDateModified(dateModified time.Time) {
 	e.DateModified = dateModified
-	*e.GetUpdates() = append(*e.Updates, &EntityUpdateData{
-		ID:       e.GetId(),
-		Field:    "DateModified",
-		NewValue: func() *string { s := dateModified.Format(time.RFC3339); return &s }(),
-	})
+	// *e.GetUpdates() = append(*e.Updates, &EntityUpdateData{
+	// 	ID:       e.GetId(),
+	// 	Field:    "DateModified",
+	// 	NewValue: func() *string { s := dateModified.Format(time.RFC3339); return &s }(),
+	// })
 }
 
 func (e *Entity) GetUpdates() *[]*EntityUpdateData {

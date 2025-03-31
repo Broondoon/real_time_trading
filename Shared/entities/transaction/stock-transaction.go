@@ -91,8 +91,9 @@ func (st *StockTransaction) GetWalletTransactionIDString() string {
 func (st *StockTransaction) SetWalletTransactionID(walletTransactionID *uuid.UUID) {
 	st.WalletTransactionID = walletTransactionID
 	*st.GetUpdates() = append(*st.Updates, &entity.EntityUpdateData{
-		ID:    st.GetId(),
-		Field: "WalletTransactionID",
+		ID:       st.GetId(),
+		ShardKey: st.GetUserIDString(),
+		Field:    "WalletTransactionID",
 		NewValue: func() *string {
 			if walletTransactionID != nil {
 				s := walletTransactionID.String()
@@ -111,6 +112,7 @@ func (st *StockTransaction) SetOrderStatus(orderStatus string) {
 	st.OrderStatus = orderStatus
 	*st.GetUpdates() = append(*st.Updates, &entity.EntityUpdateData{
 		ID:       st.GetId(),
+		ShardKey: st.GetUserIDString(),
 		Field:    "OrderStatus",
 		NewValue: &orderStatus,
 	})
@@ -124,6 +126,7 @@ func (st *StockTransaction) SetIsBuy(isBuy bool) {
 	st.IsBuy = isBuy
 	*st.GetUpdates() = append(*st.Updates, &entity.EntityUpdateData{
 		ID:       st.GetId(),
+		ShardKey: st.GetUserIDString(),
 		Field:    "IsBuy",
 		NewValue: func() *string { s := strconv.FormatBool(isBuy); return &s }(),
 	})
@@ -141,6 +144,7 @@ func (st *StockTransaction) UpdateStockPrice(stockPrice float64) {
 	st.StockPrice = stockPrice
 	*st.GetUpdates() = append(*st.Updates, &entity.EntityUpdateData{
 		ID:         st.GetId(),
+		ShardKey:   st.GetUserIDString(),
 		Field:      "StockPrice",
 		AlterValue: func() *string { s := strconv.FormatFloat(stockPrice, 'f', -1, 64); return &s }(),
 	})
@@ -154,6 +158,7 @@ func (st *StockTransaction) SetQuantity(quantity int) {
 	st.Quantity = quantity
 	*st.GetUpdates() = append(*st.Updates, &entity.EntityUpdateData{
 		ID:       st.GetId(),
+		ShardKey: st.GetUserIDString(),
 		Field:    "Quantity",
 		NewValue: func() *string { s := strconv.Itoa(quantity); return &s }(),
 	})

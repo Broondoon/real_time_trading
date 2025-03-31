@@ -47,8 +47,8 @@ func (d *EntityDataAccess[TEntity, TInterface, TDatabase]) Disconnect() {
 }
 
 // GetByID gets an entity by its ID
-func (d *EntityDataAccess[TEntity, TInterface, TDatabase]) GetByID(id *uuid.UUID) (TInterface, error) {
-	entity, err := d.EntityDataServiceTemp.GetByID(id.String())
+func (d *EntityDataAccess[TEntity, TInterface, TDatabase]) GetByID(id *uuid.UUID, shardKey string) (TInterface, error) {
+	entity, err := d.EntityDataServiceTemp.GetByID(id.String(), shardKey)
 	if err != nil {
 		log.Fatal("Failed to get entity by ID: ", err)
 	}
@@ -68,12 +68,12 @@ func (d *EntityDataAccess[TEntity, TInterface, TDatabase]) GetAll() (*[]TInterfa
 	}
 	return &converted, nil
 }
-func (d *EntityDataAccess[TEntity, TInterface, TDatabase]) GetByIDs(ids []*uuid.UUID) (*[]TInterface, map[string]int, error) {
+func (d *EntityDataAccess[TEntity, TInterface, TDatabase]) GetByIDs(ids []*uuid.UUID, shardKeys *[]string) (*[]TInterface, map[string]int, error) {
 	panic("implement me") // TODO: Implement
 }
 
-func (d *EntityDataAccess[TEntity, TInterface, TDatabase]) GetByForeignID(foreignIDColumn string, foreignID string) (*[]TInterface, error) {
-	entities, err := d.EntityDataServiceTemp.GetByForeignID(foreignIDColumn, foreignID)
+func (d *EntityDataAccess[TEntity, TInterface, TDatabase]) GetByForeignID(foreignIDColumn string, foreignID string, shardKey string) (*[]TInterface, error) {
+	entities, err := d.EntityDataServiceTemp.GetByForeignID(foreignIDColumn, foreignID, shardKey)
 	if err != nil {
 		log.Fatal("Failed to get entities by ForeignKey: ", err)
 	}
@@ -92,11 +92,11 @@ func (d *EntityDataAccess[TEntity, TInterface, TDatabase]) GetByPairedIDBulk(idC
 	panic("implement me") // TODO: Implement
 }
 
-func (d *EntityDataAccess[TEntity, TInterface, TDatabase]) GetByFilteredForeignIDBulk(foreignIDKey string, foreignIDs []string, filterKey string, filterVal string) (*[]TInterface, map[string]int, error) {
+func (d *EntityDataAccess[TEntity, TInterface, TDatabase]) GetByFilteredForeignIDBulk(foreignIDKey string, foreignIDs []string, filterKey string, filterVal string, shardKeys *[]string) (*[]TInterface, map[string]int, error) {
 	panic("implement me") // TODO: Implement
 }
 
-func (d *EntityDataAccess[TEntity, TInterface, TDatabase]) GetByForeignIDBulk(foreignIDColumn string, foreignIDs []string) (*[]TInterface, map[string]int, error) {
+func (d *EntityDataAccess[TEntity, TInterface, TDatabase]) GetByForeignIDBulk(foreignIDColumn string, foreignIDs []string, shardKeys *[]string) (*[]TInterface, map[string]int, error) {
 	panic("implement me") // TODO: Implement
 }
 
@@ -174,14 +174,14 @@ func (d *EntityDataAccess[TEntity, TInterface, TDatabase]) UpdateBulk(entities *
 	return errorList, nil
 }
 
-func (d *EntityDataAccess[TEntity, TInterface, TDatabase]) Delete(id *uuid.UUID) error {
-	err := d.EntityDataServiceTemp.Delete(id.String())
+func (d *EntityDataAccess[TEntity, TInterface, TDatabase]) Delete(id *uuid.UUID, shardKey string) error {
+	err := d.EntityDataServiceTemp.Delete(id.String(), shardKey)
 	if err != nil {
 		log.Fatal("Failed to delete entity: ", err)
 	}
 	return nil
 }
 
-func (d *EntityDataAccess[TEntity, TInterface, TDatabase]) DeleteBulk(ids []*uuid.UUID) (map[string]int, error) {
+func (d *EntityDataAccess[TEntity, TInterface, TDatabase]) DeleteBulk(ids []*uuid.UUID, shardKeys *[]string) (map[string]int, error) {
 	panic("implement me") // TODO: Implement
 }

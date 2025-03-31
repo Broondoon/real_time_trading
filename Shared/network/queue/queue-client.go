@@ -307,12 +307,12 @@ func (n *QueueClient) PatchBulk(route string, ids []string) (network.BulkReturn,
 
 }
 
-func (n *QueueClient) Delete(route string) ([]byte, error) {
+func (n *QueueClient) Delete(route string, headers map[string]string) ([]byte, error) {
 	//header will have id as the last part of the route
 	splitRoute := strings.Split(route, "/")
 	id := splitRoute[len(splitRoute)-1]
 	route = splitRoute[0] + "/"
-	headers := map[string]string{"id": id}
+	headers["id"] = id
 	data := QueueJSONData{
 		Headers:     headers,
 		MessageType: "DELETE",
@@ -327,8 +327,8 @@ func (n *QueueClient) Delete(route string) ([]byte, error) {
 	})
 }
 
-func (n *QueueClient) DeleteBulk(route string, payload []string) (network.BulkReturn, error) {
-	headers := map[string]string{"ids": strings.Join(payload, ",")}
+func (n *QueueClient) DeleteBulk(route string, payload []string, headers map[string]string) (network.BulkReturn, error) {
+	headers["ids"] = strings.Join(payload, ",")
 	data := QueueJSONData{
 		Headers:     headers,
 		MessageType: "DELETE",

@@ -204,7 +204,8 @@ func DeleteStockOrderHandler(responseWriter network.ResponseWriter, data []byte,
 		responseWriter.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	err = DeleteStockOrder(&orderID)
+	userID := strings.TrimSpace(queryParams.Get("userID"))
+	err = DeleteStockOrder(&orderID, userID)
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		responseWriter.WriteHeader(http.StatusNotFound)
 		return
@@ -217,13 +218,13 @@ func DeleteStockOrderHandler(responseWriter network.ResponseWriter, data []byte,
 	responseWriter.WriteHeader(http.StatusOK)
 }
 
-func DeleteStockOrder(orderID *uuid.UUID) error {
-	order, err := _databaseManagerStockOrder.GetByID(orderID)
+func DeleteStockOrder(orderID *uuid.UUID, shardKey string) error {
+	order, err := _databaseManagerStockOrder.GetByID(orderID, shardKey)
 	if err != nil {
 		log.Println("Cancel Stock GetByID Error: ", err.Error())
 		return err
 	}
-	err = _databaseManagerStockOrder.Delete(orderID)
+	err = _databaseManagerStockOrder.Delete(orderID, shardKey)
 	if err != nil {
 		log.Println("Cancel Stock Delete Error: ", err.Error())
 		return err

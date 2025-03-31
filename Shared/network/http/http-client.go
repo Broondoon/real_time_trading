@@ -309,8 +309,17 @@ func (hc *HttpClient) PatchBulk(endpoint string, ids []string) (network.BulkRetu
 	return hc.handleBulkResponse(resp)
 }
 
-func (hc *HttpClient) Delete(endpoint string) ([]byte, error) {
-	req, err := http.NewRequest(http.MethodDelete, hc.BaseURL+endpoint, nil)
+func (hc *HttpClient) Delete(endpoint string, queryParams map[string]string) ([]byte, error) {
+	url, err := url.Parse(hc.BaseURL + endpoint)
+	if err != nil {
+		return nil, err
+	}
+	q := url.Query()
+	for key, value := range queryParams {
+		q.Add(key, value)
+	}
+	url.RawQuery = q.Encode()
+	req, err := http.NewRequest(http.MethodDelete, url.String(), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -327,7 +336,7 @@ func (hc *HttpClient) Delete(endpoint string) ([]byte, error) {
 	return hc.handleResponse(resp)
 }
 
-func (hc *HttpClient) DeleteBulk(endpoint string, payload []string) (network.BulkReturn, error) {
+func (hc *HttpClient) DeleteBulk(endpoint string, payload []string, queryParams map[string]string) (network.BulkReturn, error) {
 	url, err := url.Parse(hc.BaseURL + endpoint)
 	if err != nil {
 		return network.BulkReturn{}, err
@@ -338,7 +347,7 @@ func (hc *HttpClient) DeleteBulk(endpoint string, payload []string) (network.Bul
 	}
 
 	//need to add ids to the IDs query param
-	queryParams := map[string]string{"Ids": strings.Join(payload, ",")}
+	queryParams["Ids"] = strings.Join(payload, ",")
 	q := url.Query()
 	for key, value := range queryParams {
 		q.Add(key, value)

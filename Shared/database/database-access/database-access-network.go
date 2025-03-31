@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -105,12 +106,13 @@ func (d *EntityDataAccessClient[TEntity, TInterface]) Disconnect() {
 }
 
 // GetByID gets an entity by its ID
-func (d *EntityDataAccessClient[TEntity, TInterface]) GetByID(id *uuid.UUID) (TInterface, error) {
+func (d *EntityDataAccessClient[TEntity, TInterface]) GetByID(id *uuid.UUID, shardKey string) (TInterface, error) {
 	if d.GetRoute == "" {
 		d.GetRoute = d.DefaultRoute
 	}
+	headers := map[string]string{"Shard_key": shardKey}
 	//We attach the ID to the route and send a GET request to the database service.
-	jsonBytes, err := d._client.Get(d.GetRoute+"/"+id.String(), nil)
+	jsonBytes, err := d._client.Get(d.GetRoute+"/"+id.String(), headers)
 	if err != nil {
 		var zero TInterface
 		return zero, err
@@ -155,11 +157,14 @@ func (d *EntityDataAccessClient[TEntity, TInterface]) GetAll() (*[]TInterface, e
 
 // GetByIDs gets entities by their IDs. This is a bulk operation.
 // It will return all the entities that match the IDs, and a map of any errors that occurred, mapped to their respective IDs.
-func (d *EntityDataAccessClient[TEntity, TInterface]) GetByIDs(ids []*uuid.UUID) (*[]TInterface, map[string]int, error) {
+func (d *EntityDataAccessClient[TEntity, TInterface]) GetByIDs(ids []*uuid.UUID, shardKeys *[]string) (*[]TInterface, map[string]int, error) {
 	if d.GetRoute == "" {
 		d.GetRoute = d.DefaultRoute
 	}
-	queryParams := map[string]string{} //Empty because we don't use this for anything here.
+	shardKeysStr := strings.Join(*shardKeys, ",")
+	queryParams := map[string]string{
+		"Shard_keys": shardKeysStr,
+	}
 	idsStr := make([]string, len(ids)) //Convert the UUIDs to strings. Easier to manage here.
 	for i, id := range ids {
 		idsStr[i] = id.String()
@@ -249,14 +254,14 @@ func (d *EntityDataAccessClient[TEntity, TInterface]) GetByPairedIDBulk(idColumn
 }
 
 // GetByForeignID gets entities by a foreign key.
-func (d *EntityDataAccessClient[TEntity, TInterface]) GetByForeignID(foreignIDColumn string, foreignID string) (*[]TInterface, error) {
+func (d *EntityDataAccessClient[TEntity, TInterface]) GetByForeignID(foreignIDColumn string, foreignID string, shardKey string) (*[]TInterface, error) {
 	//log.Println("Getting by foreign ID")
 	if d.GetRoute == "" {
 		d.GetRoute = d.DefaultRoute
 		//log.Printf("[DEBUG] GetRoute was empty, set to DefaultRoute: %s\n", d.DefaultRoute)
 	}
 	//For the network handler side, we indicate this is a foreign key search by passing the foreign key column and the foreign key in the query/header.
-	queryParams := map[string]string{"foreignKey": foreignIDColumn, "id": foreignID}
+	queryParams := map[string]string{"foreignKey": foreignIDColumn, "id": foreignID, "Shard_key": shardKey}
 	//We send a GET request to the database service to get entities by their foreign key.
 	jsonBytes, err := d._client.Get(d.GetRoute, queryParams)
 	if err != nil {
@@ -281,15 +286,16 @@ func (d *EntityDataAccessClient[TEntity, TInterface]) GetByForeignID(foreignIDCo
 
 // GetByForeignIDBulk gets entities by a foreign key. This is a bulk operation. Try to avoid using this if possible, as it's an O(n^2) operation, unless the DB has a better alogirthm built in.
 // It will return all the entities that match the foreign IDs, and a map of any errors that occurred, mapped to their respective foreign IDs.
-func (d *EntityDataAccessClient[TEntity, TInterface]) GetByForeignIDBulk(foreignIDColumn string, foreignIDs []string) (*[]TInterface, map[string]int, error) {
-	return d.GetByFilteredForeignIDBulk(foreignIDColumn, foreignIDs, "", "")
+func (d *EntityDataAccessClient[TEntity, TInterface]) GetByForeignIDBulk(foreignIDColumn string, foreignIDs []string, shardKeys *[]string) (*[]TInterface, map[string]int, error) {
+	return d.GetByFilteredForeignIDBulk(foreignIDColumn, foreignIDs, "", "", shardKeys)
 }
-func (d *EntityDataAccessClient[TEntity, TInterface]) GetByFilteredForeignIDBulk(foreignIDColumn string, foreignIDs []string, filterKey string, filterVal string) (*[]TInterface, map[string]int, error) {
+func (d *EntityDataAccessClient[TEntity, TInterface]) GetByFilteredForeignIDBulk(foreignIDColumn string, foreignIDs []string, filterKey string, filterVal string, shardKeys *[]string) (*[]TInterface, map[string]int, error) {
 	if d.GetRoute == "" {
 		d.GetRoute = d.DefaultRoute
 	}
+	shardKeysStr := strings.Join(*shardKeys, ",")
 	// mark this as a foreign key search by passing the foreign key column name
-	queryParams := map[string]string{"foreignKey": foreignIDColumn, "filteredForeignKey": filterKey, "filteredForeignID": filterVal}
+	queryParams := map[string]string{"Shard_keys": shardKeysStr, "foreignKey": foreignIDColumn, "filteredForeignKey": filterKey, "filteredForeignID": filterVal}
 	//We send a GET request to the database service to get entities by their foreign key.
 	bulkReturn, err := d._client.GetBulk(d.GetRoute, foreignIDs, queryParams)
 	if err != nil {
@@ -439,12 +445,15 @@ func (d *EntityDataAccessClient[TEntity, TInterface]) UpdateBulk(entities *[]TIn
 }
 
 // Delete deletes an entity.
-func (d *EntityDataAccessClient[TEntity, TInterface]) Delete(id *uuid.UUID) error {
+func (d *EntityDataAccessClient[TEntity, TInterface]) Delete(id *uuid.UUID, shardKey string) error {
 	if d.DeleteRoute == "" {
 		d.DeleteRoute = d.DefaultRoute
 	}
+
+	headers := map[string]string{"Shard_key": shardKey}
+
 	//We send a DELETE request to the database service to delete the entity.
-	_, err := d._client.Delete(d.DeleteRoute + "/" + id.String())
+	_, err := d._client.Delete(d.DeleteRoute+"/"+id.String(), headers)
 	if err != nil {
 		log.Println("Failed to delete entity: ", err)
 		return err
@@ -455,9 +464,13 @@ func (d *EntityDataAccessClient[TEntity, TInterface]) Delete(id *uuid.UUID) erro
 
 // DeleteBulk deletes entities in bulk. This is a bulk operation.
 // It will return a map of any errors that occurred, mapped to their respective entities ID.
-func (d *EntityDataAccessClient[TEntity, TInterface]) DeleteBulk(ids []*uuid.UUID) (map[string]int, error) {
+func (d *EntityDataAccessClient[TEntity, TInterface]) DeleteBulk(ids []*uuid.UUID, shardKeys *[]string) (map[string]int, error) {
 	if d.DeleteRoute == "" {
 		d.DeleteRoute = d.DefaultRoute
+	}
+	shardKeysStr := strings.Join(*shardKeys, ",")
+	queryParams := map[string]string{
+		"Shard_keys": shardKeysStr,
 	}
 	//We convert the list of IDs to strings. Easier to manage here.
 	var idsStr []string
@@ -465,7 +478,7 @@ func (d *EntityDataAccessClient[TEntity, TInterface]) DeleteBulk(ids []*uuid.UUI
 		idsStr = append(idsStr, id.String())
 	}
 	//We send a DELETE request to the database service to delete entities by their IDs.
-	bulkReturn, err := d._client.DeleteBulk(d.DeleteRoute, idsStr)
+	bulkReturn, err := d._client.DeleteBulk(d.DeleteRoute, idsStr, queryParams)
 	if err != nil {
 		var mapErrs map[string]int
 		log.Println("Failed to delete entities: ", err)

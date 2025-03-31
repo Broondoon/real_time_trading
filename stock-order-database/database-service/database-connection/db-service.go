@@ -54,9 +54,12 @@ func (d *DatabaseService) Disconnect() {
 
 // Right now, we're just gonna get all stocksOrders for a given stock. Later, we need to limit this to a specific subset of orders.
 func (d *DatabaseService) GetInitialStockOrdersForStock(stockID string) (*[]*order.StockOrder, error) {
-	orders, err := d.GetByForeignID("StockID", stockID)
-	if err != nil {
-		return nil, err
-	}
-	return orders, nil
+	//disabling for now, since we don't have stocks orders in the db before, and it's screwing up sharding.
+	//orders, err := d.GetByForeignID("StockID", stockID, "")
+	// if err != nil {
+	// 	return nil, err
+	// }
+	//return orders, nil
+	emptyList := make([]*order.StockOrder, 0)
+	return &emptyList, nil
 }

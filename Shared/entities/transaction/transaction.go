@@ -30,6 +30,7 @@ func (st *Transaction) SetTimestamp(timestamp time.Time) {
 	st.Timestamp = timestamp
 	*st.GetUpdates() = append(*st.Updates, &entity.EntityUpdateData{
 		ID:       st.GetId(),
+		ShardKey: st.GetUserIDString(),
 		Field:    "Timestamp",
 		NewValue: func() *string { s := timestamp.Format(time.RFC3339); return &s }(),
 	})

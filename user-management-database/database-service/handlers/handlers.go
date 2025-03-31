@@ -92,7 +92,7 @@ func getStockTransactionsBulk(data *[]*TransactionBulk, TransferParams any) erro
 		userIds[i] = d.userId
 		mapUserIds[d.userId] = d.ResponseWriter
 	}
-	transactionList, err := _databaseManager.StockTransactions().GetByForeignIDBulk("UserID", userIds)
+	transactionList, err := _databaseManager.StockTransactions().GetByForeignIDBulk("UserID", userIds, nil)
 	transactionMap := make(map[string][]transaction.StockTransactionInterface)
 	for _, transaction := range *transactionList {
 		transactionMap[transaction.GetUserIDString()] = append(transactionMap[transaction.GetUserIDString()], transaction)
@@ -217,7 +217,7 @@ func getWalletTransactionsBulk(data *[]*TransactionBulk, TransferParams any) err
 		userIds[i] = d.userId
 		mapUserIds[d.userId] = d.ResponseWriter
 	}
-	transactionList, err := _databaseManager.WalletTransactions().GetByForeignIDBulk("UserID", userIds)
+	transactionList, err := _databaseManager.WalletTransactions().GetByForeignIDBulk("UserID", userIds, nil)
 	transactionMap := make(map[string][]transaction.WalletTransactionInterface)
 	for _, transaction := range *transactionList {
 		transactionMap[transaction.GetUserIDString()] = append(transactionMap[transaction.GetUserIDString()], transaction)
@@ -284,7 +284,7 @@ func getWalletTransactionsBulk(data *[]*TransactionBulk, TransferParams any) err
 }
 
 func cancelStockTransactionHandler(responseWriter network.ResponseWriter, data []byte, queryParams url.Values, requestType string) {
-	stockTransaction, err := _databaseManager.StockTransactions().GetByID(queryParams.Get("id"))
+	stockTransaction, err := _databaseManager.StockTransactions().GetByID(queryParams.Get("id"), queryParams.Get("userID"))
 
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		log.Println("Stock transaction not found")
@@ -327,7 +327,7 @@ func executeOrderHandler(responseWriter network.ResponseWriter, data []byte, que
 		responseWriter.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	returnVal, err := _databaseManager.ExecuteOrder(params.BuyOrderID, params.SellOrderID, params.BuyerID, params.SellerID, params.StockID, params.Name, params.StockPrice, params.Quantity)
+	returnVal, _ := _databaseManager.ExecuteOrder(params.BuyOrderID, params.SellOrderID, params.BuyerID, params.SellerID, params.StockID, params.Name, params.StockPrice, params.Quantity)
 	// if err != nil {
 	// 	if returnVal.IsBuyFailure && returnVal.IsSellFailure {
 	// 		responseWriter.WriteHeader(http.StatusBadRequest)

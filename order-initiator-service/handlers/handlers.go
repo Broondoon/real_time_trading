@@ -248,14 +248,14 @@ func updateUserStocks(data *[]*StockOrderBulk, TransferParams any) error {
 			if errorCode == http.StatusNotFound {
 				log.Printf("user stock %s not found", stockOrderCarry.UserStock.GetIdString())
 				if stockOrderCarry.ResponseWriter.CheckCompleted() {
-					cancelStockTransaction(stockOrderCarry.StockOrder.GetIdString())
+					cancelStockTransaction(stockOrderCarry.StockOrder.GetIdString(), stockOrderCarry.userId)
 				} else {
 					stockOrderCarry.ResponseWriter.WriteHeader(http.StatusNotFound)
 				}
 			} else {
 				log.Printf("failed to update user stock %s", stockOrderCarry.UserStock.GetIdString())
 				if stockOrderCarry.ResponseWriter.CheckCompleted() {
-					cancelStockTransaction(stockOrderCarry.StockOrder.GetIdString())
+					cancelStockTransaction(stockOrderCarry.StockOrder.GetIdString(), stockOrderCarry.userId)
 				} else {
 					stockOrderCarry.ResponseWriter.WriteHeader(http.StatusInternalServerError)
 				}
@@ -333,7 +333,7 @@ func placeStockOrderResponse(data *[]*StockOrderBulk, TransferParams any) error 
 		//log.Println("sent to matching engine")
 		if err != nil {
 			log.Printf("failed to send to matching engine: %v", err)
-			err = cancelStockTransaction(stockOrderCarry.StockOrder.GetIdString())
+			err = cancelStockTransaction(stockOrderCarry.StockOrder.GetIdString(), stockOrderCarry.userId)
 			if err != nil {
 				log.Println("Error: ", err.Error())
 				// panic(err)
@@ -350,7 +350,7 @@ func placeStockOrderResponse(data *[]*StockOrderBulk, TransferParams any) error 
 			continue
 		}
 		if stockOrderCarry.ResponseWriter.CheckCompleted() {
-			err = cancelStockTransaction(stockOrderCarry.StockOrder.GetIdString())
+			err = cancelStockTransaction(stockOrderCarry.StockOrder.GetIdString(), stockOrderCarry.userId)
 			if err != nil {
 				log.Println("Error: ", err.Error())
 				// panic(err)
@@ -385,7 +385,8 @@ func cancelStockTransactionHandler(responseWriter network.ResponseWriter, data [
 		return
 	}
 
-	err = cancelStockTransaction(stockTxID.StockTransactionID)
+	userID := queryParams.Get("userID")
+	err = cancelStockTransaction(stockTxID.StockTransactionID, userID)
 
 	if err != nil {
 		log.Println("Error: ", err.Error())
@@ -410,15 +411,18 @@ func cancelStockTransactionHandler(responseWriter network.ResponseWriter, data [
 }
 
 // initiator passes to matching
-func cancelStockTransaction(id string) error {
+func cancelStockTransaction(id string, shardKey string) error {
 	//pass to matching engine
 	err := _networkHttpManager.UserManagementDatabase().Patch("cancelStockTransaction", id)
 	if err != nil {
 		log.Println("Error: ", err.Error())
 		return err
 	}
+	headers := map[string]string{
+		"userID": shardKey,
+	}
 
-	_, err = _networkHttpManager.MatchingEngine().Delete("deleteOrder/" + id)
+	_, err = _networkHttpManager.MatchingEngine().Delete("deleteOrder/"+id, headers)
 	if err != nil {
 		log.Println("Error: ", err.Error())
 		return err

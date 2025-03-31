@@ -18,6 +18,7 @@ import (
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/gorm/schema"
+	"gorm.io/sharding"
 )
 
 type PostGresDatabase struct {
@@ -104,6 +105,7 @@ type PostGresEntityData[T entity.EntityInterface] struct {
 	DatabaseInterface[*gorm.DB]
 	tableName   string
 	columnCache map[string]columnCacheEntry
+	shardKey    string
 	// *gorm.DB //note, this allows us to treat this as a gorm.DB WITHIN the EntityData struct. This is not exposed as part of the interface, and thus cannot be used like this with the interface.
 }
 
@@ -156,7 +158,14 @@ func NewPostGresEntityData[T entity.EntityInterface](params *NewPostGresEntityDa
 		}
 	}
 	//log.Println(ed.tableName, " ID Data type: ", ed.columnCache["ID"].FieldType)
-
+	if _, ok := ed.columnCache["user_id"]; ok {
+		ed.GetDatabaseSession().Use(sharding.Register(sharding.Config{
+			ShardingKey:         "user_id",
+			NumberOfShards:      64,
+			PrimaryKeyGenerator: sharding.PKSnowflake,
+			ShardingAlgorithm:   MyUUIDSuffixAlgorithm,
+		}, ed.tableName))
+	}
 	return ed
 }
 
@@ -200,7 +209,7 @@ func (d *PostGresEntityData[T]) PrintOutEntities() {
 	}
 }
 
-func (d *PostGresEntityData[T]) GetByID(id string) (T, error) {
+func (d *PostGresEntityData[T]) GetByID(id string, shardKey string) (T, error) {
 	var zero T
 	if id == "" {
 		return zero, fmt.Errorf("ID is empty")
@@ -211,8 +220,18 @@ func (d *PostGresEntityData[T]) GetByID(id string) (T, error) {
 		log.Printf("error getting: %s", err.Error())
 		return zero, err
 	}
-
-	result := d.GetDatabaseSession().First(&ent, uid)
+	var result *gorm.DB
+	if shardKey != "" {
+		shardKeyUid, err := convertID(shardKey)
+		if err != nil {
+			log.Printf("error getting: %s", err.Error())
+			return zero, err
+		}
+		shardQuery := fmt.Sprintf("%s = ?", d.shardKey)
+		result = d.GetDatabaseSession().Where(shardQuery, shardKeyUid).First(&ent, uid)
+	} else {
+		result = d.GetDatabaseSession().First(&ent, uid)
+	}
 	if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 		log.Printf("record not found for id: %s", id)
 		//d.PrintOutEntities()
@@ -226,7 +245,7 @@ func (d *PostGresEntityData[T]) GetByID(id string) (T, error) {
 	return ent, nil
 }
 
-func (d *PostGresEntityData[T]) GetByIDs(ids []string) (*[]T, map[string]error) {
+func (d *PostGresEntityData[T]) GetByIDs(ids []string, shardKeys *[]string) (*[]T, map[string]error) {
 	if len(ids) == 0 {
 		return nil, map[string]error{"transaction": errors.New("no ids provided")}
 	}
@@ -236,8 +255,17 @@ func (d *PostGresEntityData[T]) GetByIDs(ids []string) (*[]T, map[string]error) 
 	if len(uids) == 0 {
 		return nil, errorList
 	}
-
-	results := d.GetDatabaseSession().Find(&entities, "id IN ?", uids)
+	var results *gorm.DB
+	if len(*shardKeys) != 0 {
+		shardKeyUids, errorList := convertIDs(*shardKeys, errorList)
+		if len(shardKeyUids) == 0 {
+			return nil, errorList
+		}
+		shardQuery := fmt.Sprintf("%s IN ?", d.shardKey)
+		results = d.GetDatabaseSession().Where(shardQuery, shardKeyUids).Find(&entities, "id IN ?", uids)
+	} else {
+		results = d.GetDatabaseSession().Find(&entities, "id IN ?", uids)
+	}
 	if results.Error != nil {
 		errorList["transaction"] = results.Error
 		log.Printf("error getting by ids: %s", results.Error.Error())
@@ -445,7 +473,7 @@ func (d *PostGresEntityData[T]) GetByPairedIDBulk(
 }
 
 // This needs the table column names, whihc is a little diffrent
-func (d *PostGresEntityData[T]) GetByForeignID(foreignIDKey string, foreignID string) (*[]T, error) {
+func (d *PostGresEntityData[T]) GetByForeignID(foreignIDKey string, foreignID string, shardKey string) (*[]T, error) {
 	if foreignIDKey == "" {
 		err := fmt.Errorf("foreign key column is empty")
 		log.Printf("error getting by foreignKey: %s", err.Error())
@@ -477,7 +505,17 @@ func (d *PostGresEntityData[T]) GetByForeignID(foreignIDKey string, foreignID st
 			log.Printf("error getting by foreignKey: %s", err.Error())
 			return nil, err
 		}
-		results = d.GetDatabaseSession().Find(&entities, foreignIDColumn.ColumnName+" = ?", uid)
+		if shardKey != "" && foreignIDColumn.ColumnName != d.shardKey {
+			shardKeyUid, err := convertID(shardKey)
+			if err != nil {
+				log.Printf("error getting by foreignKey: %s", err.Error())
+				return nil, err
+			}
+			shardQuery := fmt.Sprintf("%s = ?", d.shardKey)
+			results = d.GetDatabaseSession().Where(shardQuery, shardKeyUid).Find(&entities, foreignIDColumn.ColumnName+" = ?", uid)
+		} else {
+			results = d.GetDatabaseSession().Find(&entities, foreignIDColumn.ColumnName+" = ?", uid)
+		}
 	} else {
 		results = d.GetDatabaseSession().Find(&entities, foreignIDColumn.ColumnName+" = ?", foreignID)
 	}
@@ -489,11 +527,11 @@ func (d *PostGresEntityData[T]) GetByForeignID(foreignIDKey string, foreignID st
 	return &entities, nil
 }
 
-func (d *PostGresEntityData[T]) GetByForeignIDBulk(foreignIDKey string, foreignIDs []string) (*[]T, map[string]error) {
-	return d.GetByFilteredForeignIDBulk(foreignIDKey, foreignIDs, "", "")
+func (d *PostGresEntityData[T]) GetByForeignIDBulk(foreignIDKey string, foreignIDs []string, shardKeys *[]string) (*[]T, map[string]error) {
+	return d.GetByFilteredForeignIDBulk(foreignIDKey, foreignIDs, "", "", shardKeys)
 }
 
-func (d *PostGresEntityData[T]) GetByFilteredForeignIDBulk(foreignIDKey string, foreignIDs []string, filterCol string, filterVal string) (*[]T, map[string]error) {
+func (d *PostGresEntityData[T]) GetByFilteredForeignIDBulk(foreignIDKey string, foreignIDs []string, filterCol string, filterVal string, shardKeys *[]string) (*[]T, map[string]error) {
 	if foreignIDKey == "" {
 		err := fmt.Errorf("foreign key column is empty")
 		log.Printf("error getting by foreignKey: %s", err.Error())
@@ -544,7 +582,16 @@ func (d *PostGresEntityData[T]) GetByFilteredForeignIDBulk(foreignIDKey string, 
 			args = append(args, filterVal)
 		}
 	}
-	results = d.GetDatabaseSession().Where(condition, args...).Find(&entities)
+	if len(*shardKeys) != 0 && foreignIDColumn.ColumnName != d.shardKey {
+		shardKeyUids, errorList := convertIDs(*shardKeys, errorList)
+		if len(shardKeyUids) == 0 {
+			return nil, errorList
+		}
+		shardQuery := fmt.Sprintf("%s IN ?", d.shardKey)
+		results = d.GetDatabaseSession().Where(shardQuery, shardKeyUids).Where(condition, args...).Find(&entities)
+	} else {
+		results = d.GetDatabaseSession().Where(condition, args...).Find(&entities)
+	}
 
 	if results.Error != nil {
 		errorList["transaction"] = results.Error
@@ -726,25 +773,52 @@ func (d *PostGresEntityData[T]) Update(updates []*entity.EntityUpdateData) map[s
 	// errorMap will accumulate errors keyed by row ID.
 	errorMap := make(map[string]error)
 	// Aggregate new and alter updates.
-	newUpdates := make(map[string]map[string]string)    // field -> (row ID -> new value)
-	alterUpdates := make(map[string]map[string]float64) // field -> (row ID -> cumulative delta)
+	newUpdates := make(map[string]map[string]objects.StringPair)  // field -> (row ID -> new value)
+	alterUpdates := make(map[string]map[string]objects.FloatPair) // field -> (row ID -> cumulative delta)
 
 	for _, upd := range updates {
 		if upd.NewValue != nil {
 			if newUpdates[upd.Field] == nil {
-				newUpdates[upd.Field] = make(map[string]string)
+				newUpdates[upd.Field] = make(map[string]objects.StringPair)
 			}
-			newUpdates[upd.Field][upd.ID.String()] = *upd.NewValue
+			u, err := uuid.Parse(upd.ShardKey)
+			if err != nil {
+				errorMap[upd.ID.String()] = fmt.Errorf("failed to parse shard key '%s': %v", upd.ShardKey, err)
+				continue
+			}
+
+			newUpdates[upd.Field][upd.ID.String()] = objects.StringPair{
+				StringVal: *upd.NewValue,
+				IDVal:     &u,
+			}
 		} else if upd.AlterValue != nil {
 			parsed, err := strconv.ParseFloat(*upd.AlterValue, 64)
 			if err != nil {
 				errorMap[upd.ID.String()] = fmt.Errorf("failed to parse alter value '%s' for field %s: %v", *upd.AlterValue, upd.Field, err)
 				continue
 			}
-			if alterUpdates[upd.Field] == nil {
-				alterUpdates[upd.Field] = make(map[string]float64)
+			// Convert ShardKey from string to uuid pointer
+			u, err := uuid.Parse(upd.ShardKey)
+			if err != nil {
+				errorMap[upd.ID.String()] = fmt.Errorf("failed to parse shard key '%s': %v", upd.ShardKey, err)
+				continue
 			}
-			alterUpdates[upd.Field][upd.ID.String()] += parsed
+			if alterUpdates[upd.Field] == nil {
+				alterUpdates[upd.Field] = make(map[string]objects.FloatPair)
+				alterUpdates[upd.Field][upd.ID.String()] = objects.FloatPair{
+					FloatVal: parsed,
+					IDVal:    &u,
+				}
+			}
+			if existing, ok := alterUpdates[upd.Field][upd.ID.String()]; ok {
+				existing.FloatVal += parsed
+				alterUpdates[upd.Field][upd.ID.String()] = existing
+			} else {
+				alterUpdates[upd.Field][upd.ID.String()] = objects.FloatPair{
+					FloatVal: parsed,
+					IDVal:    &u,
+				}
+			}
 		}
 	}
 
@@ -800,7 +874,10 @@ func (d *PostGresEntityData[T]) Update(updates []*entity.EntityUpdateData) map[s
 	// Bulk update transaction.
 	err := d.GetNewDatabaseSession().Transaction(func(tx *gorm.DB) error {
 		// Process new value updates in bulk.
+
 		for field, idToNewVal := range newUpdates {
+			shardKeys := make([]uuid.UUID, 0)
+			presentKeys := make(map[string]bool)
 			cacheEntry, ok := d.columnCache[field]
 			if !ok {
 				return fmt.Errorf("unknown field %s in column cache", field)
@@ -808,7 +885,7 @@ func (d *PostGresEntityData[T]) Update(updates []*entity.EntityUpdateData) map[s
 			var valueTuples []string
 			var args []interface{}
 			for id, newVal := range idToNewVal {
-				converted, castType, err := convertNewValue(newVal, cacheEntry.FieldType)
+				converted, castType, err := convertNewValue(newVal.StringVal, cacheEntry.FieldType)
 				if err != nil {
 					return fmt.Errorf("field %s for id %s: %v", field, id, err)
 				}
@@ -818,13 +895,31 @@ func (d *PostGresEntityData[T]) Update(updates []*entity.EntityUpdateData) map[s
 					return fmt.Errorf("failed to parse id %s: %v", id, err)
 				}
 				args = append(args, uid, converted)
+				if !presentKeys[newVal.IDVal.String()] {
+					presentKeys[newVal.IDVal.String()] = true
+					shardKeys = append(shardKeys, *newVal.IDVal)
+				}
 			}
+
+			var shardKeyPlaceholders []string
+			for range shardKeys {
+				shardKeyPlaceholders = append(shardKeyPlaceholders, "?::uuid")
+			}
+
+			// Combine them into something like "?, ?::uuid, ?::uuid"
+			shardKeyList := strings.Join(shardKeyPlaceholders, ", ")
+
 			query := fmt.Sprintf(`
 				UPDATE %s AS t
 				SET %s = u.delta
 				FROM (VALUES %s) AS u(id, delta)
-    			WHERE t.id = u.id
-			`, d.tableName, cacheEntry.ColumnName, strings.Join(valueTuples, ", "))
+				WHERE t.%s IN (%s) AND t.id = u.id
+			`, d.tableName, cacheEntry.ColumnName, strings.Join(valueTuples, ", "), d.shardKey, shardKeyList)
+
+			for _, sk := range shardKeys {
+				args = append(args, sk)
+			}
+
 			if err := tx.Exec(query, args...).Error; err != nil {
 				return fmt.Errorf("failed bulk new value update for field '%s': %v", field, err)
 			}
@@ -832,6 +927,8 @@ func (d *PostGresEntityData[T]) Update(updates []*entity.EntityUpdateData) map[s
 
 		// Process alter value updates in bulk.
 		for field, idToDelta := range alterUpdates {
+			shardKeys := make([]uuid.UUID, 0)
+			presentKeys := make(map[string]bool)
 			cacheEntry, ok := d.columnCache[field]
 			if !ok {
 				return fmt.Errorf("unknown field %s in column cache", field)
@@ -839,7 +936,7 @@ func (d *PostGresEntityData[T]) Update(updates []*entity.EntityUpdateData) map[s
 			var valueTuples []string
 			var args []interface{}
 			for id, delta := range idToDelta {
-				deltaValue, castType, err := convertDelta(delta, cacheEntry.FieldType)
+				deltaValue, castType, err := convertDelta(delta.FloatVal, cacheEntry.FieldType)
 				if err != nil {
 					return fmt.Errorf("field %s for id %s: %v", field, id, err)
 				}
@@ -849,13 +946,30 @@ func (d *PostGresEntityData[T]) Update(updates []*entity.EntityUpdateData) map[s
 					return fmt.Errorf("failed to parse id %s: %v", id, err)
 				}
 				args = append(args, uid, deltaValue)
+				if !presentKeys[delta.IDVal.String()] {
+					presentKeys[delta.IDVal.String()] = true
+					shardKeys = append(shardKeys, *delta.IDVal)
+				}
 			}
+			var shardKeyPlaceholders []string
+			for range shardKeys {
+				shardKeyPlaceholders = append(shardKeyPlaceholders, "?::uuid")
+			}
+
+			// Combine them into something like "?, ?::uuid, ?::uuid"
+			shardKeyList := strings.Join(shardKeyPlaceholders, ", ")
+
 			query := fmt.Sprintf(`
 				UPDATE %s AS t
 				SET %s = t.%s + u.delta
 				FROM (VALUES %s) AS u(id, delta)
-    			WHERE t.id = u.id
-			`, d.tableName, cacheEntry.ColumnName, cacheEntry.ColumnName, strings.Join(valueTuples, ", "))
+    			WHERE t.%s IN (%s) AND t.id = u.id
+			`, d.tableName, cacheEntry.ColumnName, cacheEntry.ColumnName, strings.Join(valueTuples, ", "), d.shardKey, shardKeyList)
+
+			for _, sk := range shardKeys {
+				args = append(args, sk)
+			}
+
 			if err := tx.Exec(query, args...).Error; err != nil {
 				return fmt.Errorf("failed bulk alter value update for field '%s': %v", field, err)
 			}
@@ -867,6 +981,7 @@ func (d *PostGresEntityData[T]) Update(updates []*entity.EntityUpdateData) map[s
 	}
 
 	// Fallback: update row-by-row if bulk update fails.
+	// Fallback: update row-by-row if bulk update fails.
 	tx := d.GetNewDatabaseSession().Begin()
 	if tx.Error != nil {
 		errorMap["transaction"] = tx.Error
@@ -874,7 +989,9 @@ func (d *PostGresEntityData[T]) Update(updates []*entity.EntityUpdateData) map[s
 	}
 	spCounter := 0
 
-	// Process new value updates row-by-row.
+	//------------------------------------------------
+	// 1) Process "new value" updates row-by-row
+	//------------------------------------------------
 	for field, idToNewVal := range newUpdates {
 		cacheEntry, ok := d.columnCache[field]
 		if !ok {
@@ -883,6 +1000,8 @@ func (d *PostGresEntityData[T]) Update(updates []*entity.EntityUpdateData) map[s
 			}
 			continue
 		}
+
+		// Decide how you want to cast the new value in SQL
 		var castType string
 		switch cacheEntry.FieldType.Kind() {
 		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
@@ -893,35 +1012,55 @@ func (d *PostGresEntityData[T]) Update(updates []*entity.EntityUpdateData) map[s
 		default:
 			castType = "text"
 		}
+
+		// For each row ID, update individually
 		for id, newVal := range idToNewVal {
 			spCounter++
 			spName := fmt.Sprintf("sp_new_%d", spCounter)
 			tx.SavePoint(spName)
-			converted, _, err := convertNewValue(newVal, cacheEntry.FieldType)
+
+			// Convert the user’s new value from string to the correct Go type
+			converted, _, err := convertNewValue(newVal.StringVal, cacheEntry.FieldType)
 			if err != nil {
 				errorMap[id] = fmt.Errorf("failed to convert new value for field '%s': %v", field, err)
 				tx.RollbackTo(spName)
 				continue
 			}
+
+			// Build the row-by-row UPDATE query, *including the shard key* in WHERE
 			query := fmt.Sprintf(`
-				UPDATE %s AS t
-				SET %s = CAST(? AS %s)
-    			WHERE t.id = ?
-			`, d.tableName, cacheEntry.ColumnName, castType)
+            UPDATE %s AS t
+            SET %s = CAST(? AS %s)
+            WHERE t.%s = ? AND t.id = ?
+        `,
+				d.tableName,           // e.g. "my_table"
+				cacheEntry.ColumnName, // e.g. "status"
+				castType,              // e.g. "text"
+				d.shardKey,            // e.g. "user_id"
+			)
+
+			// Parse the entity's primary key
 			uid, err := uuid.Parse(strings.TrimSpace(id))
 			if err != nil {
 				errorMap[id] = fmt.Errorf("failed to parse id %s: %v", id, err)
 				tx.RollbackTo(spName)
 				continue
 			}
-			if err := tx.Exec(query, converted, uid).Error; err != nil {
+
+			// newVal.IDVal points to the shard key (UUID). We'll dereference it
+			shardUUID := *newVal.IDVal
+
+			// Exec with (newValue, shardKey, rowID)
+			if err := tx.Exec(query, converted, shardUUID, uid).Error; err != nil {
 				tx.RollbackTo(spName)
 				errorMap[id] = fmt.Errorf("failed new value update for field '%s': %v", field, err)
 			}
 		}
 	}
 
-	// Process alter value updates row-by-row.
+	//------------------------------------------------
+	// 2) Process "alter value" updates row-by-row
+	//------------------------------------------------
 	for field, idToDelta := range alterUpdates {
 		cacheEntry, ok := d.columnCache[field]
 		if !ok {
@@ -930,6 +1069,7 @@ func (d *PostGresEntityData[T]) Update(updates []*entity.EntityUpdateData) map[s
 			}
 			continue
 		}
+
 		var castType string
 		switch cacheEntry.FieldType.Kind() {
 		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
@@ -938,31 +1078,50 @@ func (d *PostGresEntityData[T]) Update(updates []*entity.EntityUpdateData) map[s
 		case reflect.Float32, reflect.Float64:
 			castType = "double precision"
 		default:
-			errorMap["general"] = fmt.Errorf("unsupported numeric field type %s for field %s", cacheEntry.FieldType.Kind(), field)
+			errorMap["general"] = fmt.Errorf("unsupported numeric field type %s for field %s",
+				cacheEntry.FieldType.Kind(), field)
 			continue
 		}
+
 		for id, delta := range idToDelta {
 			spCounter++
 			spName := fmt.Sprintf("sp_alter_%d", spCounter)
 			tx.SavePoint(spName)
-			deltaValue, _, err := convertDelta(delta, cacheEntry.FieldType)
+
+			// Convert the delta (numeric change)
+			deltaValue, _, err := convertDelta(delta.FloatVal, cacheEntry.FieldType)
 			if err != nil {
 				errorMap[id] = fmt.Errorf("failed to convert delta for field '%s': %v", field, err)
 				tx.RollbackTo(spName)
 				continue
 			}
+
+			// Build the row-by-row UPDATE with shard key
 			query := fmt.Sprintf(`
-				UPDATE %s AS t
-				SET %s = t.%s + CAST(? AS %s)
-    			WHERE t.id = ?
-			`, d.tableName, cacheEntry.ColumnName, cacheEntry.ColumnName, castType)
+            UPDATE %s AS t
+            SET %s = t.%s + CAST(? AS %s)
+            WHERE t.%s = ? AND t.id = ?
+        `,
+				d.tableName,           // "my_table"
+				cacheEntry.ColumnName, // "points"
+				cacheEntry.ColumnName, // "points"
+				castType,              // "double precision"
+				d.shardKey,            // "user_id"
+			)
+
+			// Parse the entity's primary key
 			uid, err := uuid.Parse(strings.TrimSpace(id))
 			if err != nil {
 				errorMap[id] = fmt.Errorf("failed to parse id %s: %v", id, err)
 				tx.RollbackTo(spName)
 				continue
 			}
-			if err := tx.Exec(query, deltaValue, uid).Error; err != nil {
+
+			// Retrieve the shard key from your FloatPair
+			shardUUID := *delta.IDVal
+
+			// Exec with (deltaValue, shardKey, rowID)
+			if err := tx.Exec(query, deltaValue, shardUUID, uid).Error; err != nil {
 				tx.RollbackTo(spName)
 				errorMap[id] = fmt.Errorf("failed alter value update for field '%s': %v", field, err)
 			}
@@ -972,15 +1131,11 @@ func (d *PostGresEntityData[T]) Update(updates []*entity.EntityUpdateData) map[s
 	if err := tx.Commit().Error; err != nil {
 		errorMap["transaction"] = fmt.Errorf("failed to commit transaction: %v", err)
 	}
-	for id := range errorMap {
-		if _, ok := errorMap[id]; !ok {
-			log.Printf("error updating entity %s: %v", id, errorMap[id])
-		}
-	}
+	// optionally log or handle errors
 	return errorMap
 }
 
-func (d *PostGresEntityData[T]) Delete(id string) error {
+func (d *PostGresEntityData[T]) Delete(id string, shardKey string) error {
 	if id == "" {
 		return errors.New("DELETE: id is required")
 	}
@@ -989,15 +1144,27 @@ func (d *PostGresEntityData[T]) Delete(id string) error {
 	if err != nil {
 		return err
 	}
-	deleteResult := d.GetDatabaseSession().Delete(&zero, "id = ?", uuid)
-	if deleteResult.Error != nil {
-		log.Printf("error deleting %s: %s", id, deleteResult.Error.Error())
-		return deleteResult.Error
+	var result *gorm.DB
+	if shardKey != "" {
+		shardKeyUid, err := convertID(shardKey)
+		if err != nil {
+			log.Printf("error getting: %s", err.Error())
+			return err
+		}
+		shardQuery := fmt.Sprintf("%s = ?", d.shardKey)
+		result = d.GetDatabaseSession().Where(shardQuery, shardKeyUid).Delete(&zero, "id = ?", uuid)
+	} else {
+		result = d.GetDatabaseSession().Delete(&zero, "id = ?", uuid)
+	}
+
+	if result.Error != nil {
+		log.Printf("error deleting %s: %s", id, result.Error.Error())
+		return result.Error
 	}
 	return nil
 }
 
-func (d *PostGresEntityData[T]) DeleteBulk(ids []string) map[string]error {
+func (d *PostGresEntityData[T]) DeleteBulk(ids []string, shardKeys *[]string) map[string]error {
 	if len(ids) == 0 {
 		return map[string]error{"transaction": errors.New("DELETE: no IDs provided")}
 	}
@@ -1008,8 +1175,18 @@ func (d *PostGresEntityData[T]) DeleteBulk(ids []string) map[string]error {
 	if len(uids) == 0 {
 		return errorMap
 	}
-	deleteResult := d.GetDatabaseSession().Delete(&zero, "id IN ?", uids)
-	if deleteResult.Error != nil {
+	var result *gorm.DB
+	if len(*shardKeys) != 0 {
+		shardKeyUids, errorList := convertIDs(*shardKeys, errorMap)
+		if len(shardKeyUids) == 0 {
+			return errorList
+		}
+		shardQuery := fmt.Sprintf("%s IN ?", d.shardKey)
+		result = d.GetDatabaseSession().Where(shardQuery, shardKeyUids).Delete(&zero, "id IN ?", uids)
+	} else {
+		result = d.GetDatabaseSession().Delete(&zero, "id IN ?", uids)
+	}
+	if result.Error != nil {
 		db := d.GetNewDatabaseSession()
 		tx := db.Begin()
 		if tx.Error != nil {
@@ -1033,7 +1210,23 @@ func (d *PostGresEntityData[T]) DeleteBulk(ids []string) map[string]error {
 			}
 
 			// Try inserting the entity.
-			if err := tx.Delete(&zero, "id = ?", uid).Error; err != nil {
+			if len(*shardKeys) != 0 {
+				shardKeyUid, err := convertID((*shardKeys)[spCounter-1])
+				if err != nil {
+					errorMap[id] = fmt.Errorf("failed to parse shard key %s: %v", (*shardKeys)[spCounter-1], err)
+					tx.RollbackTo(spName)
+					continue
+				}
+				shardQuery := fmt.Sprintf("%s = ?", d.shardKey)
+				if err := tx.Where(shardQuery, shardKeyUid).Delete(&zero, "id = ?", uid).Error; err != nil {
+					// If an error occurs, rollback to the savepoint so that this insert is undone.
+					tx.RollbackTo(spName)
+					// Record the error keyed by the entity's ID.
+					errorMap[id] = fmt.Errorf("error deleting entity: %v", err)
+					// Continue to the next entity.
+					continue
+				}
+			} else if err := tx.Delete(&zero, "id = ?", uid).Error; err != nil {
 				// If an error occurs, rollback to the savepoint so that this insert is undone.
 				tx.RollbackTo(spName)
 				// Record the error keyed by the entity's ID.

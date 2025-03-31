@@ -64,6 +64,7 @@ func (wt *WalletTransaction) SetStockTransactionID(stockTransactionID *uuid.UUID
 	wt.StockTransactionID = stockTransactionID
 	*wt.GetUpdates() = append(*wt.Updates, &entity.EntityUpdateData{
 		ID:       wt.GetId(),
+		ShardKey: wt.GetUserIDString(),
 		Field:    "StockTransactionID",
 		NewValue: func() *string { s := stockTransactionID.String(); return &s }(),
 	})
@@ -77,6 +78,7 @@ func (wt *WalletTransaction) SetIsDebit(isDebit bool) {
 	wt.IsDebit = isDebit
 	*wt.GetUpdates() = append(*wt.Updates, &entity.EntityUpdateData{
 		ID:       wt.GetId(),
+		ShardKey: wt.GetUserIDString(),
 		Field:    "IsDebit",
 		NewValue: func() *string { s := strconv.FormatBool(isDebit); return &s }(),
 	})
@@ -90,6 +92,7 @@ func (wt *WalletTransaction) SetAmount(amount float64) {
 	wt.Amount = amount
 	*wt.GetUpdates() = append(*wt.Updates, &entity.EntityUpdateData{
 		ID:       wt.GetId(),
+		ShardKey: wt.GetUserIDString(),
 		Field:    "Amount",
 		NewValue: func() *string { s := strconv.FormatFloat(amount, 'f', -1, 64); return &s }(),
 	})

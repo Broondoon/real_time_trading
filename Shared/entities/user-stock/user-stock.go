@@ -50,6 +50,7 @@ func (us *UserStock) UpdateQuantity(quantityToAdd int) error {
 	us.Quantity += quantityToAdd
 	*us.GetUpdates() = append(*us.Updates, &entity.EntityUpdateData{
 		ID:         us.GetId(),
+		ShardKey:   us.GetUserIDString(),
 		Field:      "Quantity",
 		AlterValue: func() *string { s := strconv.Itoa(quantityToAdd); return &s }(),
 	})
@@ -94,6 +95,7 @@ func (us *UserStock) SetStockName(stockName string) {
 	us.StockName = stockName
 	*us.GetUpdates() = append(*us.Updates, &entity.EntityUpdateData{
 		ID:       us.GetId(),
+		ShardKey: us.GetUserIDString(),
 		Field:    "StockName",
 		NewValue: &stockName,
 	})

@@ -164,6 +164,7 @@ func CreateNetworkEntityHandlers[T entity.EntityInterface, TDatabase any](networ
 		case "GET":
 			if bulkRequest {
 				ids := strings.Split(queryParams.Get("Ids"), ",")
+				shardKeys := strings.Split(queryParams.Get("ShardKeys"), ",")
 				if key1 := queryParams.Get("IdColumn1"); key1 != "" {
 					pairedIds := make([]objects.Pair, len(ids)/2)
 					for i := 0; i < len(ids); i += 2 {
@@ -181,28 +182,29 @@ func CreateNetworkEntityHandlers[T entity.EntityInterface, TDatabase any](networ
 					}
 				} else if foreignKey := queryParams.Get("foreignKey"); foreignKey != "" {
 					if filterKey := queryParams.Get("filterKey"); filterKey != "" {
-						entities, errorsReceived = databaseManager.GetByFilteredForeignIDBulk(foreignKey, ids, filterKey, queryParams.Get("filterVal"))
+						entities, errorsReceived = databaseManager.GetByFilteredForeignIDBulk(foreignKey, ids, filterKey, queryParams.Get("filterVal"), &shardKeys)
 					} else {
 						if len(ids) == 1 {
 							log.Println("using single val version")
-							entities, err = databaseManager.GetByForeignID(foreignKey, ids[0])
+							entities, err = databaseManager.GetByForeignID(foreignKey, ids[0], shardKeys[0])
 							if err != nil {
 								errorsReceived[ids[0]] = err
 							}
 						} else {
-							entities, errorsReceived = databaseManager.GetByForeignIDBulk(foreignKey, ids)
+							entities, errorsReceived = databaseManager.GetByForeignIDBulk(foreignKey, ids, &shardKeys)
 						}
 					}
 				} else {
-					entities, errorsReceived = databaseManager.GetByIDs(ids)
+					entities, errorsReceived = databaseManager.GetByIDs(ids, &shardKeys)
 				}
 				useEntities = true
 			} else if id := queryParams.Get("id"); id != "" {
+				shardKey := queryParams.Get("ShardKey")
 				if foreignKey := queryParams.Get("foreignKey"); foreignKey != "" {
-					entities, err = databaseManager.GetByForeignID(foreignKey, id)
+					entities, err = databaseManager.GetByForeignID(foreignKey, id, shardKey)
 					useEntities = true
 				} else {
-					entityObj, err = databaseManager.GetByID(id)
+					entityObj, err = databaseManager.GetByID(id, shardKey)
 				}
 			} else if key1 := queryParams.Get("IdColumn1"); key1 != "" {
 				entityObj, err = databaseManager.GetByPairedID(key1, queryParams.Get("IdColumn2"), objects.Pair{ID1: queryParams.Get("Id1"), ID2: queryParams.Get("Id2")})
@@ -250,18 +252,19 @@ func CreateNetworkEntityHandlers[T entity.EntityInterface, TDatabase any](networ
 			noReturns = true
 		case "DELETE":
 			if bulkRequest {
+				shardKeys := strings.Split(queryParams.Get("ShardKeys"), ",")
 				ids := strings.Split(queryParams.Get("Ids"), ",")
 				if len(ids) == 1 {
 					log.Println("using single val version")
-					err = databaseManager.Delete(ids[0])
+					err = databaseManager.Delete(ids[0], shardKeys[0])
 					if err != nil {
 						errorsReceived = map[string]error{ids[0]: err}
 					}
 				} else {
-					errorsReceived = databaseManager.DeleteBulk(ids)
+					errorsReceived = databaseManager.DeleteBulk(ids, &shardKeys)
 				}
 			} else {
-				err = databaseManager.Delete(queryParams.Get("id"))
+				err = databaseManager.Delete(queryParams.Get("id"), queryParams.Get("ShardKey"))
 			}
 			noReturns = true
 		default:

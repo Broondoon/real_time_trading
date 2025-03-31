@@ -8,7 +8,7 @@ type ClientInterface interface {
 	Put(route string, payload []interface{}) (BulkReturn, error)
 	Patch(route string, id string) error
 	PatchBulk(route string, ids []string) (BulkReturn, error)
-	DeleteBulk(route string, payload []string) (BulkReturn, error)
-	Delete(route string) ([]byte, error)
+	DeleteBulk(route string, payload []string, headers map[string]string) (BulkReturn, error)
+	Delete(route string, headers map[string]string) ([]byte, error)
 	GetBaseURL() string
 }

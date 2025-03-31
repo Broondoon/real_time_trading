@@ -70,6 +70,7 @@ func (so *StockOrder) SetIsBuy(isBuy bool) {
 	so.IsBuy = isBuy
 	*so.GetUpdates() = append(*so.Updates, &entity.EntityUpdateData{
 		ID:         so.GetId(),
+		ShardKey:   so.GetUserIDString(),
 		Field:      "IsBuy",
 		AlterValue: func() *string { s := strconv.FormatBool(isBuy); return &s }(),
 	})
@@ -89,6 +90,7 @@ func (so *StockOrder) UpdateQuantity(quantityToAdd int) {
 func (so *StockOrder) UpdateDBQuantity(quantityToAdd int) {
 	*so.GetUpdates() = append(*so.Updates, &entity.EntityUpdateData{
 		ID:         so.GetId(),
+		ShardKey:   so.GetUserIDString(),
 		Field:      "Quantity",
 		AlterValue: func() *string { s := strconv.Itoa(quantityToAdd); return &s }(),
 	})
@@ -101,6 +103,7 @@ func (so *StockOrder) SetPrice(price float64) {
 	so.Price = price
 	*so.GetUpdates() = append(*so.Updates, &entity.EntityUpdateData{
 		ID:         so.GetId(),
+		ShardKey:   so.GetUserIDString(),
 		Field:      "Price",
 		AlterValue: func() *string { s := strconv.FormatFloat(price, 'f', -1, 64); return &s }(),
 	})

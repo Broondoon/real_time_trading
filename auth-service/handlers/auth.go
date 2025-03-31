@@ -207,7 +207,8 @@ func removeUser(data *[]*UserBulk, TransferParams any) error {
 	for i, d := range *data {
 		userIDs[i] = d.UserEntity.GetId()
 	}
-	errorList, err := _authDB.DeleteBulk(userIDs)
+	shardKeys := make([]string, 0)
+	errorList, err := _authDB.DeleteBulk(userIDs, &shardKeys)
 	if err != nil {
 		return err
 	}
@@ -230,12 +231,14 @@ func Login(w network.ResponseWriter, data []byte, queryParams url.Values, reques
 func loginUsers(data *[]*UserBulk, TransferParams any) error {
 	userMap := make(map[string]*UserBulk)
 	usernames := make([]string, len(*data))
+	userIds := make([]string, len(*data))
 	for i, d := range *data {
 		username := d.UserEntity.GetUsername()
 		userMap[username] = d
 		usernames[i] = username
+		userIds[i] = d.UserEntity.GetIdString()
 	}
-	users, errorList, err := _authDB.GetByForeignIDBulk("Username", usernames)
+	users, errorList, err := _authDB.GetByForeignIDBulk("Username", usernames, &userIds)
 	if err != nil {
 		for _, d := range *users {
 			RespondError(userMap[d.GetUsername()].ResponseWriter, http.StatusInternalServerError, "Internal error")

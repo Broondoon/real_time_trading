@@ -31,6 +31,7 @@ func (u *User) SetName(name string) {
 	u.Name = name
 	*u.GetUpdates() = append(*u.Updates, &entity.EntityUpdateData{
 		ID:       u.GetId(),
+		ShardKey: u.GetIdString(),
 		Field:    "Name",
 		NewValue: &name,
 	})
@@ -44,6 +45,7 @@ func (u *User) SetUsername(username string) {
 	u.Username = username
 	*u.GetUpdates() = append(*u.Updates, &entity.EntityUpdateData{
 		ID:       u.GetId(),
+		ShardKey: u.GetIdString(),
 		Field:    "Username",
 		NewValue: &username,
 	})
@@ -57,6 +59,7 @@ func (u *User) SetPassword(password string) {
 	u.Password = password
 	*u.GetUpdates() = append(*u.Updates, &entity.EntityUpdateData{
 		ID:       u.GetId(),
+		ShardKey: u.GetIdString(),
 		Field:    "Password",
 		NewValue: &password,
 	})

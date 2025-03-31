@@ -85,7 +85,7 @@ func (c *CachedEntityData[T, TDatabase]) GetNewDatabaseSession() TDatabase {
 }
 
 // GetByID retrieves an entity by its ID, first checking the cache and falling back to the database if necessary.
-func (c *CachedEntityData[T, TDatabase]) GetByID(id string) (T, error) {
+func (c *CachedEntityData[T, TDatabase]) GetByID(id string, shardKey string) (T, error) {
 	log.Printf("[Cache] GetByID: Looking for entity with ID %s", id)
 	ctx := context.Background()
 	var zero T
@@ -111,7 +111,7 @@ func (c *CachedEntityData[T, TDatabase]) GetByID(id string) (T, error) {
 
 	// Step 2: Fetch from database
 	log.Printf("[Cache] GetByID: 📡 Querying database for ID: %s", id)
-	dbEntity, err := c.underlying.GetByID(id)
+	dbEntity, err := c.underlying.GetByID(id, shardKey)
 	if err != nil {
 		log.Printf("[Cache] GetByID: ❌ Database error for ID [%s]: %v", id, err)
 		return zero, err
@@ -134,7 +134,7 @@ func (c *CachedEntityData[T, TDatabase]) GetByID(id string) (T, error) {
 }
 
 // GetByIDs retrieves multiple entities by their IDs, using the cache and database as needed.
-func (c *CachedEntityData[T, TDatabase]) GetByIDs(ids []string) (*[]T, map[string]error) {
+func (c *CachedEntityData[T, TDatabase]) GetByIDs(ids []string, shardKeys *[]string) (*[]T, map[string]error) {
 	log.Printf("[Cache] GetByIDs: Looking up multiple IDs: %v", ids)
 	errorList := make(map[string]error)
 	ctx := context.Background()
@@ -177,7 +177,7 @@ func (c *CachedEntityData[T, TDatabase]) GetByIDs(ids []string) (*[]T, map[strin
 	// Step 2: Fetch missing IDs from database
 	if len(missingIds) > 0 {
 		log.Printf("[Cache] GetByIDs: 📡 Fetching missing IDs from database: %v", missingIds)
-		dbEntities, errorList := c.underlying.GetByIDs(missingIds)
+		dbEntities, errorList := c.underlying.GetByIDs(missingIds, shardKeys)
 
 		// Step 3: Cache newly retrieved entities
 		for _, entity := range *dbEntities {
@@ -211,18 +211,18 @@ func (c *CachedEntityData[T, TDatabase]) GetByIDs(ids []string) (*[]T, map[strin
 }
 
 // GetByForeignID retrieves entities by a foreign key, using the cache and database as needed.
-func (c *CachedEntityData[T, TDatabase]) GetByForeignID(foreignIDColumn, foreignID string) (*[]T, error) {
-	return c.underlying.GetByForeignID(foreignIDColumn, foreignID)
+func (c *CachedEntityData[T, TDatabase]) GetByForeignID(foreignIDColumn, foreignID string, shardKey string) (*[]T, error) {
+	return c.underlying.GetByForeignID(foreignIDColumn, foreignID, shardKey)
 }
 
 // GetByForeignIDBulk retrieves entities by multiple foreign keys, delegating to the underlying database.
-func (c *CachedEntityData[T, TDatabase]) GetByForeignIDBulk(foreignIDColumn string, foreignIDs []string) (*[]T, map[string]error) {
-	return c.underlying.GetByForeignIDBulk(foreignIDColumn, foreignIDs)
+func (c *CachedEntityData[T, TDatabase]) GetByForeignIDBulk(foreignIDColumn string, foreignIDs []string, shardKeys *[]string) (*[]T, map[string]error) {
+	return c.underlying.GetByForeignIDBulk(foreignIDColumn, foreignIDs, shardKeys)
 }
 
 // GetByFilteredForeignIDBulk retrieves entities by filtered foreign keys, delegating to the underlying database.
-func (c *CachedEntityData[T, TDatabase]) GetByFilteredForeignIDBulk(foreignIDKey string, foreignIDs []string, filterKey string, filterVal string) (*[]T, map[string]error) {
-	return c.underlying.GetByFilteredForeignIDBulk(foreignIDKey, foreignIDs, filterKey, filterVal)
+func (c *CachedEntityData[T, TDatabase]) GetByFilteredForeignIDBulk(foreignIDKey string, foreignIDs []string, filterKey string, filterVal string, shardKeys *[]string) (*[]T, map[string]error) {
+	return c.underlying.GetByFilteredForeignIDBulk(foreignIDKey, foreignIDs, filterKey, filterVal, shardKeys)
 }
 
 // Create adds a new entity to the database and updates the cache.
@@ -374,9 +374,9 @@ func (c *CachedEntityData[T, TDatabase]) Update(updates []*entity.EntityUpdateDa
 }
 
 // Delete removes an entity by its ID from the database and invalidates the cache.
-func (c *CachedEntityData[T, TDatabase]) Delete(id string) error {
+func (c *CachedEntityData[T, TDatabase]) Delete(id string, shardKey string) error {
 	log.Printf("[Cache] Delete: Deleting entity with ID %s", id)
-	if err := c.underlying.Delete(id); err != nil {
+	if err := c.underlying.Delete(id, shardKey); err != nil {
 		log.Printf("[Cache] Delete: Underlying DB delete failed for id %s: %v", id, err)
 		return err
 	}
@@ -392,9 +392,9 @@ func (c *CachedEntityData[T, TDatabase]) Delete(id string) error {
 }
 
 // DeleteBulk removes multiple entities by their IDs from the database and invalidates the cache.
-func (c *CachedEntityData[T, TDatabase]) DeleteBulk(ids []string) map[string]error {
+func (c *CachedEntityData[T, TDatabase]) DeleteBulk(ids []string, shardKeys *[]string) map[string]error {
 	log.Printf("[Cache] DeleteBulk: Deleting entities with IDs: %v", ids)
-	errorList := c.underlying.DeleteBulk(ids)
+	errorList := c.underlying.DeleteBulk(ids, shardKeys)
 
 	ctx := context.Background()
 	for _, id := range ids {

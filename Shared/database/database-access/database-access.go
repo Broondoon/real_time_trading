@@ -34,18 +34,18 @@ func NewBaseDatabaseAccess(params *NewDatabaseAccessParams) BaseDatabaseAccessIn
 // The type constirctions above are [base entity type, such as User, and the interface for that entity, such as UserInterface]
 type EntityDataAccessInterface[TEntity entity.EntityInterface, TInterface entity.EntityInterface] interface {
 	DatabaseAccessInterface
-	GetByID(id *uuid.UUID) (TInterface, error) //Get an entity by its ID. Mapped to
+	GetByID(id *uuid.UUID, shardKey string) (TInterface, error) //Get an entity by its ID. Mapped to
 	GetAll() (*[]TInterface, error)
-	GetByIDs(ids []*uuid.UUID) (*[]TInterface, map[string]int, error)
+	GetByIDs(ids []*uuid.UUID, shardKeys *[]string) (*[]TInterface, map[string]int, error)
 	GetByPairedID(idColumn1 string, idColumn2 string, ids objects.Pair) (TInterface, error)
 	GetByPairedIDBulk(idColumn1 string, idColumn2 string, ids *[]objects.Pair) (*[]TInterface, map[string]int, error)
-	GetByForeignID(foreignIDColumn string, foreignID string) (*[]TInterface, error)
-	GetByForeignIDBulk(foreignIDColumn string, foreignIDs []string) (*[]TInterface, map[string]int, error)
-	GetByFilteredForeignIDBulk(foreignIDKey string, foreignIDs []string, filterKey string, filterVal string) (*[]TInterface, map[string]int, error)
+	GetByForeignID(foreignIDColumn string, foreignID string, shardKey string) (*[]TInterface, error)
+	GetByForeignIDBulk(foreignIDColumn string, foreignIDs []string, shardKey *[]string) (*[]TInterface, map[string]int, error)
+	GetByFilteredForeignIDBulk(foreignIDKey string, foreignIDs []string, filterKey string, filterVal string, shardKey *[]string) (*[]TInterface, map[string]int, error)
 	Create(entity TInterface) (TInterface, error)
 	CreateBulk(entities *[]TInterface) (*[]TInterface, map[string]int, error)
 	Update(entity TInterface) error
 	UpdateBulk(entities *[]TInterface) (map[string]int, error)
-	Delete(id *uuid.UUID) error
-	DeleteBulk(ids []*uuid.UUID) (map[string]int, error)
+	Delete(id *uuid.UUID, shardKey string) error
+	DeleteBulk(ids []*uuid.UUID, shardKey *[]string) (map[string]int, error)
 }

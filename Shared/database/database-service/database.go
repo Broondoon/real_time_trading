@@ -66,20 +66,20 @@ type DatabaseInterface[TDatabase any] interface {
 
 type EntityDataInterface[T entity.EntityInterface, TDatabase any] interface {
 	DatabaseInterface[TDatabase]
-	GetByID(ID string) (T, error)
-	GetByIDs(IDs []string) (*[]T, map[string]error)
+	GetByID(ID string, shardKey string) (T, error)
+	GetByIDs(IDs []string, shardKeys *[]string) (*[]T, map[string]error)
 	GetByPairedID(idColumn1 string, idColumn2 string, ids objects.Pair) (T, error)
 	GetByPairedIDBulk(idColumn1 string, idColumn2 string, ids *[]objects.Pair) (*[]T, map[string]error)
-	GetByForeignID(foreignIDColumn string, foreignID string) (*[]T, error)
-	GetByForeignIDBulk(foreignIDColumn string, foreignIDs []string) (*[]T, map[string]error)
-	GetByFilteredForeignIDBulk(foreignIDKey string, foreignIDs []string, filterCol string, filterVal string) (*[]T, map[string]error)
+	GetByForeignID(foreignIDColumn string, foreignID string, shardKey string) (*[]T, error)
+	GetByForeignIDBulk(foreignIDColumn string, foreignIDs []string, shardKeys *[]string) (*[]T, map[string]error)
+	GetByFilteredForeignIDBulk(foreignIDKey string, foreignIDs []string, filterCol string, filterVal string, shardKeys *[]string) (*[]T, map[string]error)
 	GetAll() (*[]T, error)
 	Create(ent T) error
 	CreateBulk(entities *[]T) map[string]error
 	//Update(entity T) error
 	//UpdateBulk(entities *[]T) error
-	Delete(ID string) error
-	DeleteBulk(IDs []string) map[string]error
+	Delete(ID string, shardKey string) error
+	DeleteBulk(IDs []string, shardKeys *[]string) map[string]error
 
 	//I need a safe updater for numerical values... we can't pass it the updated entity, we have to pass it the values to change the fields by.
 	Update([]*entity.EntityUpdateData) map[string]error
