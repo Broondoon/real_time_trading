@@ -300,7 +300,7 @@ services:
     networks:
       - go-network
     depends_on:
-      stock-db:
+      stock-pgpool:
         condition: service_healthy
       redis-stock:
         condition: service_healthy
@@ -332,7 +332,7 @@ services:
     networks:
       - go-network
     depends_on:
-      user-management-db:
+      user-management-pgpool:
         condition: service_healthy
       redis-usermanagement:
         condition: service_healthy
@@ -380,6 +380,10 @@ services:
       timeout: ${HEALTHCHECK_TIMEOUT}
       retries: ${HEALTHCHECK_RETRIES}
 
+# ---------------------- Auth Database ----------------------
+
+  # Auth DB does not benefit from replication, because it reads as often as it writes (50/50 split).
+  # And really, the reads should be from the cache, as the write puts the exact info the read is looking for into the cache.
   auth-db:
     image: postgres:latest
     restart: always
@@ -400,6 +404,8 @@ services:
       retries: ${HEALTHCHECK_RETRIES}
     networks:
       - go-network
+
+# ---------------------- Stock Order Database ----------------------
 
   stock-order-db:
     image: postgres:latest
@@ -425,15 +431,131 @@ services:
     networks:
       - go-network
 
+  # stock-order-db:
+  #   image: "bitnami/postgresql:latest"
+  #   container_name: stock-order-db
+  #   restart: always
+  #   env_file:
+  #     - .env
+  #   environment:
+  #     POSTGRESQL_REPLICATION_MODE: master
+  #     POSTGRESQL_USERNAME: ${STOCK_ORDER_POSTGRES_USER}
+  #     POSTGRESQL_PASSWORD: ${STOCK_ORDER_POSTGRES_PASSWORD}
+  #     POSTGRESQL_REPLICATION_USER: ${STOCK_ORDER_REPLICATION_USER}
+  #     POSTGRESQL_REPLICATION_PASSWORD: ${STOCK_ORDER_REPLICATION_PASSWORD}
+  #     POSTGRESQL_DATABASE: ${STOCK_ORDER_POSTGRES_DB}
+  #   volumes:
+  #     - stock-order-db-data:/var/lib/postgresql/data
+  #     - ./stock-order-database/init.sql:/docker-entrypoint-initdb.d/init.sql
+  #   healthcheck:
+  #     test:
+  #       [
+  #         "CMD-SHELL",
+  #         "pg_isready -U $STOCK_ORDER_POSTGRES_USER -d $STOCK_ORDER_POSTGRES_DB",
+  #       ]
+  #     interval: ${HEALTHCHECK_INTERVAL}
+  #     timeout: ${HEALTHCHECK_TIMEOUT}
+  #     retries: ${HEALTHCHECK_RETRIES}
+  #   networks:
+  #     - go-network
+
+  # stock-order-db-replica:
+  #   image: "bitnami/postgresql:latest"
+  #   container_name: stock-order-db-replica-1
+  #   env_file:
+  #     - .env
+  #   environment:
+  #     POSTGRESQL_REPLICATION_MODE: slave
+  #     POSTGRESQL_MASTER_HOST: stock-order-db
+  #     POSTGRESQL_MASTER_PORT_NUMBER: 5432 # postgre default
+  #     POSTGRESQL_REPLICATION_USER: ${STOCK_ORDER_REPLICATION_USER}
+  #     POSTGRESQL_REPLICATION_PASSWORD: ${STOCK_ORDER_REPLICATION_PASSWORD}
+  #     POSTGRESQL_PASSWORD: ${STOCK_ORDER_POSTGRES_PASSWORD} # But we still like a password.
+  #     ALLOW_EMPTY_PASSWORD: yes
+  #   depends_on:
+  #     stock-order-db:
+  #       condition: service_healthy
+  #   healthcheck:
+  #     test:
+  #       [
+  #         "CMD-SHELL",
+  #         "pg_isready -U $STOCK_ORDER_POSTGRES_USER -d $STOCK_ORDER_POSTGRES_DB",
+  #       ]
+  #     interval: ${HEALTHCHECK_INTERVAL}
+  #     timeout: ${HEALTHCHECK_TIMEOUT}
+  #     retries: ${HEALTHCHECK_RETRIES}
+  #   networks:
+  #     - go-network
+
+  # stock-order-pgpool:
+  #   image: bitnami/pgpool:latest
+  #   container_name: stock-order-pgpool
+  #   env_file:
+  #     - .env
+  #   ports:
+  #     - "6434:6434"
+  #   environment:
+  #     PGPOOL_PORT_NUMBER: 6434 # Apparently specifying the ports wasn't enough; you gotta do it here too.
+  #     PGPOOL_BACKEND_NODES: 0:stock-order-db:5432,1:stock-order-db-replica-1:5432
+  #     PGPOOL_SR_CHECK_USER: ${STOCK_ORDER_POSTGRES_USER}
+  #     PGPOOL_SR_CHECK_PASSWORD: ${STOCK_ORDER_POSTGRES_PASSWORD}
+  #     PGPOOL_ENABLE_LOAD_BALANCING: yes
+  #     PGPOOL_ADMIN_USERNAME: ${STOCK_ORDER_POSTGRES_USER} # Required for pgpool
+  #     PGPOOL_ADMIN_PASSWORD: ${STOCK_ORDER_POSTGRES_PASSWORD} # Required for pgpool
+  #     PGPOOL_POSTGRES_USERNAME: ${STOCK_ORDER_POSTGRES_USER}
+  #     PGPOOL_POSTGRES_PASSWORD: ${STOCK_ORDER_POSTGRES_PASSWORD}
+  #     ALLOW_EMPTY_PASSWORD: yes
+  #     # Uncomment these lines to enable logging (will show exactly which requests go where)
+  #     # PGPOOL_ENABLE_LOG_PER_NODE_STATEMENT: yes
+  #     # PGPOOL_ENABLE_LOG_CONNECTIONS: yes
+  #     # PGPOOL_ENABLE_LOG_HOSTNAME: yes
+  #   depends_on:
+  #     stock-order-db-replica:
+  #       condition: service_healthy
+  #     stock-order-db:
+  #       condition: service_healthy
+  #   networks:
+  #     - go-network
+
+# ---------------------- Stock Database ----------------------
+
+  # stock-db:
+  #   image: postgres:latest
+  #   restart: always
+  #   env_file:
+  #     - .env
+  #   environment:
+  #     POSTGRES_USER: ${STOCK_POSTGRES_USER}
+  #     POSTGRES_PASSWORD: ${STOCK_POSTGRES_PASSWORD}
+  #     POSTGRES_DB: ${STOCK_POSTGRES_DB}
+  #   volumes:
+  #     - stock-db-data:/var/lib/postgresql/data
+  #     - ./stock-database/init.sql:/docker-entrypoint-initdb.d/init.sql
+  #   healthcheck:
+  #     test:
+  #       [
+  #         "CMD-SHELL",
+  #         "pg_isready -U $STOCK_POSTGRES_USER -d $STOCK_POSTGRES_DB",
+  #       ]
+  #     interval: ${HEALTHCHECK_INTERVAL}
+  #     timeout: ${HEALTHCHECK_TIMEOUT}
+  #     retries: ${HEALTHCHECK_RETRIES}
+  #   networks:
+  #     - go-network
+
   stock-db:
-    image: postgres:latest
+    image: "bitnami/postgresql:latest"
+    container_name: stock-db
     restart: always
     env_file:
       - .env
     environment:
-      POSTGRES_USER: ${STOCK_POSTGRES_USER}
-      POSTGRES_PASSWORD: ${STOCK_POSTGRES_PASSWORD}
-      POSTGRES_DB: ${STOCK_POSTGRES_DB}
+      POSTGRESQL_REPLICATION_MODE: master
+      POSTGRESQL_USERNAME: ${STOCK_POSTGRES_USER}
+      POSTGRESQL_PASSWORD: ${STOCK_POSTGRES_PASSWORD}
+      POSTGRESQL_REPLICATION_USER: ${STOCK_REPLICATION_USER}
+      POSTGRESQL_REPLICATION_PASSWORD: ${STOCK_REPLICATION_PASSWORD}
+      POSTGRESQL_DATABASE: ${STOCK_POSTGRES_DB}
     volumes:
       - stock-db-data:/var/lib/postgresql/data
       - ./stock-database/init.sql:/docker-entrypoint-initdb.d/init.sql
@@ -449,7 +571,95 @@ services:
     networks:
       - go-network
 
-  # ---------------------- User Management Database ----------------------
+  stock-db-replica:
+    image: "bitnami/postgresql:latest"
+    container_name: stock-db-replica-1
+    env_file:
+      - .env
+    environment:
+      POSTGRESQL_REPLICATION_MODE: slave
+      POSTGRESQL_MASTER_HOST: stock-db
+      POSTGRESQL_MASTER_PORT_NUMBER: 5432 # postgre default
+      POSTGRESQL_REPLICATION_USER: ${STOCK_REPLICATION_USER}
+      POSTGRESQL_REPLICATION_PASSWORD: ${STOCK_REPLICATION_PASSWORD}
+      POSTGRESQL_PASSWORD: ${STOCK_POSTGRES_PASSWORD} # But we still like a password.
+      ALLOW_EMPTY_PASSWORD: yes
+    depends_on:
+      stock-db:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U $STOCK_POSTGRES_USER -d $STOCK_POSTGRES_DB",
+        ]
+      interval: ${HEALTHCHECK_INTERVAL}
+      timeout: ${HEALTHCHECK_TIMEOUT}
+      retries: ${HEALTHCHECK_RETRIES}
+    networks:
+      - go-network
+
+  stock-db-replica-2:
+    image: "bitnami/postgresql:latest"
+    container_name: stock-db-replica-2
+    env_file:
+      - .env
+    environment:
+      POSTGRESQL_REPLICATION_MODE: slave
+      POSTGRESQL_MASTER_HOST: stock-db
+      POSTGRESQL_MASTER_PORT_NUMBER: 5432 # postgre default
+      POSTGRESQL_REPLICATION_USER: ${STOCK_REPLICATION_USER}
+      POSTGRESQL_REPLICATION_PASSWORD: ${STOCK_REPLICATION_PASSWORD}
+      POSTGRESQL_PASSWORD: ${STOCK_POSTGRES_PASSWORD} # But we still like a password.
+      ALLOW_EMPTY_PASSWORD: yes
+    depends_on:
+      stock-db:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U $STOCK_POSTGRES_USER -d $STOCK_POSTGRES_DB",
+        ]
+      interval: ${HEALTHCHECK_INTERVAL}
+      timeout: ${HEALTHCHECK_TIMEOUT}
+      retries: ${HEALTHCHECK_RETRIES}
+    networks:
+      - go-network
+
+  stock-pgpool:
+    image: bitnami/pgpool:latest
+    container_name: stock-pgpool
+    env_file:
+      - .env
+    ports:
+      - "6433:6433"
+    environment:
+      PGPOOL_PORT_NUMBER: 6433 # Apparently specifying the ports wasn't enough; you gotta do it here too.
+      PGPOOL_BACKEND_NODES: 0:stock-db:5432,1:stock-db-replica-1:5432,2:stock-db-replica-2:5432
+      PGPOOL_SR_CHECK_USER: ${STOCK_POSTGRES_USER}
+      PGPOOL_SR_CHECK_PASSWORD: ${STOCK_POSTGRES_PASSWORD}
+      PGPOOL_ENABLE_LOAD_BALANCING: yes
+      PGPOOL_ADMIN_USERNAME: ${STOCK_POSTGRES_USER} # Required for pgpool
+      PGPOOL_ADMIN_PASSWORD: ${STOCK_POSTGRES_PASSWORD} # Required for pgpool
+      PGPOOL_POSTGRES_USERNAME: ${STOCK_POSTGRES_USER}
+      PGPOOL_POSTGRES_PASSWORD: ${STOCK_POSTGRES_PASSWORD}
+      ALLOW_EMPTY_PASSWORD: yes
+      # Uncomment these lines to enable logging (will show exactly which requests go where)
+      # PGPOOL_ENABLE_LOG_PER_NODE_STATEMENT: yes
+      # PGPOOL_ENABLE_LOG_CONNECTIONS: yes
+      # PGPOOL_ENABLE_LOG_HOSTNAME: yes
+    depends_on:
+      stock-db-replica:
+        condition: service_healthy
+      stock-db-replica-2:
+        condition: service_healthy
+      stock-db:
+        condition: service_healthy
+    networks:
+      - go-network
+
+# ---------------------- User Management Database ----------------------
 
   user-management-db:
     image: "bitnami/postgresql:latest"
@@ -468,7 +678,6 @@ services:
       POSTGRESQL_REPLICATION_USER: ${USER_MANAGEMENT_REPLICATION_USER}
       POSTGRESQL_REPLICATION_PASSWORD: ${USER_MANAGEMENT_REPLICATION_PASSWORD}
       POSTGRESQL_DATABASE: ${USER_MANAGEMENT_POSTGRES_DB}
-      # POSTGRESQL_POSTGRES_PASSWORD: ${USER_MANAGEMENT_POSTGRESROLE_PASSWORD}
     volumes:
       - user-management-db-data:/var/lib/postgresql/data
       - ./user-management-database/init.sql:/docker-entrypoint-initdb.d/init.sql
@@ -512,6 +721,34 @@ services:
     networks:
       - go-network
 
+  user-management-db-replica-2:
+    image: "bitnami/postgresql:latest"
+    container_name: user-management-db-replica-2
+    env_file:
+      - .env
+    environment:
+      POSTGRESQL_REPLICATION_MODE: slave
+      POSTGRESQL_MASTER_HOST: user-management-db
+      POSTGRESQL_MASTER_PORT_NUMBER: 5432 # postgre default
+      POSTGRESQL_REPLICATION_USER: ${USER_MANAGEMENT_REPLICATION_USER}
+      POSTGRESQL_REPLICATION_PASSWORD: ${USER_MANAGEMENT_REPLICATION_PASSWORD}
+      POSTGRESQL_PASSWORD: ${USER_MANAGEMENT_POSTGRES_PASSWORD} # But we still like a password.
+      ALLOW_EMPTY_PASSWORD: yes
+    depends_on:
+      user-management-db:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U $USER_MANAGEMENT_POSTGRES_USER -d $USER_MANAGEMENT_POSTGRES_DB",
+        ]
+      interval: ${HEALTHCHECK_INTERVAL}
+      timeout: ${HEALTHCHECK_TIMEOUT}
+      retries: ${HEALTHCHECK_RETRIES}
+    networks:
+      - go-network
+
   user-management-pgpool:
     image: bitnami/pgpool:latest
     container_name: user-management-pgpool
@@ -524,7 +761,7 @@ services:
     #   - ./pgpool-config/pgpool.conf:/opt/bitnami/pgpool/conf/pgpool.conf:ro
     environment:
       PGPOOL_PORT_NUMBER: 6432 # Apparently specifying the ports wasn't enough; you gotta do it here too.
-      PGPOOL_BACKEND_NODES: 0:user-management-db:5432,1:user-management-db-replica-1:5432
+      PGPOOL_BACKEND_NODES: 0:user-management-db:5432,1:user-management-db-replica-1:5432,2:user-management-db-replica-2:5432
       PGPOOL_SR_CHECK_USER: ${USER_MANAGEMENT_POSTGRES_USER}
       PGPOOL_SR_CHECK_PASSWORD: ${USER_MANAGEMENT_POSTGRES_PASSWORD}
       PGPOOL_ENABLE_LOAD_BALANCING: yes
@@ -537,98 +774,26 @@ services:
       # PGPOOL_ENABLE_LOG_PER_NODE_STATEMENT: yes
       # PGPOOL_ENABLE_LOG_CONNECTIONS: yes
       # PGPOOL_ENABLE_LOG_HOSTNAME: yes
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U $USER_MANAGEMENT_POSTGRES_USER -d $USER_MANAGEMENT_POSTGRES_DB",
+        ]
+      interval: ${HEALTHCHECK_INTERVAL}
+      timeout: ${HEALTHCHECK_TIMEOUT}
+      retries: ${HEALTHCHECK_RETRIES}
     depends_on:
       user-management-db-replica:
+        condition: service_healthy
+      user-management-db-replica-2:
         condition: service_healthy
       user-management-db:
         condition: service_healthy
     networks:
       - go-network
 
-  # transaction-db:
-  #   image: "bitnami/postgresql:latest"
-  #   container_name: transaction-db
-  #   ports:
-  #     - 5432
-  #   env_file:
-  #     - .env
-  #   environment:
-  #     # NOTE - Bitnami uses the prefix "POSTGRESQL_", which differs from the other database images.
-  #     POSTGRESQL_REPLICATION_MODE: master
-  #     POSTGRESQL_USERNAME: ${TRANSACTION_POSTGRES_USER}
-  #     POSTGRESQL_PASSWORD: ${TRANSACTION_POSTGRES_PASSWORD}
-  #     POSTGRESQL_REPLICATION_USER: ${TRANSACTION_REPLICATION_USER}
-  #     POSTGRESQL_REPLICATION_PASSWORD: ${TRANSACTION_REPLICATION_PASSWORD}
-  #     POSTGRESQL_DATABASE: ${TRANSACTION_POSTGRES_DB}
-  #     POSTGRESQL_POSTGRES_PASSWORD: ${TRANSACTION_POSTGRESROLE_PASSWORD}
-  #     ALLOW_EMPTY_PASSWORD: yes
-  #   volumes:
-  #     - ./transaction-database/init.sql:/docker-entrypoint-initdb.d/init.sql # Mounts the init file so the container has access to it
-  #   healthcheck:
-  #     test:
-  #       [
-  #         "CMD-SHELL",
-  #         "pg_isready -U $TRANSACTION_POSTGRES_USER -d $TRANSACTION_POSTGRES_DB",
-  #       ]
-  #     interval: ${HEALTHCHECK_INTERVAL}
-  #     timeout: ${HEALTHCHECK_TIMEOUT}
-  #     retries: ${HEALTHCHECK_RETRIES}
-  #   networks:
-  #     - go-network
-
-  # transaction-db-replica:
-  #   image: "bitnami/postgresql:latest"
-  #   container_name: transaction-db-replica
-  #   env_file:
-  #     - .env
-  #   environment:
-  #     POSTGRESQL_REPLICATION_MODE: slave
-  #     POSTGRESQL_MASTER_HOST: transaction-db
-  #     POSTGRESQL_MASTER_PORT_NUMBER: 5432 # postgre default
-  #     POSTGRESQL_REPLICATION_USER: ${TRANSACTION_REPLICATION_USER}
-  #     POSTGRESQL_REPLICATION_PASSWORD: ${TRANSACTION_REPLICATION_PASSWORD}
-  #     POSTGRESQL_PASSWORD: ${TRANSACTION_POSTGRES_PASSWORD} # But we still like a password.
-  #     ALLOW_EMPTY_PASSWORD: yes
-  #   depends_on:
-  #     transaction-db:
-  #       condition: service_healthy
-  #   healthcheck:
-  #     test:
-  #       [
-  #         "CMD-SHELL",
-  #         "pg_isready -U $TRANSACTION_POSTGRES_USER -d $TRANSACTION_POSTGRES_DB",
-  #       ]
-  #     interval: ${HEALTHCHECK_INTERVAL}
-  #     timeout: ${HEALTHCHECK_TIMEOUT}
-  #     retries: ${HEALTHCHECK_RETRIES}
-  #   networks:
-  #     - go-network
-
-  # transaction-pgpool:
-  #   image: bitnami/pgpool:latest
-  #   container_name: transaction-pgpool
-  #   ports:
-  #     - "6432:6432"
-  #     # NOTE: postgre default port: 5432
-  #   environment:
-  #     PGPOOL_PORT_NUMBER: 6432 # Apparently specifying the ports wasn't enough; you gotta do it here too.
-  #     PGPOOL_BACKEND_NODES: 0:transaction-db:5432,1:transaction-db-replica:5432
-  #     PGPOOL_SR_CHECK_USER: ${TRANSACTION_POSTGRES_USER}
-  #     PGPOOL_SR_CHECK_PASSWORD: ${TRANSACTION_POSTGRES_PASSWORD}
-  #     PGPOOL_ENABLE_LOAD_BALANCING: yes
-  #     PGPOOL_ADMIN_USERNAME: ${TRANSACTION_POSTGRES_USER} # Required for pgpool
-  #     PGPOOL_ADMIN_PASSWORD: ${TRANSACTION_POSTGRES_PASSWORD} # Required for pgpool
-  #     PGPOOL_POSTGRES_USERNAME: ${TRANSACTION_POSTGRES_USER}
-  #     PGPOOL_POSTGRES_PASSWORD: ${TRANSACTION_POSTGRES_PASSWORD}
-  #     ALLOW_EMPTY_PASSWORD: yes
-  #   depends_on:
-  #     transaction-db-replica:
-  #       condition: service_healthy
-  #     transaction-db:
-  #       condition: service_healthy
-  #   networks:
-  #     - go-network
-  # ---------------------- RabbitMQ ----------------------
+# ---------------------- Misc ----------------------
 
   rabbitmq:
     image: rabbitmq:3-management
