@@ -649,6 +649,15 @@ services:
       # PGPOOL_ENABLE_LOG_PER_NODE_STATEMENT: yes
       # PGPOOL_ENABLE_LOG_CONNECTIONS: yes
       # PGPOOL_ENABLE_LOG_HOSTNAME: yes
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U $STOCK_POSTGRES_USER -d $STOCK_POSTGRES_DB",
+        ]
+      interval: ${HEALTHCHECK_INTERVAL}
+      timeout: ${HEALTHCHECK_TIMEOUT}
+      retries: ${HEALTHCHECK_RETRIES}
     depends_on:
       stock-db-replica:
         condition: service_healthy
