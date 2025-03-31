@@ -813,12 +813,7 @@ services:
 
 # NOTE: May need to update this as I'm not 100% sure how it interacts with pgpool/replication
 
-# Auth Database Shards (I arbitrarily chose 2) #
-# Add these sections for Auth DB sharding
-
-
-# Add these sections for Auth DB sharding
-
+# Auth Database Shards (I arbitrarily chose 3) #
 auth-shard-1:
   image: postgres:latest
   restart: always
@@ -879,7 +874,7 @@ auth-shard-3:
   networks:
     - go-network
 
-# User Management DB Shards
+# User Management DB Shards (I arbitrarily chose 3) #
 user-management-shard-1:
   image: "bitnami/postgresql:latest"
   container_name: user-management-shard-1
