@@ -449,7 +449,7 @@ services:
     networks:
       - go-network
 
-# ---------------------- User Management Database ----------------------
+  # ---------------------- User Management Database ----------------------
 
   user-management-db:
     image: "bitnami/postgresql:latest"
@@ -520,8 +520,8 @@ services:
     ports:
       - "6432:6432"
       # postgre default port: 5432
-    volumes:
-      - ./pgpool-config/pgpool.conf:/opt/bitnami/pgpool/conf/pgpool.conf:ro
+    # volumes:
+    #   - ./pgpool-config/pgpool.conf:/opt/bitnami/pgpool/conf/pgpool.conf:ro
     environment:
       PGPOOL_PORT_NUMBER: 6432 # Apparently specifying the ports wasn't enough; you gotta do it here too.
       PGPOOL_BACKEND_NODES: 0:user-management-db:5432,1:user-management-db-replica-1:5432
