@@ -65,8 +65,8 @@ func (d *PostGresDatabase) Connect() {
 			time.Sleep(time.Duration(interval) * time.Second)
 		}
 		sqlDB, err := db.DB()
-		sqlDB.SetMaxIdleConns(400)
-		sqlDB.SetMaxOpenConns(400)
+		sqlDB.SetMaxIdleConns(200)
+		sqlDB.SetMaxOpenConns(200)
 		log.Fatal("Database connection failed after multiple attempts: ", err)
 	}
 }
