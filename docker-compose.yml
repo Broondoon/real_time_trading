@@ -533,6 +533,10 @@ services:
       PGPOOL_POSTGRES_USERNAME: ${USER_MANAGEMENT_POSTGRES_USER}
       PGPOOL_POSTGRES_PASSWORD: ${USER_MANAGEMENT_POSTGRES_PASSWORD}
       ALLOW_EMPTY_PASSWORD: yes
+      # Uncomment these lines to enable logging (will show exactly which requests go where)
+      # PGPOOL_ENABLE_LOG_PER_NODE_STATEMENT: yes
+      # PGPOOL_ENABLE_LOG_CONNECTIONS: yes
+      # PGPOOL_ENABLE_LOG_HOSTNAME: yes
     depends_on:
       user-management-db-replica:
         condition: service_healthy
