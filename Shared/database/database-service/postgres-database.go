@@ -63,6 +63,9 @@ func (d *PostGresDatabase) Connect() {
 			log.Printf("Database not ready yet, retrying... (%d/%d)", i+1, retries)
 			time.Sleep(time.Duration(interval) * time.Second)
 		}
+		sqlDB, err := db.DB()
+		sqlDB.SetMaxIdleConns(200)
+		sqlDB.SetMaxOpenConns(200)
 		log.Fatal("Database connection failed after multiple attempts: ", err)
 	}
 }
