@@ -308,7 +308,7 @@ func placeStockOrderResponse(data *[]*StockOrderBulk, TransferParams any) error 
 
 	for _, stockOrderCarry := range *data {
 		if stockOrderCarry.ResponseWriter.CheckCompleted() {
-			err := _networkQueueManager.UserManagementDatabase().Patch("cancelStockTransaction", stockOrderCarry.StockOrder.GetIdString())
+			err := _networkHttpManager.UserManagementDatabase().Patch("cancelStockTransaction", stockOrderCarry.StockOrder.GetIdString())
 			if err != nil {
 				log.Println("Error: ", err.Error())
 				// panic(err)
@@ -329,7 +329,7 @@ func placeStockOrderResponse(data *[]*StockOrderBulk, TransferParams any) error 
 		}
 		stockOrderCarry.StockOrder.SetId(createdTransactionIdsByPairing[stockOrderCarry.StockOrder.GetUniquePairing().String()])
 		//log.Println("sending to matching engine")
-		_, err = _networkQueueManager.MatchingEngine().Post("placeStockOrder", stockOrderCarry.StockOrder)
+		_, err = _networkHttpManager.MatchingEngine().Post("placeStockOrder", stockOrderCarry.StockOrder)
 		//log.Println("sent to matching engine")
 		if err != nil {
 			log.Printf("failed to send to matching engine: %v", err)
@@ -412,13 +412,13 @@ func cancelStockTransactionHandler(responseWriter network.ResponseWriter, data [
 // initiator passes to matching
 func cancelStockTransaction(id string) error {
 	//pass to matching engine
-	err := _networkQueueManager.UserManagementDatabase().Patch("cancelStockTransaction", id)
+	err := _networkHttpManager.UserManagementDatabase().Patch("cancelStockTransaction", id)
 	if err != nil {
 		log.Println("Error: ", err.Error())
 		return err
 	}
 
-	_, err = _networkQueueManager.MatchingEngine().Delete("deleteOrder/" + id)
+	_, err = _networkHttpManager.MatchingEngine().Delete("deleteOrder/" + id)
 	if err != nil {
 		log.Println("Error: ", err.Error())
 		return err

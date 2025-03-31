@@ -6,8 +6,8 @@ import (
 	"Shared/network"
 	subfunctions "Shared/subfunctions/Multithreading"
 	"databaseAccessStockOrder"
-	"fmt"
 	"log"
+	"sync"
 )
 
 const ISBUY = 0
@@ -21,21 +21,7 @@ type MatchingEngineInterface interface {
 	RunMatchingEngineOrders()
 	RunMatchingEngineUpdates()
 	GetPrice() network.StockPrice
-	CompletePairedOrder(params network.ExecutorToMatchingEngineJSON) error
-}
-
-// things to do:
-// Shift the completion logic into a new routine.
-// store the paired orders in a backlog.
-// Setup handlers for the completion logic.
-type PairedOrders struct {
-	Buyer    order.StockOrderInterface
-	Seller   order.StockOrderInterface
-	Quantity int
-}
-
-func (po *PairedOrders) GetKey() string {
-	return po.Buyer.GetIdString() + po.Seller.GetIdString()
+	CompletePairedOrder(params network.ExecutorToMatchingEngineJSON, buyOrder order.StockOrderInterface, sellOrder order.StockOrderInterface, quantity int, err error)
 }
 
 type MatchingEngine struct {
@@ -44,18 +30,19 @@ type MatchingEngine struct {
 	SellOrderBook       matchingEngineStructures.SellOrderBookInterface
 	orderChannel        chan int
 	updateChannel       chan *UpdateParams
-	SendToOrderExection func(buyOrder order.StockOrderInterface, sellOrder order.StockOrderInterface) (network.ExecutorToMatchingEngineJSON, error)
+	SendToOrderExection func(buyOrder order.StockOrderInterface, sellOrder order.StockOrderInterface, quantity int)
 	//dirty fix
 	DatabaseManager   databaseAccessStockOrder.DatabaseAccessInterface
 	StockName         string
-	PairedOrders      map[string]PairedOrders
+	orderState        map[string]int
 	UpdateBulkRoutine subfunctions.BulkRoutineInterface[order.StockOrderInterface]
+	mutex             *sync.Mutex
 }
 
 type NewMatchingEngineParams struct {
 	StockID                  string
 	InitalOrders             *[]order.StockOrderInterface
-	SendToOrderExecutionFunc func(buyOrder order.StockOrderInterface, sellOrder order.StockOrderInterface) (network.ExecutorToMatchingEngineJSON, error)
+	SendToOrderExecutionFunc func(buyOrder order.StockOrderInterface, sellOrder order.StockOrderInterface, quantity int)
 	DatabaseManager          databaseAccessStockOrder.DatabaseAccessInterface
 	StockName                string
 }
@@ -80,7 +67,8 @@ func NewMatchingEngineForStock(params *NewMatchingEngineParams) MatchingEngineIn
 		SendToOrderExection: params.SendToOrderExecutionFunc,
 		DatabaseManager:     params.DatabaseManager,
 		StockName:           params.StockName,
-		PairedOrders:        make(map[string]PairedOrders),
+		orderState:          make(map[string]int),
+		mutex:               &sync.Mutex{},
 	}
 
 	updateFunc := func(data *[]order.StockOrderInterface, TransferParams any) error {
@@ -109,6 +97,7 @@ func (me *MatchingEngine) RunMatchingEngineOrders() {
 	var haveSellOrder bool
 	for {
 		//dequeue the top of the buy order book and sell order book
+		me.mutex.Lock()
 		if buyOrder == nil {
 			buyOrder = me.BuyOrderBook.GetBestOrder()
 		} else {
@@ -124,85 +113,68 @@ func (me *MatchingEngine) RunMatchingEngineOrders() {
 				haveBuyOrder = false
 				if sellOrder != nil {
 					haveSellOrder = true
-					log.Println("Buy Order is nil. Returning sell order")
+					//log.Println("Buy Order is nil. Returning sell order")
 					me.SellOrderBook.AddOrder(sellOrder)
 					sellOrder = nil
 				}
 			} else if sellOrder == nil {
 				haveBuyOrder = true
 				haveSellOrder = false
-				log.Println("Sell Order is nil, Returning buy order")
+				//log.Println("Sell Order is nil, Returning buy order")
 				me.BuyOrderBook.ReturnOrder(buyOrder)
 				buyOrder = nil
 			}
 		}
+		me.mutex.Unlock()
 		if buyOrder != nil && sellOrder != nil {
-			buyIsChild := false
-			sellIsChild := false
-			var parentOrder order.StockOrderInterface
-			if buyOrder.GetQuantity() < sellOrder.GetQuantity() {
-				parentOrder = sellOrder
-				sellIsChild = true
-				sellOrder = sellOrder.CreateChildOrder(sellOrder, buyOrder)
-				if sellOrder.GetQuantity() == parentOrder.GetQuantity() {
-					log.Println("Sell Order is nil, Returning buy order")
-					close(me.orderChannel)
-					close(me.updateChannel)
-				}
-			}
-			if buyOrder.GetQuantity() > sellOrder.GetQuantity() {
-				parentOrder = buyOrder
-				buyIsChild = true
-				buyOrder = buyOrder.CreateChildOrder(buyOrder, sellOrder)
-				if sellOrder.GetQuantity() == parentOrder.GetQuantity() {
-				}
-			}
-			result, err := me.SendToOrderExection(buyOrder, sellOrder)
-			sellOrderQuantity := sellOrder.GetQuantity()
-			buyOrderQuantity := buyOrder.GetQuantity()
-			quantity := sellOrderQuantity
-			if buyOrderQuantity < sellOrderQuantity {
-				quantity = buyOrderQuantity
-			}
-			if sellIsChild {
-				sellOrder = parentOrder
-			} else if buyIsChild {
-				buyOrder = parentOrder
-			}
-			if err != nil {
-				log.Println("Error in order execution: ", err)
-				if result.IsBuyFailure {
-					buyOrder = nil
-				}
-				if result.IsSellFailure {
-					sellOrder = nil
-				}
+			// buyIsChild := false
+			// sellIsChild := false
+			// var parentOrder order.StockOrderInterface
+			// if buyOrder.GetQuantity() < sellOrder.GetQuantity() {
+			// 	parentOrder = sellOrder
+			// 	sellIsChild = true
+			// 	sellOrder = sellOrder.CreateChildOrder(sellOrder, buyOrder)
+			// 	if sellOrder.GetQuantity() == parentOrder.GetQuantity() {
+			// 		log.Println("Sell Order is nil, Returning buy order")
+			// 		close(me.orderChannel)
+			// 		close(me.updateChannel)
+			// 	}
+			// }
+			// if buyOrder.GetQuantity() > sellOrder.GetQuantity() {
+			// 	parentOrder = buyOrder
+			// 	buyIsChild = true
+			// 	buyOrder = buyOrder.CreateChildOrder(buyOrder, sellOrder)
+			// 	if sellOrder.GetQuantity() == parentOrder.GetQuantity() {
+			// 	}
+			// }
+			me.mutex.Lock()
+			if _, ok := me.orderState[sellOrder.GetIdString()]; ok {
+				me.orderState[sellOrder.GetIdString()]++
 			} else {
-				if result.IsBuyFailure {
-					buyOrder = nil
-				}
-				if result.IsSellFailure {
-					sellOrder = nil
-				}
-				if !result.IsBuyFailure && !result.IsSellFailure {
-					sellOrder.UpdateQuantity(-quantity)
-					buyOrder.UpdateQuantity(-quantity)
-					me.UpdateBulkRoutine.Insert(sellOrder)
-					me.UpdateBulkRoutine.Insert(buyOrder)
-					if sellOrder.GetQuantity() == 0 {
-						sellOrder = nil
-					}
-					if buyOrder.GetQuantity() == 0 {
-						buyOrder = nil
-					}
-				}
+				me.orderState[sellOrder.GetIdString()] = 1
+			}
+			if _, ok := me.orderState[buyOrder.GetIdString()]; ok {
+				me.orderState[buyOrder.GetIdString()]++
+			} else {
+				me.orderState[buyOrder.GetIdString()] = 1
+			}
+			me.mutex.Unlock()
+
+			quantity := min(sellOrder.GetQuantity(), buyOrder.GetQuantity())
+			sellOrder.UpdateQuantity(-quantity)
+			buyOrder.UpdateQuantity(-quantity)
+			go me.SendToOrderExection(buyOrder, sellOrder, quantity)
+			if buyOrder.GetQuantity() == 0 {
+				buyOrder = nil
+			} else {
+				sellOrder = nil
 			}
 		} else {
 			for {
-				log.Println("No orders to match")
-				log.Println("Waiting for order")
+				// log.Println("No orders to match")
+				// log.Println("Waiting for order")
 				orderReceived := <-me.orderChannel
-				log.Println("Order received")
+				// log.Println("Order received")
 				if orderReceived == ISBUY {
 					haveBuyOrder = true
 					if haveSellOrder {
@@ -260,29 +232,33 @@ func (me *MatchingEngine) GetPrice() network.StockPrice {
 
 }
 
-func (me *MatchingEngine) CompletePairedOrder(params network.ExecutorToMatchingEngineJSON) error {
-	if PairedOrder, ok := me.PairedOrders[params.BuyerStockOrderId+params.SellerStockOrderId]; ok {
-		buyOrder := PairedOrder.Buyer
-		sellOrder := PairedOrder.Seller
-		if buyOrder == nil || sellOrder == nil {
-			return fmt.Errorf("500: buy or Sell Order not found")
+func (me *MatchingEngine) CompletePairedOrder(params network.ExecutorToMatchingEngineJSON, buyOrder order.StockOrderInterface, sellOrder order.StockOrderInterface, quantity int, err error) {
+	if err != nil {
+		log.Println("Error in order execution: ", err)
+	}
+	if params.IsBuyFailure || params.IsSellFailure {
+		me.mutex.Lock()
+		if params.IsBuyFailure {
+			sellOrder.UpdateQuantity(quantity)
+			me.orderState[sellOrder.GetIdString()]--
+			if me.orderState[sellOrder.GetIdString()] == 0 {
+				me.SellOrderBook.ReturnOrder(sellOrder)
+				me.orderChannel <- ISSELL
+			}
 		}
 		if params.IsBuyFailure {
-			sellOrder.UpdateQuantity(PairedOrder.Quantity)
-			me.SellOrderBook.ReturnOrder(sellOrder)
+			buyOrder.UpdateQuantity(quantity)
+			me.orderState[buyOrder.GetIdString()]--
+			if me.orderState[buyOrder.GetIdString()] == 0 {
+				me.BuyOrderBook.ReturnOrder(buyOrder)
+				me.orderChannel <- ISBUY
+			}
 		}
-		if params.IsSellFailure {
-			buyOrder.UpdateQuantity(PairedOrder.Quantity)
-			me.BuyOrderBook.ReturnOrder(buyOrder)
-		}
-		if len(*buyOrder.GetUpdates()) > 0 {
-			me.UpdateBulkRoutine.Insert(buyOrder)
-		}
-		if len(*sellOrder.GetUpdates()) > 0 {
-		}
-		delete(me.PairedOrders, PairedOrder.GetKey())
-		return nil
+		me.mutex.Unlock()
 	} else {
-		return fmt.Errorf("404: paired Order not found")
+		sellOrder.UpdateDBQuantity(-quantity)
+		me.UpdateBulkRoutine.Insert(sellOrder)
+		buyOrder.UpdateDBQuantity(-quantity)
+		me.UpdateBulkRoutine.Insert(buyOrder)
 	}
 }

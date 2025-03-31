@@ -56,8 +56,12 @@ func (d *DatabaseAccess) GetInitialStockOrdersForStock(stockID string) *[]order.
 		return nil
 	}
 	convertedStockOrders := make([]order.StockOrderInterface, len(*stockOrders))
-	for i, o := range *stockOrders {
-		convertedStockOrders[i] = o
+	i := 0
+	for _, o := range *stockOrders {
+		if o.GetQuantity() > 0 {
+			convertedStockOrders[i] = o
+			i++
+		}
 	}
 	return &convertedStockOrders
 }

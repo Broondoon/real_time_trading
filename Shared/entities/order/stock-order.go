@@ -34,7 +34,10 @@ type StockOrderInterface interface {
 	SetIsBuy(isBuy bool)
 	GetOrderType() string
 	GetQuantity() int
+	//Will not update the change log for this. You need to call UpdateDBQuantity to do that
 	UpdateQuantity(quantityToAdd int)
+	//Will not actually update this entities quantity, but will create a db log to update when sent for updates. This is because we don't actually want to create a log whenever it's updated, only when taht update is confirmed.
+	UpdateDBQuantity(quantityToAdd int)
 	GetPrice() float64
 	SetPrice(price float64)
 	GetParentStockOrderID() *uuid.UUID
@@ -82,6 +85,8 @@ func (so *StockOrder) GetQuantity() int {
 
 func (so *StockOrder) UpdateQuantity(quantityToAdd int) {
 	so.Quantity += quantityToAdd
+}
+func (so *StockOrder) UpdateDBQuantity(quantityToAdd int) {
 	*so.GetUpdates() = append(*so.Updates, &entity.EntityUpdateData{
 		ID:         so.GetId(),
 		Field:      "Quantity",

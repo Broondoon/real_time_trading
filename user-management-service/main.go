@@ -2,7 +2,6 @@ package main
 
 import (
 	networkHttp "Shared/network/http"
-	networkQueue "Shared/network/queue"
 	"databaseAccessStock"
 	"databaseAccessUserManagement"
 	"log"
@@ -14,13 +13,13 @@ import (
 func main() {
 
 	networkManager := networkHttp.NewNetworkHttp()
-	networkManagerQueue := networkQueue.NewNetworkQueue(nil, os.Getenv("USER_MANAGEMENT_HOST")+":"+os.Getenv("USER_MANAGEMENT_PORT"))
+	//networkManagerQueue := networkQueue.NewNetworkQueue(nil, os.Getenv("USER_MANAGEMENT_HOST")+":"+os.Getenv("USER_MANAGEMENT_PORT"))
 
 	databaseAccess := databaseAccessUserManagement.NewDatabaseAccess(&databaseAccessUserManagement.NewDatabaseAccessParams{
-		Network: networkManagerQueue,
+		Network: networkManager,
 	})
 	stockDatabaseAccess := databaseAccessStock.NewDatabaseAccess(&databaseAccessStock.NewDatabaseAccessParams{
-		Network: networkManagerQueue,
+		Network: networkManager,
 	})
 
 	walletAccess := databaseAccess.Wallet()

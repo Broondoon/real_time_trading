@@ -149,9 +149,6 @@ func addMoneyToWalletHandler(responseWriter network.ResponseWriter, data []byte,
 	}
 
 	responseWriter.Write(returnValJSON)
-
-	//	log.Println("DEBUG: Money added successfully, sending 200 OK response")
-	responseWriter.WriteHeader(http.StatusOK)
 }
 
 // func createWalletHandler(responseWriter network.ResponseWriter, data []byte, queryParams url.Values, requestType string) {

@@ -83,54 +83,54 @@ services:
       timeout: 10s
       retries: 3
 
-  redis-transaction:
-    image: redis:latest
-    container_name: redis-transaction
-    ports:
-      - "6381:6379"
-    networks:
-      - go-network
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-  redis-usermanagement:
-    image: redis:latest
-    container_name: redis-usermanagement
-    ports:
-      - "6382:6379" # Optional for external access
-    networks:
-      - go-network
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-  redis-stock:
-    image: redis:latest
-    container_name: redis-stock
-    ports:
-      - "6383:6379"
-    networks:
-      - go-network
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-  redis-stockorder:
-    image: redis:latest
-    container_name: redis-stockorder
-    ports:
-      - "6384:6379"
-    networks:
-      - go-network
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+  # redis-transaction:
+  #   image: redis:latest
+  #   container_name: redis-transaction
+  #   ports:
+  #     - "6381:6379"
+  #   networks:
+  #     - go-network
+  #   healthcheck:
+  #     test: ["CMD", "redis-cli", "ping"]
+  #     interval: 30s
+  #     timeout: 10s
+  #     retries: 3
+  # redis-usermanagement:
+  #   image: redis:latest
+  #   container_name: redis-usermanagement
+  #   ports:
+  #     - "6382:6379"  # Optional for external access
+  #   networks:
+  #     - go-network
+  #   healthcheck:
+  #     test: ["CMD", "redis-cli", "ping"]
+  #     interval: 30s
+  #     timeout: 10s
+  #     retries: 3
+  # redis-stock:
+  #   image: redis:latest
+  #   container_name: redis-stock
+  #   ports:
+  #     - "6383:6379"
+  #   networks:
+  #     - go-network
+  #   healthcheck:
+  #     test: ["CMD", "redis-cli", "ping"]
+  #     interval: 30s
+  #     timeout: 10s
+  #     retries: 3 
+  # redis-stockorder:
+  #   image: redis:latest
+  #   container_name: redis-stockorder
+  #   ports:
+  #     - "6384:6379"
+  #   networks:
+  #     - go-network
+  #   healthcheck:
+  #     test: ["CMD", "redis-cli", "ping"]
+  #     interval: 30s
+  #     timeout: 10s
+  #     retries: 3 
 
   # ---------------------- Existing Services ----------------------
   # microservice-template:
@@ -172,8 +172,8 @@ services:
         condition: service_healthy
       # order-executor-service:
       #  condition: service_healthy
-      redis-stockorder:
-        condition: service_healthy
+      # redis-stockorder:
+      #    condition: service_healthy
       rabbitmq:
         condition: service_healthy
       user-management-database-service:
@@ -302,8 +302,8 @@ services:
     depends_on:
       stock-pgpool:
         condition: service_healthy
-      redis-stock:
-        condition: service_healthy
+      # redis-stock:
+      #   condition: service_healthy
     healthcheck:
       test:
         [
@@ -321,7 +321,7 @@ services:
       context: .
       dockerfile: ./user-management-database/database-service/Dockerfile
     ports:
-      - "${USER_MANAGEMENT_DATABASE_SERVICE_PORT}:${USER_MANAGEMENT_DATABASE_SERVICE_PORT}"
+      - "${USER_MANAGEMENT_DATABASE_SERVICE_PORT}"
     env_file:
       - .env
     environment:
@@ -334,8 +334,8 @@ services:
     depends_on:
       user-management-pgpool:
         condition: service_healthy
-      redis-usermanagement:
-        condition: service_healthy
+      # redis-usermanagement:
+      #   condition: service_healthy
     healthcheck:
       test:
         [
@@ -347,13 +347,17 @@ services:
       interval: ${HEALTHCHECK_INTERVAL}
       timeout: ${HEALTHCHECK_TIMEOUT}
       retries: ${HEALTHCHECK_RETRIES}
+    deploy:
+      replicas: 5
+      restart_policy:
+        condition: on-failure
 
   auth-database-service:
     build:
       context: .
       dockerfile: ./auth-database/database-service/Dockerfile
     ports:
-      - "${AUTH_DATABASE_SERVICE_PORT}:${AUTH_DATABASE_SERVICE_PORT}"
+      - "${AUTH_DATABASE_SERVICE_PORT}"
     env_file:
       - .env
     environment:
@@ -379,11 +383,11 @@ services:
       interval: ${HEALTHCHECK_INTERVAL}
       timeout: ${HEALTHCHECK_TIMEOUT}
       retries: ${HEALTHCHECK_RETRIES}
+    deploy:
+      replicas: 5
+      restart_policy:
+        condition: on-failure
 
-# ---------------------- Auth Database ----------------------
-
-  # Auth DB does not benefit from replication, because it reads as often as it writes (50/50 split).
-  # And really, the reads should be from the cache, as the write puts the exact info the read is looking for into the cache.
   auth-db:
     image: postgres:latest
     restart: always
@@ -404,8 +408,6 @@ services:
       retries: ${HEALTHCHECK_RETRIES}
     networks:
       - go-network
-
-# ---------------------- Stock Order Database ----------------------
 
   stock-order-db:
     image: postgres:latest
@@ -430,118 +432,6 @@ services:
       retries: ${HEALTHCHECK_RETRIES}
     networks:
       - go-network
-
-  # stock-order-db:
-  #   image: "bitnami/postgresql:latest"
-  #   container_name: stock-order-db
-  #   restart: always
-  #   env_file:
-  #     - .env
-  #   environment:
-  #     POSTGRESQL_REPLICATION_MODE: master
-  #     POSTGRESQL_USERNAME: ${STOCK_ORDER_POSTGRES_USER}
-  #     POSTGRESQL_PASSWORD: ${STOCK_ORDER_POSTGRES_PASSWORD}
-  #     POSTGRESQL_REPLICATION_USER: ${STOCK_ORDER_REPLICATION_USER}
-  #     POSTGRESQL_REPLICATION_PASSWORD: ${STOCK_ORDER_REPLICATION_PASSWORD}
-  #     POSTGRESQL_DATABASE: ${STOCK_ORDER_POSTGRES_DB}
-  #   volumes:
-  #     - stock-order-db-data:/var/lib/postgresql/data
-  #     - ./stock-order-database/init.sql:/docker-entrypoint-initdb.d/init.sql
-  #   healthcheck:
-  #     test:
-  #       [
-  #         "CMD-SHELL",
-  #         "pg_isready -U $STOCK_ORDER_POSTGRES_USER -d $STOCK_ORDER_POSTGRES_DB",
-  #       ]
-  #     interval: ${HEALTHCHECK_INTERVAL}
-  #     timeout: ${HEALTHCHECK_TIMEOUT}
-  #     retries: ${HEALTHCHECK_RETRIES}
-  #   networks:
-  #     - go-network
-
-  # stock-order-db-replica:
-  #   image: "bitnami/postgresql:latest"
-  #   container_name: stock-order-db-replica-1
-  #   env_file:
-  #     - .env
-  #   environment:
-  #     POSTGRESQL_REPLICATION_MODE: slave
-  #     POSTGRESQL_MASTER_HOST: stock-order-db
-  #     POSTGRESQL_MASTER_PORT_NUMBER: 5432 # postgre default
-  #     POSTGRESQL_REPLICATION_USER: ${STOCK_ORDER_REPLICATION_USER}
-  #     POSTGRESQL_REPLICATION_PASSWORD: ${STOCK_ORDER_REPLICATION_PASSWORD}
-  #     POSTGRESQL_PASSWORD: ${STOCK_ORDER_POSTGRES_PASSWORD} # But we still like a password.
-  #     ALLOW_EMPTY_PASSWORD: yes
-  #   depends_on:
-  #     stock-order-db:
-  #       condition: service_healthy
-  #   healthcheck:
-  #     test:
-  #       [
-  #         "CMD-SHELL",
-  #         "pg_isready -U $STOCK_ORDER_POSTGRES_USER -d $STOCK_ORDER_POSTGRES_DB",
-  #       ]
-  #     interval: ${HEALTHCHECK_INTERVAL}
-  #     timeout: ${HEALTHCHECK_TIMEOUT}
-  #     retries: ${HEALTHCHECK_RETRIES}
-  #   networks:
-  #     - go-network
-
-  # stock-order-pgpool:
-  #   image: bitnami/pgpool:latest
-  #   container_name: stock-order-pgpool
-  #   env_file:
-  #     - .env
-  #   ports:
-  #     - "6434:6434"
-  #   environment:
-  #     PGPOOL_PORT_NUMBER: 6434 # Apparently specifying the ports wasn't enough; you gotta do it here too.
-  #     PGPOOL_BACKEND_NODES: 0:stock-order-db:5432,1:stock-order-db-replica-1:5432
-  #     PGPOOL_SR_CHECK_USER: ${STOCK_ORDER_POSTGRES_USER}
-  #     PGPOOL_SR_CHECK_PASSWORD: ${STOCK_ORDER_POSTGRES_PASSWORD}
-  #     PGPOOL_ENABLE_LOAD_BALANCING: yes
-  #     PGPOOL_ADMIN_USERNAME: ${STOCK_ORDER_POSTGRES_USER} # Required for pgpool
-  #     PGPOOL_ADMIN_PASSWORD: ${STOCK_ORDER_POSTGRES_PASSWORD} # Required for pgpool
-  #     PGPOOL_POSTGRES_USERNAME: ${STOCK_ORDER_POSTGRES_USER}
-  #     PGPOOL_POSTGRES_PASSWORD: ${STOCK_ORDER_POSTGRES_PASSWORD}
-  #     ALLOW_EMPTY_PASSWORD: yes
-  #     # Uncomment these lines to enable logging (will show exactly which requests go where)
-  #     # PGPOOL_ENABLE_LOG_PER_NODE_STATEMENT: yes
-  #     # PGPOOL_ENABLE_LOG_CONNECTIONS: yes
-  #     # PGPOOL_ENABLE_LOG_HOSTNAME: yes
-  #   depends_on:
-  #     stock-order-db-replica:
-  #       condition: service_healthy
-  #     stock-order-db:
-  #       condition: service_healthy
-  #   networks:
-  #     - go-network
-
-# ---------------------- Stock Database ----------------------
-
-  # stock-db:
-  #   image: postgres:latest
-  #   restart: always
-  #   env_file:
-  #     - .env
-  #   environment:
-  #     POSTGRES_USER: ${STOCK_POSTGRES_USER}
-  #     POSTGRES_PASSWORD: ${STOCK_POSTGRES_PASSWORD}
-  #     POSTGRES_DB: ${STOCK_POSTGRES_DB}
-  #   volumes:
-  #     - stock-db-data:/var/lib/postgresql/data
-  #     - ./stock-database/init.sql:/docker-entrypoint-initdb.d/init.sql
-  #   healthcheck:
-  #     test:
-  #       [
-  #         "CMD-SHELL",
-  #         "pg_isready -U $STOCK_POSTGRES_USER -d $STOCK_POSTGRES_DB",
-  #       ]
-  #     interval: ${HEALTHCHECK_INTERVAL}
-  #     timeout: ${HEALTHCHECK_TIMEOUT}
-  #     retries: ${HEALTHCHECK_RETRIES}
-  #   networks:
-  #     - go-network
 
   stock-db:
     image: "bitnami/postgresql:latest"
@@ -650,11 +540,10 @@ services:
       # PGPOOL_ENABLE_LOG_CONNECTIONS: yes
       # PGPOOL_ENABLE_LOG_HOSTNAME: yes
     healthcheck:
-      test:
-        [
-          "CMD-SHELL",
-          "pg_isready -U $STOCK_POSTGRES_USER -d $STOCK_POSTGRES_DB",
-        ]
+      test: [
+        "CMD-SHELL",
+        "PGPASSWORD=$$PGPOOL_POSTGRES_PASSWORD psql -h 127.0.0.1 -U $$PGPOOL_POSTGRES_USERNAME -p 6433 -d postgres -q -c 'SELECT 1;' || exit 1"
+      ]
       interval: ${HEALTHCHECK_INTERVAL}
       timeout: ${HEALTHCHECK_TIMEOUT}
       retries: ${HEALTHCHECK_RETRIES}
@@ -668,7 +557,7 @@ services:
     networks:
       - go-network
 
-# ---------------------- User Management Database ----------------------
+  # ---------------------- User Management Database ----------------------
 
   user-management-db:
     image: "bitnami/postgresql:latest"
@@ -687,6 +576,7 @@ services:
       POSTGRESQL_REPLICATION_USER: ${USER_MANAGEMENT_REPLICATION_USER}
       POSTGRESQL_REPLICATION_PASSWORD: ${USER_MANAGEMENT_REPLICATION_PASSWORD}
       POSTGRESQL_DATABASE: ${USER_MANAGEMENT_POSTGRES_DB}
+      # POSTGRESQL_POSTGRES_PASSWORD: ${USER_MANAGEMENT_POSTGRESROLE_PASSWORD}
     volumes:
       - user-management-db-data:/var/lib/postgresql/data
       - ./user-management-database/init.sql:/docker-entrypoint-initdb.d/init.sql
@@ -730,34 +620,6 @@ services:
     networks:
       - go-network
 
-  user-management-db-replica-2:
-    image: "bitnami/postgresql:latest"
-    container_name: user-management-db-replica-2
-    env_file:
-      - .env
-    environment:
-      POSTGRESQL_REPLICATION_MODE: slave
-      POSTGRESQL_MASTER_HOST: user-management-db
-      POSTGRESQL_MASTER_PORT_NUMBER: 5432 # postgre default
-      POSTGRESQL_REPLICATION_USER: ${USER_MANAGEMENT_REPLICATION_USER}
-      POSTGRESQL_REPLICATION_PASSWORD: ${USER_MANAGEMENT_REPLICATION_PASSWORD}
-      POSTGRESQL_PASSWORD: ${USER_MANAGEMENT_POSTGRES_PASSWORD} # But we still like a password.
-      ALLOW_EMPTY_PASSWORD: yes
-    depends_on:
-      user-management-db:
-        condition: service_healthy
-    healthcheck:
-      test:
-        [
-          "CMD-SHELL",
-          "pg_isready -U $USER_MANAGEMENT_POSTGRES_USER -d $USER_MANAGEMENT_POSTGRES_DB",
-        ]
-      interval: ${HEALTHCHECK_INTERVAL}
-      timeout: ${HEALTHCHECK_TIMEOUT}
-      retries: ${HEALTHCHECK_RETRIES}
-    networks:
-      - go-network
-
   user-management-pgpool:
     image: bitnami/pgpool:latest
     container_name: user-management-pgpool
@@ -765,44 +627,119 @@ services:
       - .env
     ports:
       - "6432:6432"
-      # postgre default port: 5432
-    # volumes:
-    #   - ./pgpool-config/pgpool.conf:/opt/bitnami/pgpool/conf/pgpool.conf:ro
     environment:
-      PGPOOL_PORT_NUMBER: 6432 # Apparently specifying the ports wasn't enough; you gotta do it here too.
+      PGPOOL_PORT_NUMBER: 6432
       PGPOOL_BACKEND_NODES: 0:user-management-db:5432,1:user-management-db-replica-1:5432,2:user-management-db-replica-2:5432
       PGPOOL_SR_CHECK_USER: ${USER_MANAGEMENT_POSTGRES_USER}
       PGPOOL_SR_CHECK_PASSWORD: ${USER_MANAGEMENT_POSTGRES_PASSWORD}
-      PGPOOL_ENABLE_LOAD_BALANCING: yes
-      PGPOOL_ADMIN_USERNAME: ${USER_MANAGEMENT_POSTGRES_USER} # Required for pgpool
-      PGPOOL_ADMIN_PASSWORD: ${USER_MANAGEMENT_POSTGRES_PASSWORD} # Required for pgpool
+      PGPOOL_ENABLE_LOAD_BALANCING: "yes"
+      PGPOOL_ADMIN_USERNAME: ${USER_MANAGEMENT_POSTGRES_USER}
+      PGPOOL_ADMIN_PASSWORD: ${USER_MANAGEMENT_POSTGRES_PASSWORD}
       PGPOOL_POSTGRES_USERNAME: ${USER_MANAGEMENT_POSTGRES_USER}
       PGPOOL_POSTGRES_PASSWORD: ${USER_MANAGEMENT_POSTGRES_PASSWORD}
-      ALLOW_EMPTY_PASSWORD: yes
-      # Uncomment these lines to enable logging (will show exactly which requests go where)
-      # PGPOOL_ENABLE_LOG_PER_NODE_STATEMENT: yes
-      # PGPOOL_ENABLE_LOG_CONNECTIONS: yes
-      # PGPOOL_ENABLE_LOG_HOSTNAME: yes
+      ALLOW_EMPTY_PASSWORD: "yes"
     healthcheck:
-      test:
-        [
-          "CMD-SHELL",
-          "pg_isready -U $USER_MANAGEMENT_POSTGRES_USER -d $USER_MANAGEMENT_POSTGRES_DB",
-        ]
-      interval: ${HEALTHCHECK_INTERVAL}
-      timeout: ${HEALTHCHECK_TIMEOUT}
-      retries: ${HEALTHCHECK_RETRIES}
+      # Use psql to run a simple SELECT 1 through pgpool on port 6432.
+      test: [
+        "CMD-SHELL",
+        "PGPASSWORD=$$PGPOOL_POSTGRES_PASSWORD psql -h 127.0.0.1 -U $$PGPOOL_POSTGRES_USERNAME -p 6432 -d postgres -q -c 'SELECT 1;' || exit 1"
+      ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
     depends_on:
       user-management-db-replica:
-        condition: service_healthy
-      user-management-db-replica-2:
         condition: service_healthy
       user-management-db:
         condition: service_healthy
     networks:
       - go-network
 
-# ---------------------- Misc ----------------------
+  # transaction-db:
+  #   image: "bitnami/postgresql:latest"
+  #   container_name: transaction-db
+  #   ports:
+  #     - 5432
+  #   env_file:
+  #     - .env
+  #   environment:
+  #     # NOTE - Bitnami uses the prefix "POSTGRESQL_", which differs from the other database images.
+  #     POSTGRESQL_REPLICATION_MODE: master
+  #     POSTGRESQL_USERNAME: ${TRANSACTION_POSTGRES_USER}
+  #     POSTGRESQL_PASSWORD: ${TRANSACTION_POSTGRES_PASSWORD}
+  #     POSTGRESQL_REPLICATION_USER: ${TRANSACTION_REPLICATION_USER}
+  #     POSTGRESQL_REPLICATION_PASSWORD: ${TRANSACTION_REPLICATION_PASSWORD}
+  #     POSTGRESQL_DATABASE: ${TRANSACTION_POSTGRES_DB}
+  #     POSTGRESQL_POSTGRES_PASSWORD: ${TRANSACTION_POSTGRESROLE_PASSWORD}
+  #     ALLOW_EMPTY_PASSWORD: yes
+  #   volumes:
+  #     - ./transaction-database/init.sql:/docker-entrypoint-initdb.d/init.sql # Mounts the init file so the container has access to it
+  #   healthcheck:
+  #     test:
+  #       [
+  #         "CMD-SHELL",
+  #         "pg_isready -U $TRANSACTION_POSTGRES_USER -d $TRANSACTION_POSTGRES_DB",
+  #       ]
+  #     interval: ${HEALTHCHECK_INTERVAL}
+  #     timeout: ${HEALTHCHECK_TIMEOUT}
+  #     retries: ${HEALTHCHECK_RETRIES}
+  #   networks:
+  #     - go-network
+
+  # transaction-db-replica:
+  #   image: "bitnami/postgresql:latest"
+  #   container_name: transaction-db-replica
+  #   env_file:
+  #     - .env
+  #   environment:
+  #     POSTGRESQL_REPLICATION_MODE: slave
+  #     POSTGRESQL_MASTER_HOST: transaction-db
+  #     POSTGRESQL_MASTER_PORT_NUMBER: 5432 # postgre default
+  #     POSTGRESQL_REPLICATION_USER: ${TRANSACTION_REPLICATION_USER}
+  #     POSTGRESQL_REPLICATION_PASSWORD: ${TRANSACTION_REPLICATION_PASSWORD}
+  #     POSTGRESQL_PASSWORD: ${TRANSACTION_POSTGRES_PASSWORD} # But we still like a password.
+  #     ALLOW_EMPTY_PASSWORD: yes
+  #   depends_on:
+  #     transaction-db:
+  #       condition: service_healthy
+  #   healthcheck:
+  #     test:
+  #       [
+  #         "CMD-SHELL",
+  #         "pg_isready -U $TRANSACTION_POSTGRES_USER -d $TRANSACTION_POSTGRES_DB",
+  #       ]
+  #     interval: ${HEALTHCHECK_INTERVAL}
+  #     timeout: ${HEALTHCHECK_TIMEOUT}
+  #     retries: ${HEALTHCHECK_RETRIES}
+  #   networks:
+  #     - go-network
+
+  # transaction-pgpool:
+  #   image: bitnami/pgpool:latest
+  #   container_name: transaction-pgpool
+  #   ports:
+  #     - "6432:6432"
+  #     # NOTE: postgre default port: 5432
+  #   environment:
+  #     PGPOOL_PORT_NUMBER: 6432 # Apparently specifying the ports wasn't enough; you gotta do it here too.
+  #     PGPOOL_BACKEND_NODES: 0:transaction-db:5432,1:transaction-db-replica:5432
+  #     PGPOOL_SR_CHECK_USER: ${TRANSACTION_POSTGRES_USER}
+  #     PGPOOL_SR_CHECK_PASSWORD: ${TRANSACTION_POSTGRES_PASSWORD}
+  #     PGPOOL_ENABLE_LOAD_BALANCING: yes
+  #     PGPOOL_ADMIN_USERNAME: ${TRANSACTION_POSTGRES_USER} # Required for pgpool
+  #     PGPOOL_ADMIN_PASSWORD: ${TRANSACTION_POSTGRES_PASSWORD} # Required for pgpool
+  #     PGPOOL_POSTGRES_USERNAME: ${TRANSACTION_POSTGRES_USER}
+  #     PGPOOL_POSTGRES_PASSWORD: ${TRANSACTION_POSTGRES_PASSWORD}
+  #     ALLOW_EMPTY_PASSWORD: yes
+  #   depends_on:
+  #     transaction-db-replica:
+  #       condition: service_healthy
+  #     transaction-db:
+  #       condition: service_healthy
+  #   networks:
+  #     - go-network
+  # ---------------------- RabbitMQ ----------------------
 
   rabbitmq:
     image: rabbitmq:3-management
@@ -829,7 +766,7 @@ services:
     depends_on:
       auth-db:
         condition: service_healthy
-      user-management-db:
+      user-management-pgpool:
         condition: service_healthy
       stock-db:
         condition: service_healthy

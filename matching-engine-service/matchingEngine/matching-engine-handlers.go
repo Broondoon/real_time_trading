@@ -55,11 +55,11 @@ func InitalizeHandlers(stockIDs *[]network.StockPrice,
 	})
 
 	//Add handlers
-	_networkQueueManager.AddHandleFuncUnprotected(network.HandlerParams{Pattern: "createStock", Handler: AddNewStockHandler})
-	_networkQueueManager.AddHandleFuncUnprotected(network.HandlerParams{Pattern: "placeStockOrder", Handler: PlaceStockOrderHandler})
-	_networkQueueManager.AddHandleFuncUnprotected(network.HandlerParams{Pattern: "deleteOrder/", Handler: DeleteStockOrderHandler})
+	_networkHttpManager.AddHandleFuncUnprotected(network.HandlerParams{Pattern: "createStock", Handler: AddNewStockHandler})
+	_networkHttpManager.AddHandleFuncUnprotected(network.HandlerParams{Pattern: "placeStockOrder", Handler: PlaceStockOrderHandler})
+	_networkHttpManager.AddHandleFuncUnprotected(network.HandlerParams{Pattern: "deleteOrder/", Handler: DeleteStockOrderHandler})
 	_networkHttpManager.AddHandleFuncProtected(network.HandlerParams{Pattern: os.Getenv("transaction_route") + "/getStockPrices", Handler: GetStockPricesHandler})
-	_networkQueueManager.AddHandleFuncUnprotected(network.HandlerParams{Pattern: "CompletePairedOrder", Handler: CompletePairedOrderHandler})
+	//_networkQueueManager.AddHandleFuncUnprotected(network.HandlerParams{Pattern: "CompletePairedOrder", Handler: CompletePairedOrderHandler})
 	http.HandleFunc("/health", healthHandler)
 	networkQueueManager.Listen()
 	//Add a new queue listener to handle the confirmation of database updates on stock orders and transactions.
@@ -259,13 +259,7 @@ func GetStockPricesHandler(responseWriter network.ResponseWriter, data []byte, q
 	responseWriter.Write(pricesJSON)
 }
 
-func SendToOrderExection(buyOrder order.StockOrderInterface, sellOrder order.StockOrderInterface) (network.ExecutorToMatchingEngineJSON, error) {
-	buyQty := buyOrder.GetQuantity()
-	sellQty := sellOrder.GetQuantity()
-	quantity := buyQty
-	if sellQty < buyQty {
-		quantity = sellQty
-	}
+func SendToOrderExection(buyOrder order.StockOrderInterface, sellOrder order.StockOrderInterface, quantity int) {
 	// transferEntity := network.MatchingEngineToExecutionJSON{
 	// 	BuyerID:     buyOrder.GetUserIDString(),
 	// 	SellerID:    sellOrder.GetUserIDString(),
@@ -301,34 +295,34 @@ func SendToOrderExection(buyOrder order.StockOrderInterface, sellOrder order.Sto
 	// 		IsSellFailure:      true,
 	// 	}, err
 	// }
-	return data, err
+	_matchingEngineMap[buyOrder.GetStockIDString()].CompletePairedOrder(data, buyOrder, sellOrder, quantity, err)
 }
 
-func CompletePairedOrderHandler(responseWriter network.ResponseWriter, data []byte, queryParams url.Values, requestType string) {
-	//parse the stock order
-	var matchedData network.ExecutorToMatchingEngineJSON
-	err := json.Unmarshal(data, &matchedData)
-	if err != nil {
-		log.Println("Error: ", err.Error())
-		responseWriter.WriteHeader(http.StatusBadRequest)
-		return
-	}
-	me, ok := _matchingEngineMap[matchedData.StockID]
-	if !ok {
-		log.Println("Error: Matching engine not found for ID: ", matchedData.StockID)
-		responseWriter.WriteHeader(http.StatusBadRequest)
-		return
-	}
-	err = me.CompletePairedOrder(matchedData)
-	if err != nil {
-		log.Println("Error: ", err.Error())
-		//check if the error string has 404
-		if strings.Contains(err.Error(), "404") {
-			responseWriter.WriteHeader(http.StatusNotFound)
-			return
-		} else {
-			responseWriter.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-	}
-}
+// func CompletePairedOrderHandler(responseWriter network.ResponseWriter, data []byte, queryParams url.Values, requestType string) {
+// 	//parse the stock order
+// 	var matchedData network.ExecutorToMatchingEngineJSON
+// 	err := json.Unmarshal(data, &matchedData)
+// 	if err != nil {
+// 		log.Println("Error: ", err.Error())
+// 		responseWriter.WriteHeader(http.StatusBadRequest)
+// 		return
+// 	}
+// 	me, ok := _matchingEngineMap[matchedData.StockID]
+// 	if !ok {
+// 		log.Println("Error: Matching engine not found for ID: ", matchedData.StockID)
+// 		responseWriter.WriteHeader(http.StatusBadRequest)
+// 		return
+// 	}
+// 	err = me.CompletePairedOrder(matchedData)
+// 	if err != nil {
+// 		log.Println("Error: ", err.Error())
+// 		//check if the error string has 404
+// 		if strings.Contains(err.Error(), "404") {
+// 			responseWriter.WriteHeader(http.StatusNotFound)
+// 			return
+// 		} else {
+// 			responseWriter.WriteHeader(http.StatusInternalServerError)
+// 			return
+// 		}
+// 	}
+// }
