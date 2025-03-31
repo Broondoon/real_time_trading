@@ -55,6 +55,7 @@ func (d *PostGresDatabase) Connect() {
 
 		for i := 0; i < retries; i++ { // try with converted retries count
 			db, err = gorm.Open(postgres.Open(dsn), &gorm.Config{})
+
 			if err == nil {
 				d.database = db
 				d.SetConnected(true)
@@ -64,8 +65,8 @@ func (d *PostGresDatabase) Connect() {
 			time.Sleep(time.Duration(interval) * time.Second)
 		}
 		sqlDB, err := db.DB()
-		sqlDB.SetMaxIdleConns(200)
-		sqlDB.SetMaxOpenConns(200)
+		sqlDB.SetMaxIdleConns(400)
+		sqlDB.SetMaxOpenConns(400)
 		log.Fatal("Database connection failed after multiple attempts: ", err)
 	}
 }

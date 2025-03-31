@@ -332,7 +332,7 @@ services:
     networks:
       - go-network
     depends_on:
-      user-management-db:
+      user-management-pgpool:
         condition: service_healthy
       # redis-usermanagement:
       #   condition: service_healthy
@@ -357,7 +357,7 @@ services:
       context: .
       dockerfile: ./auth-database/database-service/Dockerfile
     ports:
-      - "${AUTH_DATABASE_SERVICE_PORT}:${AUTH_DATABASE_SERVICE_PORT}"
+      - "${AUTH_DATABASE_SERVICE_PORT}"
     env_file:
       - .env
     environment:
@@ -383,6 +383,10 @@ services:
       interval: ${HEALTHCHECK_INTERVAL}
       timeout: ${HEALTHCHECK_TIMEOUT}
       retries: ${HEALTHCHECK_RETRIES}
+    deploy:
+      replicas: 5
+      restart_policy:
+        condition: on-failure
 
   auth-db:
     image: postgres:latest
@@ -523,24 +527,27 @@ services:
       - .env
     ports:
       - "6432:6432"
-      # postgre default port: 5432
-    # volumes:
-    #   - ./pgpool-config/pgpool.conf:/opt/bitnami/pgpool/conf/pgpool.conf:ro
     environment:
-      PGPOOL_PORT_NUMBER: 6432 # Apparently specifying the ports wasn't enough; you gotta do it here too.
+      PGPOOL_PORT_NUMBER: 6432
       PGPOOL_BACKEND_NODES: 0:user-management-db:5432,1:user-management-db-replica-1:5432
       PGPOOL_SR_CHECK_USER: ${USER_MANAGEMENT_POSTGRES_USER}
       PGPOOL_SR_CHECK_PASSWORD: ${USER_MANAGEMENT_POSTGRES_PASSWORD}
-      PGPOOL_ENABLE_LOAD_BALANCING: yes
-      PGPOOL_ADMIN_USERNAME: ${USER_MANAGEMENT_POSTGRES_USER} # Required for pgpool
-      PGPOOL_ADMIN_PASSWORD: ${USER_MANAGEMENT_POSTGRES_PASSWORD} # Required for pgpool
+      PGPOOL_ENABLE_LOAD_BALANCING: "yes"
+      PGPOOL_ADMIN_USERNAME: ${USER_MANAGEMENT_POSTGRES_USER}
+      PGPOOL_ADMIN_PASSWORD: ${USER_MANAGEMENT_POSTGRES_PASSWORD}
       PGPOOL_POSTGRES_USERNAME: ${USER_MANAGEMENT_POSTGRES_USER}
       PGPOOL_POSTGRES_PASSWORD: ${USER_MANAGEMENT_POSTGRES_PASSWORD}
-      ALLOW_EMPTY_PASSWORD: yes
-      # Uncomment these lines to enable logging (will show exactly which requests go where)
-      # PGPOOL_ENABLE_LOG_PER_NODE_STATEMENT: yes
-      # PGPOOL_ENABLE_LOG_CONNECTIONS: yes
-      # PGPOOL_ENABLE_LOG_HOSTNAME: yes
+      ALLOW_EMPTY_PASSWORD: "yes"
+    healthcheck:
+      # Use psql to run a simple SELECT 1 through pgpool on port 6432.
+      test: [
+        "CMD-SHELL",
+        "PGPASSWORD=$$PGPOOL_POSTGRES_PASSWORD psql -h 127.0.0.1 -U $$PGPOOL_POSTGRES_USERNAME -p 6432 -d postgres -q -c 'SELECT 1;' || exit 1"
+      ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
     depends_on:
       user-management-db-replica:
         condition: service_healthy
@@ -659,7 +666,7 @@ services:
     depends_on:
       auth-db:
         condition: service_healthy
-      user-management-db:
+      user-management-pgpool:
         condition: service_healthy
       stock-db:
         condition: service_healthy
