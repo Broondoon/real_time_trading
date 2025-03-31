@@ -300,7 +300,7 @@ services:
     networks:
       - go-network
     depends_on:
-      stock-db:
+      stock-pgpool:
         condition: service_healthy
       # redis-stock:
       #   condition: service_healthy
@@ -434,14 +434,18 @@ services:
       - go-network
 
   stock-db:
-    image: postgres:latest
+    image: "bitnami/postgresql:latest"
+    container_name: stock-db
     restart: always
     env_file:
       - .env
     environment:
-      POSTGRES_USER: ${STOCK_POSTGRES_USER}
-      POSTGRES_PASSWORD: ${STOCK_POSTGRES_PASSWORD}
-      POSTGRES_DB: ${STOCK_POSTGRES_DB}
+      POSTGRESQL_REPLICATION_MODE: master
+      POSTGRESQL_USERNAME: ${STOCK_POSTGRES_USER}
+      POSTGRESQL_PASSWORD: ${STOCK_POSTGRES_PASSWORD}
+      POSTGRESQL_REPLICATION_USER: ${STOCK_REPLICATION_USER}
+      POSTGRESQL_REPLICATION_PASSWORD: ${STOCK_REPLICATION_PASSWORD}
+      POSTGRESQL_DATABASE: ${STOCK_POSTGRES_DB}
     volumes:
       - stock-db-data:/var/lib/postgresql/data
       - ./stock-database/init.sql:/docker-entrypoint-initdb.d/init.sql
@@ -454,6 +458,102 @@ services:
       interval: ${HEALTHCHECK_INTERVAL}
       timeout: ${HEALTHCHECK_TIMEOUT}
       retries: ${HEALTHCHECK_RETRIES}
+    networks:
+      - go-network
+
+  stock-db-replica:
+    image: "bitnami/postgresql:latest"
+    container_name: stock-db-replica-1
+    env_file:
+      - .env
+    environment:
+      POSTGRESQL_REPLICATION_MODE: slave
+      POSTGRESQL_MASTER_HOST: stock-db
+      POSTGRESQL_MASTER_PORT_NUMBER: 5432 # postgre default
+      POSTGRESQL_REPLICATION_USER: ${STOCK_REPLICATION_USER}
+      POSTGRESQL_REPLICATION_PASSWORD: ${STOCK_REPLICATION_PASSWORD}
+      POSTGRESQL_PASSWORD: ${STOCK_POSTGRES_PASSWORD} # But we still like a password.
+      ALLOW_EMPTY_PASSWORD: yes
+    depends_on:
+      stock-db:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U $STOCK_POSTGRES_USER -d $STOCK_POSTGRES_DB",
+        ]
+      interval: ${HEALTHCHECK_INTERVAL}
+      timeout: ${HEALTHCHECK_TIMEOUT}
+      retries: ${HEALTHCHECK_RETRIES}
+    networks:
+      - go-network
+
+  stock-db-replica-2:
+    image: "bitnami/postgresql:latest"
+    container_name: stock-db-replica-2
+    env_file:
+      - .env
+    environment:
+      POSTGRESQL_REPLICATION_MODE: slave
+      POSTGRESQL_MASTER_HOST: stock-db
+      POSTGRESQL_MASTER_PORT_NUMBER: 5432 # postgre default
+      POSTGRESQL_REPLICATION_USER: ${STOCK_REPLICATION_USER}
+      POSTGRESQL_REPLICATION_PASSWORD: ${STOCK_REPLICATION_PASSWORD}
+      POSTGRESQL_PASSWORD: ${STOCK_POSTGRES_PASSWORD} # But we still like a password.
+      ALLOW_EMPTY_PASSWORD: yes
+    depends_on:
+      stock-db:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U $STOCK_POSTGRES_USER -d $STOCK_POSTGRES_DB",
+        ]
+      interval: ${HEALTHCHECK_INTERVAL}
+      timeout: ${HEALTHCHECK_TIMEOUT}
+      retries: ${HEALTHCHECK_RETRIES}
+    networks:
+      - go-network
+
+  stock-pgpool:
+    image: bitnami/pgpool:latest
+    container_name: stock-pgpool
+    env_file:
+      - .env
+    ports:
+      - "6433:6433"
+    environment:
+      PGPOOL_PORT_NUMBER: 6433 # Apparently specifying the ports wasn't enough; you gotta do it here too.
+      PGPOOL_BACKEND_NODES: 0:stock-db:5432,1:stock-db-replica-1:5432,2:stock-db-replica-2:5432
+      PGPOOL_SR_CHECK_USER: ${STOCK_POSTGRES_USER}
+      PGPOOL_SR_CHECK_PASSWORD: ${STOCK_POSTGRES_PASSWORD}
+      PGPOOL_ENABLE_LOAD_BALANCING: yes
+      PGPOOL_ADMIN_USERNAME: ${STOCK_POSTGRES_USER} # Required for pgpool
+      PGPOOL_ADMIN_PASSWORD: ${STOCK_POSTGRES_PASSWORD} # Required for pgpool
+      PGPOOL_POSTGRES_USERNAME: ${STOCK_POSTGRES_USER}
+      PGPOOL_POSTGRES_PASSWORD: ${STOCK_POSTGRES_PASSWORD}
+      ALLOW_EMPTY_PASSWORD: yes
+      # Uncomment these lines to enable logging (will show exactly which requests go where)
+      # PGPOOL_ENABLE_LOG_PER_NODE_STATEMENT: yes
+      # PGPOOL_ENABLE_LOG_CONNECTIONS: yes
+      # PGPOOL_ENABLE_LOG_HOSTNAME: yes
+    healthcheck:
+      test: [
+        "CMD-SHELL",
+        "PGPASSWORD=$$PGPOOL_POSTGRES_PASSWORD psql -h 127.0.0.1 -U $$PGPOOL_POSTGRES_USERNAME -p 6433 -d postgres -q -c 'SELECT 1;' || exit 1"
+      ]
+      interval: ${HEALTHCHECK_INTERVAL}
+      timeout: ${HEALTHCHECK_TIMEOUT}
+      retries: ${HEALTHCHECK_RETRIES}
+    depends_on:
+      stock-db-replica:
+        condition: service_healthy
+      stock-db-replica-2:
+        condition: service_healthy
+      stock-db:
+        condition: service_healthy
     networks:
       - go-network
 
